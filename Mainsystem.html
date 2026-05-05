@@ -2019,6 +2019,23 @@ const firebaseAPI = {
 };
 
 // ============================================================
+// Firebase Initialization Check
+// ============================================================
+async function waitForFirebase(maxWait = 5000) {
+  const start = Date.now();
+  while (!window.firebase && Date.now() - start < maxWait) {
+    await new Promise(resolve => setTimeout(resolve, 100));
+  }
+  if (window.firebase) {
+    console.log('✅ Firebase SDK loaded successfully');
+    return true;
+  } else {
+    console.warn('⚠️ Firebase SDK failed to load within ' + maxWait + 'ms');
+    return false;
+  }
+}
+
+// ============================================================
 // INIT — ตรวจ session จาก Apps Script / Firebase
 // ============================================================
 window.onload = function() {
@@ -2075,6 +2092,53 @@ function testScriptRun() {
       alert('❌ FAIL: ' + (e&&e.message||JSON.stringify(e)));
     })
     .getRecords({});
+}
+
+async function testFirebaseAPI() {
+  console.clear();
+  console.log('🔍 Testing Firebase API...');
+  console.log('useFirebase:', useFirebase);
+
+  const firebaseReady = await waitForFirebase();
+  console.log('Firebase SDK status:', firebaseReady ? '✅ Loaded' : '❌ Not loaded');
+
+  if (!firebaseReady) {
+    console.error('❌ Cannot test Firebase API - SDK not loaded');
+    console.log('Fallback mode: Using Apps Script (useFirebase is currently ' + (useFirebase ? 'true' : 'false') + ')');
+    return;
+  }
+
+  if (!useFirebase) {
+    console.warn('⚠️ useFirebase is false, using Apps Script fallback instead of Firebase');
+  }
+
+  console.log('\n📋 Testing firebaseAPI methods:\n');
+
+  try {
+    console.log('1️⃣  Testing getCrmTickets()...');
+    const tickets = await firebaseAPI.getCrmTickets({});
+    console.log('✅ getCrmTickets() succeeded:', {
+      totalTickets: Array.isArray(tickets) ? tickets.length : 'ERROR: not an array',
+      type: typeof tickets,
+      isArray: Array.isArray(tickets),
+      firstItem: Array.isArray(tickets) && tickets[0] ? tickets[0] : 'no data',
+      method: useFirebase ? 'Firebase' : 'Apps Script'
+    });
+  } catch(error) {
+    console.error('❌ getCrmTickets() failed:', error.message);
+  }
+
+  try {
+    console.log('\n2️⃣  Testing checkSession()...');
+    const session = await firebaseAPI.checkSession();
+    console.log('✅ checkSession() succeeded:', session);
+  } catch(error) {
+    console.error('❌ checkSession() failed:', error.message);
+  }
+
+  console.log('\n📚 Usage examples:');
+  console.log('  firebaseAPI.getCrmTickets({}).then(t => console.log("Found", t.length, "tickets"))');
+  console.log('  await firebaseAPI.getCrmTickets({})');
 }
 
 function doLogin() {
