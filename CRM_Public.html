@@ -135,35 +135,7 @@ html,body{min-height:100%;font-family:var(--font);color:var(--text);background:v
 
   <div id="mainForm">
 
-    <!-- 1. ประเภทปัญหา (autocomplete + เพิ่มเองได้) -->
-    <div class="card">
-      <div class="card-title"><span class="num">1</span> ประเภทปัญหาที่พบ <span class="req">*</span></div>
-      <div class="q-chips" id="qtypes">
-        <button class="q-chip" onclick="selQ(this,'สอบถามเกี่ยวกับเอกสารการสอน')">🔍 สอบถามเกี่ยวกับเอกสารการสอน</button>
-        <button class="q-chip" onclick="selQ(this,'ไม่ได้รับเอกสาร')">📭 ไม่ได้รับเอกสาร</button>
-        <button class="q-chip" onclick="selQ(this,'เอกสารชำรุด/ไม่ครบ')">📄 เอกสารชำรุด/ไม่ครบ</button>
-        <button class="q-chip" onclick="selQ(this,'ส่งผิดวิชา')">🔄 ส่งผิดวิชา</button>
-        <button class="q-chip" onclick="selQ(this,'เอกสารไม่ถึงตามกำหนด')">⏳ เอกสารไม่ถึงตามกำหนด</button>
-        <button class="q-chip" id="otherQChip" onclick="selQ(this,'อื่นๆ')">✏️ อื่นๆ / ระบุเอง</button>
-      </div>
-      <input type="hidden" id="f_qtype">
-      <!-- กรอกเองหรือเลือกจาก history -->
-      <div id="custom_q_wrap" style="display:none;margin-top:12px">
-        <div class="fg" style="margin-bottom:0">
-          <label class="flbl">ระบุประเภทปัญหา <span class="hint">(หรือเลือกจากที่เคยแจ้ง)</span></label>
-          <div class="ac-wrap">
-            <input class="finput" id="f_custom_q" placeholder="พิมพ์หรือเลือก..." autocomplete="off"
-              oninput="acSearch(this,'custom_q',customQHistory)" onfocus="acSearch(this,'custom_q',customQHistory)"
-              onblur="setTimeout(()=>closeAc('custom_q'),200)"
-              onkeydown="acKeydown(event,'custom_q')">
-            <div class="ac-drop" id="ac_custom_q"></div>
-          </div>
-          <div class="tip">💡 พิมพ์แล้วกด Enter เพื่อเพิ่มประเภทปัญหาใหม่</div>
-        </div>
-      </div>
-    </div>
-
-    <!-- 2. ข้อมูลผู้แจ้ง -->
+    <!-- 1. ข้อมูลผู้แจ้ง -->
     <div class="card">
       <div class="card-title"><span class="num">2</span> ข้อมูลผู้แจ้งปัญหา</div>
       <div class="grid2">
@@ -242,26 +214,13 @@ html,body{min-height:100%;font-family:var(--font);color:var(--text);background:v
       </div>
     </div>
 
-    <!-- ประเภทปัญหา -->
+    <!-- 3. ประเภทปัญหา -->
     <div class="card">
-      <div class="card-title"><span class="num" style="background:var(--sky)">★</span> ประเภทปัญหา</div>
+      <div class="card-title"><span class="num">3</span> ประเภทปัญหา</div>
       <div class="fg">
         <label class="flbl">ประเภทปัญหาที่ต้องการสอบถาม <span class="req">*</span></label>
         <select class="fsel" id="f_issuetype" onchange="checkIssueOther(this.value)" required>
           <option value="">— เลือกประเภทปัญหา —</option>
-          <option>พิมพ์เพิ่ม</option>
-          <option>ชุดปรับปรุง</option>
-          <option>ชุดผลิตใหม่</option>
-          <option>ปัญหาทวงถามหนังสือ (ไม่ได้สั่งซื้อ/แผน ก2-ก3)</option>
-          <option>สอบถามทะเบียนและวัดผล (ลงทะเบียน/สอบ)</option>
-          <option>สอบถามกิจกรรมประจำชุดวิชา</option>
-          <option>สอบถามอบรมเข้มเสริมประสบการณ์วิชาชีพ</option>
-          <option>สอบถามสอนเสริมออนไลน์</option>
-          <option>สอบถามโครงการสัมฤทธิบัตร</option>
-          <option>ไม่ได้รับเอกสาร</option>
-          <option>เอกสารชำรุด</option>
-          <option>ส่งผิดวิชา</option>
-          <option>อื่นๆ (ระบุเอง)</option>
         </select>
         <div id="f_issuetype_other_wrap" style="display:none;margin-top:8px">
           <input class="finput" id="f_issuetype_other" placeholder="ระบุประเภทปัญหา...">
@@ -269,9 +228,9 @@ html,body{min-height:100%;font-family:var(--font);color:var(--text);background:v
       </div>
     </div>
 
-    <!-- 3. ภาค/ปี + ชุดวิชา -->
+    <!-- 2. ภาค/ปี + ชุดวิชา -->
     <div class="card">
-      <div class="card-title"><span class="num">3</span> ภาคการศึกษาและชุดวิชา</div>
+      <div class="card-title"><span class="num">2</span> ภาคการศึกษาและชุดวิชา</div>
       <div class="grid2" style="margin-bottom:14px">
         <div class="fg">
           <label class="flbl">ภาคการศึกษา <span class="req">*</span></label>
@@ -717,6 +676,33 @@ function resetForm() {
   selCh('online'); selPrio('normal');
   document.getElementById('progFill').style.width = '0%';
 }
+
+// โหลด Issue Types จาก Settings
+function loadIssueTypes() {
+  google.script.run
+    .withSuccessHandler(function(settings) {
+      const issueSelect = document.getElementById('f_issuetype');
+      if (!issueSelect) return;
+      const issues = (settings && settings.issueTypes) ? settings.issueTypes : [
+        'สอบถามเกี่ยวกับเอกสารการสอน',
+        'ไม่ได้รับเอกสาร',
+        'เอกสารชำรุด/ไม่ครบ',
+        'ส่งผิดวิชา',
+        'เอกสารไม่ถึงตามกำหนด'
+      ];
+      const currentVal = issueSelect.value;
+      issueSelect.innerHTML = '<option value="">— เลือกประเภทปัญหา —</option>' +
+        issues.map(t => '<option>' + t + '</option>').join('') +
+        '<option value="อื่นๆ">อื่นๆ (ระบุเอง)</option>';
+      issueSelect.value = currentVal;
+    })
+    .getSettings();
+}
+
+// เรียกเมื่อหน้าโหลด
+window.addEventListener('load', function() {
+  loadIssueTypes();
+});
 </script>
 </body>
 </html>

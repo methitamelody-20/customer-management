@@ -3401,10 +3401,21 @@ function renderCrmList(items) {
       +'</div>'
       +'<div class="reply-thread '+(replies.length?'show':'')+'" id="thread_'+cid+'">'
         +repliesHtml
-        +'<div class="reply-input-row">'
-          +'<input placeholder="ตอบกลับหรือบันทึกการดำเนินการ..." id="ri_'+cid+'" data-cid="'+cid+'">'
-          +'<button class="btn btn-primary btn-sm" data-cid="'+cid+'" onclick="sendReplyCrm(this.dataset.cid)">ส่ง</button>'
-          +'<select class="fsel btn-sm" style="width:140px" id="rs_'+cid+'" data-cid="'+cid+'" onchange="onCrmStatusSel(this)">'
+        +'<div style="background:var(--light);border-radius:8px;padding:12px;margin-bottom:8px">'
+          +'<textarea class="ftextarea" placeholder="ตอบกลับหรือบันทึกการดำเนินการ..." id="ri_'+cid+'" data-cid="'+cid+'" style="min-height:60px;margin-bottom:10px"></textarea>'
+          +'<div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;margin-bottom:8px">'
+            +'<div style="flex:1;min-width:200px">'
+              +'<label style="font-size:12px;color:var(--gray3);display:block;margin-bottom:4px">📎 แนบไฟล์ (เลือก)</label>'
+              +'<input type="file" id="ri_file_'+cid+'" style="font-size:12px;cursor:pointer" data-cid="'+cid+'">'
+            +'</div>'
+            +'<div>'
+              +'<label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer">'
+                +'<input type="checkbox" id="ri_email_'+cid+'" data-cid="'+cid+'" style="cursor:pointer"> 📧 ส่งอีเมลผู้แจ้ง'
+              +'</label>'
+            +'</div>'
+            +'<button class="btn btn-primary btn-sm" data-cid="'+cid+'" onclick="sendReplyCrm(this.dataset.cid)">✉️ ส่ง</button>'
+          +'</div>'
+          +'<select class="fsel" style="width:100%;font-size:13px" id="rs_'+cid+'" data-cid="'+cid+'" onchange="onCrmStatusSel(this)">'
             +'<option value="">เปลี่ยนสถานะ</option>'
             +'<option value="inprogress">กำลังดำเนินการ</option>'
             +'<option value="resolved">แก้ไขแล้ว</option>'
@@ -3480,26 +3491,31 @@ function assignCrm(id) {
 
 function sendReply(id) {
   const text=document.getElementById('ri_'+id).value.trim();
-  if(!text)return;
+  const sendEmail = document.getElementById('ri_email_'+id)?.checked || false;
+  const fileInput = document.getElementById('ri_file_'+id);
+
+  if(!text){showToast('กรุณากรอกข้อความ','error');return;}
+
   showToast('⏳ กำลังส่ง...','');
   google.script.run
     .withSuccessHandler(res=>{
       if(res.success){
-        if(res.emailSent){
-          showToast('✅ ส่งแล้ว + อีเมลถึง '+res.sentTo,'success');
-        } else if(res.emailError){
-          showToast('⚠️ บันทึกแล้ว แต่ส่งอีเมลไม่ได้: '+res.emailError,'error');
-        } else {
-          showToast('✅ บันทึกแล้ว','success');
+        let msg = '✅ บันทึกแล้ว';
+        if(sendEmail){
+          if(res.emailSent) msg = '✅ ส่งแล้ว + อีเมลถึง '+res.sentTo;
+          else if(res.emailError) msg = '⚠️ บันทึกแล้ว แต่ส่งอีเมลไม่ได้: '+res.emailError;
         }
+        showToast(msg,'success');
         document.getElementById('ri_'+id).value='';
+        if(fileInput) fileInput.value='';
+        if(document.getElementById('ri_email_'+id)) document.getElementById('ri_email_'+id).checked=false;
         loadCrm();
       } else {
         showToast('❌ '+res.error,'error');
       }
     })
     .withFailureHandler(showError)
-    .replyCrmTicket(id, text, currentUser, currentEmail);
+    .replyCrmTicket(id, text, currentUser, currentEmail, sendEmail);
 }
 
 function updateCrmStatus(id, status) {

@@ -1302,7 +1302,7 @@ function assignCrmTicket(id, adminName) {
   return _updateCrmField(id, 18, adminName);
 }
 
-function replyCrmTicket(id, text, adminName, adminEmail) {
+function replyCrmTicket(id, text, adminName, adminEmail, sendEmail) {
   if (!_autoRefreshSession()) return { success:false, error:'SESSION_EXPIRED' };
   try {
     const sess = _sess();
@@ -1319,14 +1319,14 @@ function replyCrmTicket(id, text, adminName, adminEmail) {
         // อัปเดตสถานะเป็น inprogress ถ้ายังเป็น open
         if (data[i][16]==='open') sheet.getRange(i+1,17).setValue('inprogress');
 
-        // ส่งอีเมลไปหา นศ./ผู้แจ้ง
+        // ส่งอีเมลไปหา นศ./ผู้แจ้ง (ถ้า sendEmail === true)
         const reporterEmail = (data[i][4]||'').toString().trim();
         const reporterName  = (data[i][2]||'').toString().trim() || 'ผู้แจ้ง';
         const issueType     = (data[i][11]||'').toString().trim() || 'แจ้งปัญหา';
 
         let emailSent = false;
         let emailError = '';
-        if (reporterEmail && /\S+@\S+\.\S+/.test(reporterEmail)) {
+        if (sendEmail && reporterEmail && /\S+@\S+\.\S+/.test(reporterEmail)) {
           try {
             const subject = '[มสธ.] ตอบกลับเรื่องที่ท่านแจ้ง: ' + issueType + ' (' + id + ')';
             const htmlBody = ''
