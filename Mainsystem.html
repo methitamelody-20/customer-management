@@ -1047,6 +1047,14 @@ tbody td{padding:12px;vertical-align:middle}
               <tr><td colspan="13" style="text-align:center;padding:40px;color:var(--gray3)">⏳ กำลังโหลด...</td></tr>
             </tbody>
           </table>
+          <div style="padding:12px 16px;border-top:1px solid var(--gray1);display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap" class="no-print" id="investPagination">
+            <div style="font-size:13px;color:var(--gray3)">หน้า <span id="investPage">1</span> / <span id="investPages">1</span></div>
+            <div style="display:flex;gap:6px">
+              <button class="btn btn-outline btn-sm" id="investPrevBtn" onclick="changeInvestPage(-1)">← ก่อนหน้า</button>
+              <button class="btn btn-outline btn-sm" id="investNextBtn" onclick="changeInvestPage(1)">ถัดไป →</button>
+            </div>
+            <div style="font-size:12px;color:var(--gray3)">แสดง <span id="investStart">0</span>-<span id="investEnd">0</span> จาก <span id="investTotal">0</span> รายการ</div>
+          </div>
         </div>
       </div>
 
@@ -2722,39 +2730,23 @@ function loadDash() {
     tag:      dTag  ? dTag.value : '',
   };
   google.script.run
-    .withSuccessHandler(function(rows) {
-      console.log('loadDash response type:', typeof rows, Array.isArray(rows) ? 'array len='+rows.length : (rows&&rows.error?'error='+rows.error:'not array'));
-      if(!rows || rows.error){
-        if(rows && rows.error==='SESSION_EXPIRED'){
-          if(handleSessionError(rows, loadDash)) return;
+    .withSuccessHandler(function(d) {
+      if(!d || d.error){
+        if(d && d.error==='SESSION_EXPIRED'){
+          if(handleSessionError(d, loadDash)) return;
         }
-        showToast('❌ '+(rows&&rows.error||'ไม่มีข้อมูล'),'error');
+        showToast('❌ '+(d&&d.error||'ไม่มีข้อมูล'),'error');
         return;
       }
-      allRecords = rows;
-      // คำนวณ dashboard stats จาก records
-      var d = {
-        total: rows.length,
-        records: rows,
-        countReturn:  rows.filter(function(r){return r.recType==='return';}).length,
-        countLend:    rows.filter(function(r){return r.recType==='lend';}).length,
-        countSpecial: rows.filter(function(r){return r.recType==='special';}).length,
-        countContact: rows.filter(function(r){return r.contactStatus==='yes';}).length,
-        crmPending: 0,
-        byCause:    countGroup(rows,'cause'),
-        byType:     countGroup(rows,'parcelType'),
-        byProvince: countGroup(rows,'province'),
-        byDistrict: countGroup(rows,'district'),
-        byTag:      countTags(rows),
-      };
+      allRecords = d.records || [];
       renderDash(d, filters);
-      updateGeoDropdowns(rows);
+      updateGeoDropdowns(d.records || []);
     })
     .withFailureHandler(function(e){
       console.log('loadDash FAIL:', e&&e.message||e);
       showError(e);
     })
-    .getRecords(filters);
+    .getDashboardData(filters);
   // โหลดสถิติสอบสวน
   google.script.run
     .withSuccessHandler(function(rows){
@@ -4358,12 +4350,16 @@ function onInvestChange(val) {
 let investData = [];
 let investFilterStatus = '';
 
+var investPageState = { currentPage: 1, pageSize: 20, totalRecords: 0, allRecords: [] };
+
 function loadInvestigations() {
   document.getElementById('investTbody').innerHTML = '<tr><td colspan="13" style="text-align:center;padding:40px;color:var(--gray3)">⏳ กำลังโหลด...</td></tr>';
+  investPageState.currentPage = 1;
   google.script.run
     .withSuccessHandler(function(rows) {
       if (rows && rows.error) { showToast('❌ '+rows.error,'error'); return; }
       investData = rows || [];
+      investPageState.allRecords = rows || [];
       renderInvestTable();
     })
     .withFailureHandler(showError)
@@ -4377,7 +4373,23 @@ function setInvestFilter(el, status) {
   renderInvestTable();
 }
 
-function filterInvestTable() { renderInvestTable(); }
+function filterInvestTable() { investPageState.currentPage = 1; renderInvestTable(); }
+
+function changeInvestPage(direction) {
+  const maxPages = Math.ceil(investPageState.totalRecords / investPageState.pageSize);
+  const newPage = investPageState.currentPage + direction;
+  if (newPage < 1 || newPage > maxPages) return;
+  investPageState.currentPage = newPage;
+  renderInvestPage();
+}
+
+function renderInvestPage() {
+  const start = (investPageState.currentPage - 1) * investPageState.pageSize;
+  const end = start + investPageState.pageSize;
+  const pageRecords = investPageState.filteredRecords.slice(start, end);
+  renderInvestRows(pageRecords, start);
+  updateInvestPagination();
+}
 
 // 🆕 ตัด timezone string ออกจากชื่อชุดวิชา
 function cleanCourseName(v) {
@@ -4418,22 +4430,27 @@ function renderInvestTable() {
     .some(v=>v&&v.toString().toLowerCase().includes(q))
   );
   document.getElementById('invest_count').textContent = `พบ ${rows.length} รายการ`;
+  investPageState.filteredRecords = rows;
+  investPageState.totalRecords = rows.length;
   if (!rows.length) {
     document.getElementById('investTbody').innerHTML = '<tr><td colspan="13" style="text-align:center;padding:40px;color:var(--gray3)">ไม่พบข้อมูล</td></tr>';
+    document.getElementById('investPagination').style.display='none';
     return;
   }
+  document.getElementById('investPagination').style.display='flex';
+  renderInvestPage();
+}
+
+function renderInvestRows(rows, startIdx) {
   const statusBadge = function(s) {
     const m = {'รอส่ง':'ibadge-wait','ส่งแล้ว':'ibadge-sent','มีผลตอบ':'ibadge-replied','ปิดแล้ว':'ibadge-closed'};
     return '<span class="ibadge '+(m[s]||'ibadge-wait')+'">'+(s||'รอส่ง')+'</span>';
   };
-  
-  // 🆕 แสดงวันที่แบบสั้น — ตัด time zone และ GMT+0700 ออก
+
   const fmtDateShort = function(v) {
     if (!v) return '—';
     var s = String(v).trim();
-    // ถ้ามีรูป "dd/MM/yyyy HH:mm" เอาแค่ dd/MM/yyyy
     if (/^\d{1,2}\/\d{1,2}\/\d{4}/.test(s)) return s.split(' ')[0];
-    // ถ้าเป็น Date object string แบบ "Sat Aug 01 2026 00:00:00 GMT+0700..."
     try {
       var d = new Date(s);
       if (!isNaN(d.getTime())) {
@@ -4442,7 +4459,7 @@ function renderInvestTable() {
     } catch(e) {}
     return s.substring(0,10);
   };
-  
+
   document.getElementById('investTbody').innerHTML = rows.map(function(r, i) {
     return '<tr style="'+(i%2===0?'background:var(--light)':'')+'">'
       +'<td style="padding:8px;text-align:center"><input type="checkbox" class="invest-chk" data-id="'+r.investId+'" style="accent-color:var(--sky)"></td>'
@@ -4468,6 +4485,19 @@ function renderInvestTable() {
       +'</td>'
       +'</tr>';
   }).join('');
+}
+
+function updateInvestPagination() {
+  const maxPages = Math.ceil(investPageState.totalRecords / investPageState.pageSize);
+  const start = (investPageState.currentPage - 1) * investPageState.pageSize + 1;
+  const end = Math.min(investPageState.currentPage * investPageState.pageSize, investPageState.totalRecords);
+  document.getElementById('investPage').textContent = investPageState.currentPage;
+  document.getElementById('investPages').textContent = maxPages || 1;
+  document.getElementById('investStart').textContent = start;
+  document.getElementById('investEnd').textContent = end;
+  document.getElementById('investTotal').textContent = investPageState.totalRecords;
+  document.getElementById('investPrevBtn').disabled = investPageState.currentPage <= 1;
+  document.getElementById('investNextBtn').disabled = investPageState.currentPage >= maxPages;
 }
 
 function toggleAllInvest(checked) {
