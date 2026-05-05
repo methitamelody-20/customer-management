@@ -932,6 +932,37 @@ function migrateAllToFirebase() {
   }
 }
 
+// Test Firebase connection
+function testFirebaseConnection() {
+  try {
+    Logger.log('ทดสอบการเชื่อมต่อ Firebase...');
+    const testData = { test: true, timestamp: new Date().toISOString() };
+    const result = firebaseCall('PUT', '/test/connection', testData);
+    if (result !== null) {
+      Logger.log('✅ เชื่อมต่อ Firebase สำเร็จ');
+      return { success:true, message:'เชื่อมต่อ Firebase สำเร็จ' };
+    } else {
+      Logger.log('❌ ไม่สามารถเชื่อมต่อ Firebase ได้');
+      return { success:false, message:'ไม่สามารถเชื่อมต่อ Firebase ได้ - ตรวจสอบ Security Rules' };
+    }
+  } catch(e) {
+    Logger.log('❌ Error: ' + e.message);
+    return { success:false, error:e.message };
+  }
+}
+
+// Get Firebase setup status
+function getFirebaseStatus() {
+  return {
+    enabled: USE_FIREBASE,
+    projectId: FIREBASE_CONFIG.projectId,
+    databaseURL: FIREBASE_CONFIG.databaseURL,
+    message: USE_FIREBASE
+      ? '✅ Firebase เปิดใช้งาน - ระบบกำลังใช้ Firebase Realtime Database'
+      : '⚠️ Firebase ปิดใช้งาน - ระบบใช้ Google Sheets แทน'
+  };
+}
+
 // ============================================================
 // SETTINGS
 // ============================================================
