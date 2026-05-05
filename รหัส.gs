@@ -24,6 +24,14 @@ function doGet(e) {
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
       .addMetaTag('viewport','width=device-width,initial-scale=1');
   }
+  // ถ้ามี ?page=ext_staff → Dashboard เจ้าหน้าที่ภายนอก
+  if (e && e.parameter && e.parameter.page === 'ext_staff') {
+    const tpl = HtmlService.createTemplateFromFile('ExternalStaffDashboard');
+    return tpl.evaluate()
+      .setTitle('Dashboard เจ้าหน้าที่ภายนอก — มสธ.')
+      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
+      .addMetaTag('viewport','width=device-width,initial-scale=1');
+  }
   const tpl = HtmlService.createTemplateFromFile('Mainsystem');
   return tpl.evaluate()
     .setTitle('ระบบจัดการและติดตามเอกสารการสอน มสธ.')
@@ -2812,4 +2820,202 @@ function getMimeType(filename) {
     '.txt':'text/plain'
   };
   return types[ext] || 'application/octet-stream';
+}
+
+// ============================================================
+// UPDATE RECORD FIELDS (for list page edit modal)
+// ============================================================
+function updateRecordFields(id, updates) {
+  if (!_autoRefreshSession()) return { success:false, error:'SESSION_EXPIRED' };
+  try {
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SH_DATA);
+    if (!sheet) return { success:false, error:'ไม่พบ Sheet' };
+    const lr = sheet.getLastRow();
+    if (lr < 2) return { success:false, error:'ไม่พบข้อมูล' };
+    const ids = sheet.getRange(2,1,lr-1,1).getValues();
+    for (let i = 0; i < ids.length; i++) {
+      if (String(ids[i][0]).trim() === String(id).trim()) {
+        const row = i + 2;
+        // column mapping (1-based): status=col26, remark=col27 (adjust to actual sheet)
+        // Read the header row to find column positions dynamically
+        const headers = sheet.getRange(1,1,1,sheet.getLastColumn()).getValues()[0];
+        const statusCol = headers.indexOf('status') + 1 || headers.indexOf('สถานะ') + 1;
+        const remarkCol = headers.indexOf('remark') + 1 || headers.indexOf('หมายเหตุ') + 1;
+        if (updates.status && statusCol > 0) sheet.getRange(row, statusCol).setValue(updates.status);
+        if (updates.remark !== undefined && remarkCol > 0) sheet.getRange(row, remarkCol).setValue(updates.remark);
+        // fallback: write to known columns if headers not found
+        if (statusCol === 0) { sheet.getRange(row, 26).setValue(updates.status || ''); }
+        if (remarkCol === 0) { sheet.getRange(row, 27).setValue(updates.remark || ''); }
+        logAudit('แก้ไขรายการ', id + ' | สถานะ: ' + (updates.status||'-') + ' | หมายเหตุ: ' + (updates.remark||'-').substring(0,50));
+        return { success:true };
+      }
+    }
+    return { success:false, error:'ไม่พบรายการ ' + id };
+  } catch(e) { return { success:false, error:e.message }; }
+}
+
+function updateRecordField(id, field, value) {
+  return updateRecordFields(id, { [field]: value });
+}
+
+// ============================================================
+// EXTERNAL STAFF — ลงทะเบียน / อนุมัติ / login / dashboard
+// ============================================================
+const SH_EXT = 'เจ้าหน้าที่ภายนอก';
+
+function _getExtSheet() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sh = ss.getSheetByName(SH_EXT);
+  if (!sh) {
+    sh = ss.insertSheet(SH_EXT);
+    sh.appendRow(['อีเมล','ชื่อ','หน่วยงาน','เบอร์โทร','สถานะ','รหัสผ่าน(hash)','token','วันที่สมัคร','วันที่อนุมัติ','อนุมัติโดย']);
+    sh.setFrozenRows(1);
+  }
+  return sh;
+}
+
+function registerExternalStaff(data) {
+  try {
+    const sh = _getExtSheet();
+    const email = (data.email||'').toLowerCase().trim();
+    if (!email || !data.name) return { success:false, error:'กรุณากรอกชื่อและอีเมล' };
+    // ตรวจซ้ำ
+    const rows = sh.getDataRange().getValues();
+    for (let i = 1; i < rows.length; i++) {
+      if ((rows[i][0]||'').toLowerCase().trim() === email) {
+        return { success:false, error:'อีเมลนี้ลงทะเบียนไว้แล้ว' };
+      }
+    }
+    sh.appendRow([email, data.name||'', data.org||'', data.phone||'', 'pending', '', '', new Date(), '', '']);
+    // แจ้ง admin ทาง email (ถ้ามี admin email ใน settings)
+    try {
+      const settings = getSettings();
+      const adminEmail = (settings && settings.adminEmail) || Session.getEffectiveUser().getEmail();
+      if (adminEmail) {
+        GmailApp.sendEmail(adminEmail,
+          '[มสธ.] คำขอลงทะเบียนเจ้าหน้าที่ภายนอก: ' + data.name,
+          'มีคำขอลงทะเบียนใหม่จาก:\nชื่อ: ' + data.name + '\nอีเมล: ' + email + '\nหน่วยงาน: ' + (data.org||'-') + '\n\nกรุณาเข้าระบบเพื่ออนุมัติ');
+      }
+    } catch(e2) {}
+    return { success:true };
+  } catch(e) { return { success:false, error:e.message }; }
+}
+
+function approveExternalStaff(email) {
+  if (!_autoRefreshSession()) return { success:false, error:'SESSION_EXPIRED' };
+  try {
+    const sh = _getExtSheet();
+    const rows = sh.getDataRange().getValues();
+    for (let i = 1; i < rows.length; i++) {
+      if ((rows[i][0]||'').toLowerCase().trim() === email.toLowerCase().trim()) {
+        if (rows[i][4] === 'active') return { success:false, error:'อนุมัติไปแล้ว' };
+        // สร้าง token สำหรับตั้งรหัสผ่าน
+        const token = Utilities.getUuid();
+        const sess = _sess();
+        sh.getRange(i+1, 5).setValue('approved');
+        sh.getRange(i+1, 7).setValue(token);
+        sh.getRange(i+1, 9).setValue(new Date());
+        sh.getRange(i+1, 10).setValue(sess.name||sess.email||'admin');
+        // ส่งลิงก์ตั้งรหัสผ่าน
+        const scriptUrl = ScriptApp.getService().getUrl();
+        const setpwUrl = scriptUrl + '?page=ext_staff&token=' + token + '&email=' + encodeURIComponent(email);
+        try {
+          GmailApp.sendEmail(email,
+            '[มสธ.] อนุมัติการลงทะเบียนแล้ว — กรุณาตั้งรหัสผ่าน',
+            'ท่านได้รับการอนุมัติให้เข้าใช้ระบบ Dashboard เจ้าหน้าที่ภายนอก มสธ.\n\nกรุณาคลิกลิงก์ด้านล่างเพื่อตั้งรหัสผ่าน (ลิงก์ใช้ได้ 24 ชม.):\n\n' + setpwUrl + '\n\nหากท่านไม่ได้ลงทะเบียน กรุณาเพิกเฉยต่ออีเมลนี้');
+        } catch(e2) {}
+        logAudit('อนุมัติเจ้าหน้าที่ภายนอก', email);
+        return { success:true, token:token };
+      }
+    }
+    return { success:false, error:'ไม่พบอีเมลนี้' };
+  } catch(e) { return { success:false, error:e.message }; }
+}
+
+function rejectExternalStaff(email) {
+  if (!_autoRefreshSession()) return { success:false, error:'SESSION_EXPIRED' };
+  try {
+    const sh = _getExtSheet();
+    const rows = sh.getDataRange().getValues();
+    for (let i = 1; i < rows.length; i++) {
+      if ((rows[i][0]||'').toLowerCase().trim() === email.toLowerCase().trim()) {
+        sh.getRange(i+1, 5).setValue('rejected');
+        logAudit('ปฏิเสธเจ้าหน้าที่ภายนอก', email);
+        return { success:true };
+      }
+    }
+    return { success:false, error:'ไม่พบอีเมลนี้' };
+  } catch(e) { return { success:false, error:e.message }; }
+}
+
+function setExternalStaffPassword(email, token, newPassword) {
+  try {
+    const sh = _getExtSheet();
+    const rows = sh.getDataRange().getValues();
+    for (let i = 1; i < rows.length; i++) {
+      if ((rows[i][0]||'').toLowerCase().trim() === email.toLowerCase().trim()) {
+        if (rows[i][6] !== token) return { success:false, error:'token ไม่ถูกต้อง' };
+        if (!['approved','active'].includes(rows[i][4])) return { success:false, error:'บัญชีนี้ยังไม่ได้รับการอนุมัติ' };
+        sh.getRange(i+1, 5).setValue('active');
+        sh.getRange(i+1, 6).setValue(hashPw(newPassword));
+        sh.getRange(i+1, 7).setValue(''); // clear token
+        return { success:true };
+      }
+    }
+    return { success:false, error:'ไม่พบอีเมลนี้' };
+  } catch(e) { return { success:false, error:e.message }; }
+}
+
+function loginExternalStaff(email, password) {
+  try {
+    const sh = _getExtSheet();
+    const rows = sh.getDataRange().getValues();
+    const emailL = (email||'').toLowerCase().trim();
+    for (let i = 1; i < rows.length; i++) {
+      if ((rows[i][0]||'').toLowerCase().trim() === emailL) {
+        const status = rows[i][4]||'pending';
+        if (status === 'pending') return { success:true, user:{email:emailL, name:rows[i][1], org:rows[i][2], status:'pending'} };
+        if (status === 'rejected') return { success:false, error:'บัญชีนี้ถูกปฏิเสธ' };
+        if (status !== 'active') return { success:false, error:'บัญชียังไม่ active' };
+        if (!rows[i][5]) return { success:false, error:'ยังไม่ได้ตั้งรหัสผ่าน กรุณาตรวจสอบอีเมล' };
+        if (hashPw(password) !== rows[i][5]) return { success:false, error:'รหัสผ่านไม่ถูกต้อง' };
+        return { success:true, user:{email:emailL, name:rows[i][1], org:rows[i][2], status:'active'} };
+      }
+    }
+    return { success:false, error:'ไม่พบอีเมลนี้ในระบบ' };
+  } catch(e) { return { success:false, error:e.message }; }
+}
+
+function getExternalStaffTickets(email) {
+  try {
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SH_CRM);
+    if (!sheet || sheet.getLastRow() < 2) return [];
+    const rows = sheet.getRange(2,1,sheet.getLastRow()-1,21).getValues();
+    const result = [];
+    const emailL = (email||'').toLowerCase().trim();
+    for (let i = 0; i < rows.length; i++) {
+      const r = rows[i];
+      if (!r[0]) continue;
+      if ((r[4]||'').toLowerCase().trim() === emailL || (r[2]||'').toLowerCase().trim() === emailL) {
+        result.push({
+          id:String(r[0]), date:String(r[1]), reporterName:String(r[2]),
+          issueType:String(r[11]), detail:String(r[12]),
+          status:String(r[16]), replies:String(r[19])||'[]'
+        });
+      }
+    }
+    return result.reverse();
+  } catch(e) { return []; }
+}
+
+function getPendingExternalRegistrations() {
+  if (!_autoRefreshSession()) return { success:false, error:'SESSION_EXPIRED' };
+  try {
+    const sh = _getExtSheet();
+    if (sh.getLastRow() < 2) return { success:true, rows:[] };
+    const rows = sh.getRange(2,1,sh.getLastRow()-1,10).getValues();
+    return { success:true, rows: rows.map(function(r){
+      return { email:r[0], name:r[1], org:r[2], phone:r[3], status:r[4], registeredAt:r[7]?String(r[7]):'', approvedAt:r[8]?String(r[8]):'', approvedBy:r[9] };
+    })};
+  } catch(e) { return { success:false, error:e.message }; }
 }
