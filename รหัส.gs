@@ -1,0 +1,1578 @@
+// ============================================================
+// ระบบจัดการและติดตามเอกสารการสอน มสธ.
+// Code.gs  v3  — เชื่อม MainSystem.html + CRM_Public.html จริง
+// ============================================================
+
+const SH_DATA     = 'ข้อมูลพัสดุ';
+const SH_SETTINGS = 'ตั้งค่า';
+const SH_USERS    = 'ผู้ใช้งาน';
+const SH_CRM      = 'CRM แจ้งปัญหา';
+const SH_TAGS     = 'Tags';
+const R_SUPER  = 'superadmin';
+const R_STAFF  = 'staff';
+const R_VIEWER = 'viewer';
+
+// ============================================================
+// ENTRY POINTS
+// ============================================================
+function doGet(e) {
+  // ถ้ามี ?page=crm → ให้หน้าสำหรับ นศ. แจ้งปัญหา
+  if (e && e.parameter && e.parameter.page === 'crm') {
+    const tpl = HtmlService.createTemplateFromFile('CRM_Public');
+    return tpl.evaluate()
+      .setTitle('แจ้งปัญหาเอกสารการสอน — มสธ.')
+      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
+      .addMetaTag('viewport','width=device-width,initial-scale=1');
+  }
+  const tpl = HtmlService.createTemplateFromFile('Mainsystem');
+  return tpl.evaluate()
+    .setTitle('ระบบจัดการและติดตามเอกสารการสอน มสธ.')
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
+    .addMetaTag('viewport','width=device-width,initial-scale=1');
+}
+function doGetPublic(e) {
+  const tpl = HtmlService.createTemplateFromFile('CRM_Public');
+  return tpl.evaluate()
+    .setTitle('แจ้งปัญหาเอกสารการสอน — มสธ.')
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
+    .addMetaTag('viewport','width=device-width,initial-scale=1');
+}
+function include(filename) {
+  return HtmlService.createHtmlOutputFromFile(filename).getContent();
+}
+
+// ============================================================
+// AUTH
+// ============================================================
+function login(email, password) {
+  try {
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SH_USERS);
+    if (!sheet) return { success:false, error:'ยังไม่ได้ setup กรุณารัน setupSystem() ก่อน' };
+    const data = sheet.getDataRange().getValues();
+    for (let i = 1; i < data.length; i++) {
+      const rowEmail  = (data[i][0]||'').toString().trim().toLowerCase();
+      const rowHash   = (data[i][1]||'').toString().trim();
+      const rowRole   = (data[i][2]||'').toString().trim();
+      const rowName   = (data[i][3]||'').toString().trim();
+      const rowActive = data[i][4];
+      if (rowEmail === email.toLowerCase().trim()) {
+        if (!rowActive) return { success:false, error:'บัญชีนี้ถูกระงับ' };
+        if (hashPw(password) === rowHash) {
+          // ใช้ ScriptProperties + key = email (ตรงกับ checkSession)
+          const sessData = {email:rowEmail, role:rowRole, name:rowName, ts:Date.now()};
+          PropertiesService.getScriptProperties().setProperty('sess_'+rowEmail, JSON.stringify(sessData));
+          sheet.getRange(i+1, 6).setValue(fmtDate(new Date()));
+          Logger.log('Login success: '+rowEmail+' role='+rowRole);
+          return { success:true, role:rowRole, name:rowName, email:rowEmail };
+        }
+        return { success:false, error:'รหัสผ่านไม่ถูกต้อง' };
+      }
+    }
+    return { success:false, error:'ไม่พบ Email นี้ในระบบ' };
+  } catch(e) { return { success:false, error:e.message }; }
+}
+
+function logout() {
+  PropertiesService.getScriptProperties().deleteProperty('sess_'+Session.getEffectiveUser().getEmail());
+  return { success:true };
+}
+
+function checkSession() {
+  try {
+    const sp = PropertiesService.getScriptProperties();
+    
+    // ลอง effective user email ก่อน
+    let userEmail = '';
+    try { userEmail = Session.getEffectiveUser().getEmail() || ''; } catch(e){}
+    
+    if (userEmail) {
+      const raw = sp.getProperty('sess_'+userEmail);
+      if (raw) {
+        try {
+          const s = JSON.parse(raw);
+          if (s && s.email && s.role && (Date.now()-s.ts < 8*60*60*1000)) {
+            return {valid:true, role:s.role, name:s.name||s.email, email:s.email};
+          }
+          sp.deleteProperty('sess_'+userEmail);
+        } catch(e) { sp.deleteProperty('sess_'+userEmail); }
+      }
+    }
+    
+    // ถ้าไม่มี session ของ effective user — ค้นหา session ที่ valid จากทุก key
+    const allProps = sp.getProperties();
+    for (const key in allProps) {
+      if (!key.startsWith('sess_')) continue;
+      try {
+        const s = JSON.parse(allProps[key]);
+        if (s && s.email && s.role && (Date.now()-s.ts < 8*60*60*1000)) {
+          return {valid:true, role:s.role, name:s.name||s.email, email:s.email};
+        }
+      } catch(e) {}
+    }
+    
+    return {valid:false};
+  } catch(e) { return {valid:false}; }
+}
+
+function hashPw(pw) {
+  const b = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, pw, Utilities.Charset.UTF_8);
+  return b.map(x=>('0'+(x&0xff).toString(16)).slice(-2)).join('');
+}
+function _sess() { return checkSession(); }
+// Helper: auto-refresh session จาก Google account
+function _autoRefreshSession() {
+  // ตรวจ session ปัจจุบัน
+  const sess = checkSession();
+  if (sess.valid) return true;
+  
+  // session หมด — refresh จาก Google effective user
+  try {
+    let email = '';
+    try { email = Session.getEffectiveUser().getEmail(); } catch(e){}
+    if (!email) return false;
+    
+    // หาใน Sheet ผู้ใช้
+    const sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SH_USERS);
+    if (sh && sh.getLastRow() > 1) {
+      const rows = sh.getDataRange().getValues();
+      for (let i=1; i<rows.length; i++) {
+        if ((rows[i][0]||'').toLowerCase().trim() === email.toLowerCase().trim()) {
+          const newSess = {email:email, role:rows[i][2]||R_STAFF, name:rows[i][3]||email, ts:Date.now()};
+          PropertiesService.getScriptProperties().setProperty('sess_'+Session.getEffectiveUser().getEmail(), JSON.stringify(newSess));
+          Logger.log('Auto-refreshed session for: '+email+' role: '+newSess.role);
+          return true; // session ใหม่ถูก set แล้ว ส่ง true เลย
+        }
+      }
+      // email มี แต่ไม่อยู่ใน Sheet — สร้าง superadmin session
+      const newSess = {email:email, role:R_SUPER, name:email, ts:Date.now()};
+      PropertiesService.getScriptProperties().setProperty('sess_'+Session.getEffectiveUser().getEmail(), JSON.stringify(newSess));
+      Logger.log('Auto-created superadmin session for: '+email);
+      return true;
+    }
+  } catch(e) {
+    Logger.log('_autoRefreshSession error: '+e.message);
+  }
+  return false;
+}
+
+function _can(roles) {
+  const s = checkSession();
+  return s.valid && roles.includes(s.role);
+}
+
+// ============================================================
+// SETTINGS
+// ============================================================
+function getSettings() {
+  try {
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SH_SETTINGS);
+    if (!sheet) return { parcelTypes:[],returnCauses:[],prefixes:[],terms:[],branches:[],plans:[],issueTypes:[],assignees:[] };
+    const data = sheet.getDataRange().getValues();
+    const s = {};
+    for (let i=1;i<data.length;i++) s[data[i][0]] = data[i][1]?data[i][1].toString().split(','):[];
+    return {
+      parcelTypes:  s['ประเภทพัสดุ']  || [],
+      returnCauses: s['สาเหตุตีคืน'] || [],
+      prefixes:     s['คำนำหน้า']    || [],
+      terms:        s['ภาคการศึกษา'] || [],
+      branches:     s['สาขาวิชา']    || [],
+      plans:        s['แผนการศึกษา'] || [],
+      issueTypes:   s['ประเภทปัญหา'] || [],
+      assignees:    s['ผู้รับเรื่อง'] || [],
+    };
+  } catch(e) { return { error:e.message }; }
+}
+
+function getUniqueYears() {
+  try {
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SH_DATA);
+    const lr = sheet.getLastRow();
+    if (lr < 2) return [];
+    const years = sheet.getRange(2,4,lr-1,1).getValues().flat();
+    return [...new Set(years.filter(y=>y!==''))].sort().reverse();
+  } catch(e) { return []; }
+}
+
+// ============================================================
+// TAGS
+// ============================================================
+function getTags() {
+  try {
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SH_TAGS);
+    if (!sheet) return [];
+    const data = sheet.getDataRange().getValues();
+    return data.slice(1).map(r=>({name:r[0],color:r[1]||0})).filter(t=>t.name);
+  } catch(e) { return []; }
+}
+
+function addTag(name, color) {
+  if (!_autoRefreshSession()) return { success:false, error:'SESSION_EXPIRED' };
+  try {
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SH_TAGS);
+    const data  = sheet.getDataRange().getValues();
+    if (data.slice(1).some(r=>r[0]===name)) return { success:false, error:'Tag นี้มีอยู่แล้ว' };
+    sheet.appendRow([name, color||0]);
+    return { success:true };
+  } catch(e) { return { success:false, error:e.message }; }
+}
+
+function deleteTag(name) {
+  if (!_autoRefreshSession()) return { success:false, error:'ไม่มีสิทธิ์' };
+  try {
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SH_TAGS);
+    const data  = sheet.getDataRange().getValues();
+    for (let i=1;i<data.length;i++) {
+      if (data[i][0]===name) { sheet.deleteRow(i+1); return { success:true }; }
+    }
+    return { success:false, error:'ไม่พบ Tag' };
+  } catch(e) { return { success:false, error:e.message }; }
+}
+
+// ============================================================
+// RECORDS (พัสดุตีคืน / ให้ยืม / พิเศษ)
+// ============================================================
+function addRecord(data) {
+  if (!_autoRefreshSession()) return { success:false, error:'SESSION_EXPIRED' };
+  try {
+    if (!data || !data.recType) return { success:false, error:'ข้อมูลไม่ครบ: recType' };
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SH_DATA);
+    if (!sheet) return { success:false, error:'ไม่พบ Sheet ข้อมูลพัสดุ กรุณารัน setupSystem()' };
+    const now   = new Date();
+    const pfx   = {return:'P', lend:'L', special:'S'}[data.recType]||'P';
+    const id    = pfx + Utilities.formatDate(now,'Asia/Bangkok','yyyyMMdd') + '-' + sheet.getLastRow();
+    const sess  = _sess();
+    let status  = 'บันทึกแล้ว';
+    if (data.send2Track) status = 'ส่งแล้วครั้งที่ 2';
+    else if (data.send1Track) status = 'ส่งแล้วครั้งที่ 1';
+    const row = [
+      id, fmtDate(now), data.term, data.year, data.recType, data.parcelType||'',
+      data.courseCode||'', data.studentId||'', data.prefix||'',
+      data.firstName||'', data.lastName||'',
+      data.houseNo||'', data.street||'', data.subDistrict||'',
+      data.district||'', data.province||'', data.zipCode||'', data.phone||'',
+      data.cause||'', data.contactStatus||'',
+      data.send1Track||'', data.send1Date||'',
+      data.send2Track||'', data.send2Date||'',
+      data.tags||'', data.remark||'',
+      data.courses||'[]',  // JSON array ของชุดวิชาทั้งหมด
+      status, fmtDate(now), sess.name||sess.email||'ผู้ใช้งาน',
+    ];
+    sheet.appendRow(row);
+    const lr = sheet.getLastRow();
+    if (lr%2===0) sheet.getRange(lr,1,1,row.length).setBackground('#f0f4f8');
+    logAudit('บันทึกพัสดุ', id+' | '+data.recType+' | นศ.'+data.studentId+' | '+data.courseCode);
+    return { success:true, id:id };
+  } catch(e) { return { success:false, error:e.message }; }
+}
+
+function getRecords(filters) {
+  // ไม่ตรวจ session — ใช้ login screen ฝั่ง HTML แทน
+  try {
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SH_DATA);
+    if (!sheet) return { error:'ไม่พบ Sheet กรุณารัน setupSystem()' };
+    const lr    = sheet.getLastRow();
+    if (lr < 2) return [];
+    
+    // อ่านข้อมูลดิบแล้ว convert ทุกค่าเป็น string/number safely
+    const rawRows = sheet.getRange(2,1,lr-1,30).getValues();
+    const rows = [];
+    for (let i = 0; i < rawRows.length; i++) {
+      const r = rawRows[i];
+      if (!r[0]) continue; // skip empty rows
+      
+      // Safe string conversion
+      const S = function(v) { return v == null ? '' : String(v); };
+      // Safe number
+      const N = function(v) { return v == null || v === '' ? '' : v; };
+      // Safe date - handle both Date objects and strings
+      const D = function(v) {
+        if (!v) return '';
+        try {
+          if (v instanceof Date) {
+            return Utilities.formatDate(v, 'Asia/Bangkok', 'dd/MM/yyyy HH:mm');
+          }
+          return String(v);
+        } catch(e) { return String(v); }
+      };
+      
+      rows.push({
+        id:          S(r[0]),
+        date:        D(r[1]),
+        term:        S(r[2]),
+        year:        S(r[3]),
+        recType:     S(r[4]),
+        parcelType:  S(r[5]),
+        courseCode:  S(r[6]),
+        studentId:   S(r[7]),
+        prefix:      S(r[8]),
+        firstName:   S(r[9]),
+        lastName:    S(r[10]),
+        houseNo:     S(r[11]),
+        street:      S(r[12]),
+        subDistrict: S(r[13]),
+        district:    S(r[14]),
+        province:    S(r[15]),
+        zipCode:     S(r[16]),
+        phone:       S(r[17]),
+        cause:       S(r[18]),
+        contactStatus: S(r[19]),
+        send1Track:  S(r[20]),
+        send1Date:   D(r[21]),
+        send2Track:  S(r[22]),
+        send2Date:   D(r[23]),
+        tags:        S(r[24]),
+        remark:      S(r[25]),
+        courses:     S(r[26]) || '[]',
+        status:      S(r[27]),
+        updatedAt:   D(r[28]),
+        recorder:    S(r[29]),
+      });
+    }
+
+    if (filters) {
+      let filtered = rows;
+      if (filters.recType)       filtered = filtered.filter(function(r){ return r.recType === filters.recType; });
+      if (filters.term)          filtered = filtered.filter(function(r){ return r.term == filters.term; });
+      if (filters.year)          filtered = filtered.filter(function(r){ return r.year == filters.year; });
+      if (filters.contactStatus) filtered = filtered.filter(function(r){ return r.contactStatus === filters.contactStatus; });
+      if (filters.courseCode)    filtered = filtered.filter(function(r){ return r.courseCode.indexOf(filters.courseCode) !== -1; });
+      if (filters.search) {
+        const q = String(filters.search).toLowerCase();
+        filtered = filtered.filter(function(r) {
+          return [r.studentId, r.firstName, r.lastName, r.province, r.district, r.zipCode, r.courseCode, r.tags, r.send1Track, r.send2Track]
+            .some(function(v) { return v && v.toLowerCase().indexOf(q) !== -1; });
+        });
+      }
+      return filtered;
+    }
+    return rows;
+  } catch(e) {
+    return { error: 'getRecords error: ' + e.message + ' | stack: ' + (e.stack||'').substring(0,200) };
+  }
+}
+
+function deleteRecord(id) {
+  if (!_autoRefreshSession()) return { success:false, error:'SESSION_EXPIRED' };
+  try {
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SH_DATA);
+    const data  = sheet.getDataRange().getValues();
+    for (let i=1;i<data.length;i++) {
+      if (data[i][0]===id) { sheet.deleteRow(i+1); return { success:true }; }
+    }
+    return { success:false, error:'ไม่พบรายการ' };
+  } catch(e) { return { success:false, error:e.message }; }
+}
+
+// ============================================================
+// DASHBOARD
+// ============================================================
+function getDashboardData(filters) {
+  // session check ผ่าน _autoRefreshSession อัตโนมัติ
+  try {
+    const records = getRecords(filters);
+    if (records.error) return records;
+    const crm = getCrmTickets({});
+    const crmPending = Array.isArray(crm) ? crm.filter(c=>c.status==='open'||c.status==='inprogress').length : 0;
+    const total      = records.length;
+    const cnt = (key, val) => records.filter(r=>r[key]===val).length;
+    const groupBy = (key) => {
+      const m={};
+      records.forEach(r=>{ if(r[key]) m[r[key]]=(m[r[key]]||0)+1; });
+      return Object.entries(m).sort((a,b)=>b[1]-a[1]).map(([k,v])=>[k,v]);
+    };
+    const groupTag = () => {
+      const m={};
+      records.forEach(r=>{ (r.tags||'').split(',').filter(Boolean).forEach(t=>m[t]=(m[t]||0)+1); });
+      return Object.entries(m).sort((a,b)=>b[1]-a[1]).map(([k,v])=>[k,v]);
+    };
+    return {
+      total, records,
+      countReturn:  cnt('recType','return'),
+      countLend:    cnt('recType','lend'),
+      countSpecial: cnt('recType','special'),
+      countContact: cnt('contactStatus','yes'),
+      crmPending,
+      byCause:    groupBy('cause'),
+      byType:     groupBy('parcelType'),
+      byProvince: groupBy('province'),
+      byDistrict: groupBy('district'),
+      byTag:      groupTag(),
+    };
+  } catch(e) { return { error:e.message }; }
+}
+
+// ============================================================
+// SEARCH
+// ============================================================
+function searchStudent(query) {
+  // session check ผ่าน _autoRefreshSession อัตโนมัติ
+  if (!query||query.trim().length<2) return { records:[], crm:[] };
+  const q = query.trim().toLowerCase();
+  const records = getRecords({ search:q });
+  const crm = getCrmTickets({ search:q });
+  return { records: Array.isArray(records)?records:[], crm: Array.isArray(crm)?crm:[] };
+}
+
+// ============================================================
+// CRM
+// ============================================================
+function addCrmTicket(data) {
+  // CRM เปิดให้ทุกคนส่งได้ (รวมถึงหน้า public)
+  try {
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SH_CRM);
+    const now   = new Date();
+    const id    = 'CRM-' + Utilities.formatDate(now,'Asia/Bangkok','yyyyMMdd') + '-' + sheet.getLastRow();
+    // ถ้าไม่มี assigneeName ให้ใช้ชื่อจาก session
+    const sess = _sess();
+    const assigneeName = data.assigneeName || (sess.valid ? sess.name||sess.email : '');
+    const recorderName = data.recorderName || (sess.valid ? sess.name||sess.email : 'ผู้แจ้งออนไลน์');
+    const row   = [
+      id, fmtDate(now), data.reporterName||'', data.studentId||'',
+      data.reporterEmail||'', data.reporterPhone||'', data.department||'',
+      data.educationLevel||'', data.term||'', data.year||'',
+      data.courses||'', data.issueType||'', data.detail||'',
+      data.channel||'online', data.priority||'normal',
+      data.tags||'', 'open', assigneeName, '', '[]',
+      recorderName,
+    ];
+    sheet.appendRow(row);
+    const lr = sheet.getLastRow();
+    if (lr%2===0) sheet.getRange(lr,1,1,row.length).setBackground('#f0f8ff');
+    logAudit('รับเรื่อง CRM', id+' | '+data.reporterName+' | '+data.issueType+' | ผู้รับ: '+assigneeName);
+    return { success:true, id:id };
+  } catch(e) { return { success:false, error:e.message }; }
+}
+
+function getCrmTickets(filters) {
+  // session check ผ่าน _autoRefreshSession อัตโนมัติ
+  try {
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SH_CRM);
+    if (!sheet) return [];
+    const lr = sheet.getLastRow();
+    if (lr < 2) return [];
+    
+    const S = function(v) { return v == null ? '' : String(v); };
+    const D = function(v) {
+      if (!v) return '';
+      try {
+        if (v instanceof Date) return Utilities.formatDate(v, 'Asia/Bangkok', 'dd/MM/yyyy HH:mm');
+        return String(v);
+      } catch(e) { return String(v); }
+    };
+    
+    const rawRows = sheet.getRange(2,1,lr-1,21).getValues();
+    const rows = [];
+    for (let i = 0; i < rawRows.length; i++) {
+      const r = rawRows[i];
+      if (!r[0]) continue;
+      rows.push({
+        id: S(r[0]), date: D(r[1]), reporterName: S(r[2]), studentId: S(r[3]),
+        reporterEmail: S(r[4]), reporterPhone: S(r[5]), department: S(r[6]),
+        educationLevel: S(r[7]), term: S(r[8]), year: S(r[9]),
+        courses: S(r[10]), issueType: S(r[11]), detail: S(r[12]),
+        channel: S(r[13]), priority: S(r[14]), tags: S(r[15]),
+        status: S(r[16]), assigneeName: S(r[17]), assigneeEmail: S(r[18]),
+        replies: S(r[19]) || '[]', recorderName: S(r[20]),
+      });
+    }
+    
+    let result = rows;
+    if (filters) {
+      if (filters.status)  result = result.filter(function(r){ return r.status === filters.status; });
+      if (filters.channel) result = result.filter(function(r){ return r.channel === filters.channel; });
+      if (filters.search) {
+        const q = String(filters.search).toLowerCase();
+        result = result.filter(function(r) {
+          return [r.reporterName, r.studentId, r.detail, r.issueType, r.department]
+            .some(function(v){ return v && v.toLowerCase().indexOf(q) !== -1; });
+        });
+      }
+    }
+    return result.reverse();
+  } catch(e) { return { error: 'getCrmTickets: ' + e.message }; }
+}
+
+function assignCrmTicket(id, adminName) {
+  if (!_autoRefreshSession()) return { success:false, error:'SESSION_EXPIRED' };
+  return _updateCrmField(id, 18, adminName);
+}
+
+function replyCrmTicket(id, text, adminName) {
+  if (!_autoRefreshSession()) return { success:false, error:'SESSION_EXPIRED' };
+  try {
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SH_CRM);
+    const data  = sheet.getDataRange().getValues();
+    for (let i=1;i<data.length;i++) {
+      if (data[i][0]===id) {
+        const replies = JSON.parse(data[i][19]||'[]');
+        replies.push({name:adminName, text:text, time:fmtDate(new Date())});
+        sheet.getRange(i+1,20).setValue(JSON.stringify(replies));
+        // อัปเดตสถานะเป็น inprogress ถ้ายังเป็น open
+        if (data[i][16]==='open') sheet.getRange(i+1,17).setValue('inprogress');
+        return { success:true };
+      }
+    }
+    return { success:false, error:'ไม่พบ Ticket' };
+  } catch(e) { return { success:false, error:e.message }; }
+}
+
+function updateCrmStatus(id, status) {
+  if (!_autoRefreshSession()) return { success:false, error:'SESSION_EXPIRED' };
+  return _updateCrmField(id, 17, status);
+}
+
+function _updateCrmField(id, col, val) {
+  try {
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SH_CRM);
+    const data  = sheet.getDataRange().getValues();
+    for (let i=1;i<data.length;i++) {
+      if (data[i][0]===id) { sheet.getRange(i+1,col).setValue(val); return { success:true }; }
+    }
+    return { success:false, error:'ไม่พบรายการ' };
+  } catch(e) { return { success:false, error:e.message }; }
+}
+
+// ============================================================
+// USER MANAGEMENT
+// ============================================================
+function getUsers() {
+  if (!_autoRefreshSession()) return { error:'ไม่มีสิทธิ์' };
+  try {
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SH_USERS);
+    if (!sheet) return [];
+    return sheet.getDataRange().getValues().slice(1)
+      .map((r,i)=>({row:i+2,email:r[0],role:r[2],name:r[3],active:r[4]===true||r[4]==='TRUE',lastLogin:r[5]?fmtDate(r[5]):'-',perms:r[6]||''}))
+      .filter(u=>u.email!=='');
+  } catch(e) { return { error:e.message }; }
+}
+
+function addUser(email, password, role, name, perms) {
+  if (!_autoRefreshSession()) return { success:false, error:'ไม่มีสิทธิ์' };
+  try {
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SH_USERS);
+    const data  = sheet.getDataRange().getValues();
+    for (let i=1;i<data.length;i++) {
+      if ((data[i][0]||'').toLowerCase()===email.toLowerCase()) return { success:false, error:'Email นี้มีอยู่แล้ว' };
+    }
+    sheet.appendRow([email.toLowerCase(), hashPw(password), role, name, true, '', perms||'']);
+    return { success:true };
+  } catch(e) { return { success:false, error:e.message }; }
+}
+
+function updateUserPassword(email, newPassword) {
+  if (!_autoRefreshSession()) return { success:false, error:'ไม่มีสิทธิ์' };
+  try {
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SH_USERS);
+    const data  = sheet.getDataRange().getValues();
+    for (let i=1;i<data.length;i++) {
+      if ((data[i][0]||'').toLowerCase()===email.toLowerCase()) {
+        sheet.getRange(i+1,2).setValue(hashPw(newPassword));
+        return { success:true };
+      }
+    }
+    return { success:false, error:'ไม่พบ Email' };
+  } catch(e) { return { success:false, error:e.message }; }
+}
+
+function toggleUserActive(email, active) {
+  if (!_autoRefreshSession()) return { success:false, error:'ไม่มีสิทธิ์' };
+  try {
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SH_USERS);
+    const data  = sheet.getDataRange().getValues();
+    for (let i=1;i<data.length;i++) {
+      if ((data[i][0]||'').toLowerCase()===email.toLowerCase()) {
+        sheet.getRange(i+1,5).setValue(active);
+        return { success:true };
+      }
+    }
+    return { success:false, error:'ไม่พบ Email' };
+  } catch(e) { return { success:false, error:e.message }; }
+}
+
+// ============================================================
+// SETUP
+// ============================================================
+function setupSystem() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+
+  // Sheet: ข้อมูลพัสดุ (29 คอลัมน์)
+  let ds = ss.getSheetByName(SH_DATA);
+  if (!ds) ds = ss.insertSheet(SH_DATA);
+  const dHdrs = ['รหัส','วันที่บันทึก','ภาค','ปี','ประเภทรายการ','ประเภทพัสดุ','รหัสชุดวิชา(หลัก)','รหัสนักศึกษา','คำนำหน้า','ชื่อ','นามสกุล','บ้านเลขที่','ถนน','ตำบล/แขวง','อำเภอ/เขต','จังหวัด','รหัสไปรษณีย์','เบอร์โทร','สาเหตุ','สถานะติดต่อ','เลขพัสดุส่งครั้งที่ 1','วันที่ส่งครั้งที่ 1','เลขพัสดุส่งครั้งที่ 2','วันที่ส่งครั้งที่ 2','Tags','หมายเหตุ','ชุดวิชา(JSON)','สถานะ','วันที่อัปเดต','ผู้บันทึก'];
+  if (ds.getLastRow()===0) {
+    ds.appendRow(dHdrs);
+    const hr=ds.getRange(1,1,1,dHdrs.length);
+    hr.setBackground('#1a3a5c');hr.setFontColor('#fff');hr.setFontWeight('bold');
+    ds.setFrozenRows(1);
+  }
+
+  // Sheet: ตั้งค่า
+  let st = ss.getSheetByName(SH_SETTINGS);
+  if (!st) {
+    st = ss.insertSheet(SH_SETTINGS);
+    st.appendRow(['รายการ','ค่า']);
+    st.appendRow(['ประเภทพัสดุ','จดหมาย,พัสดุธรรมดา,EMS,เอกสารราชการ,อื่นๆ']);
+    st.appendRow(['สาเหตุตีคืน','จ่าหน้าไม่ชัดเจน,ไม่มีเลขที่บ้านตามจ่าหน้า,ไม่ยอมรับ,ไม่มีผู้รับตามจ่าหน้า,ไม่มารับภายในกำหนด,ไม่มีจ่าหน้าหรือจ่าหน้าสูญหาย,ย้ายไม่ทราบที่อยู่ใหม่,อื่นๆ']);
+    st.appendRow(['คำนำหน้า','นาย,นาง,นางสาว,ว่าที่ร้อยตรี,อื่นๆ']);
+    st.appendRow(['ภาคการศึกษา','1,2,3']);
+    st.appendRow(['สาขาวิชา','สาขาศิลปศาสตร์,สาขาศึกษาศาสตร์,สาขาวิทยาการจัดการ,สาขานิติศาสตร์,สาขาวิทยาศาสตร์สุขภาพ,สาขาเศรษฐศาสตร์,สาขามนุษยนิเวศศาสตร์,สาขารัฐศาสตร์,สาขาเกษตรศาสตร์และสหกรณ์,สาขานิเทศศาสตร์,สาขาวิทยาศาสตร์และเทคโนโลยี,สาขาพยาบาลศาสตร์']);
+    st.appendRow(['แผนการศึกษา','แผน ก1,แผน ก2,แผน ก3']);
+    st.appendRow(['ประเภทปัญหา','พิมพ์เพิ่ม,ชุดปรับปรุง,ชุดผลิตใหม่,ปัญหาทวงถามหนังสือ (ไม่ได้สั่งซื้อ/แผน ก2-ก3),สอบถามทะเบียนและวัดผล (ลงทะเบียน/สอบ),สอบถามกิจกรรมประจำชุดวิชา,สอบถามอบรมเข้มเสริมประสบการณ์วิชาชีพ,สอบถามสอนเสริมออนไลน์,สอบถามโครงการสัมฤทธิบัตร,ไม่ได้รับเอกสาร,เอกสารชำรุด,ส่งผิดวิชา,อื่นๆ (ระบุเอง)']);
+    st.appendRow(['ผู้รับเรื่อง','หทัย เริงเกษตรกิจ,วรรณี รัตนากร,สุพรรษา ช่อปทุมมา,เมธิตา สาไพรวัน']);
+    const sh=st.getRange(1,1,1,2);sh.setBackground('#1a3a5c');sh.setFontColor('#fff');sh.setFontWeight('bold');
+  }
+
+  // Sheet: ผู้ใช้งาน (เพิ่มคอลัมน์ perms)
+  let us = ss.getSheetByName(SH_USERS);
+  if (!us) {
+    us = ss.insertSheet(SH_USERS);
+    us.appendRow(['email','password_hash','role','ชื่อ-สกุล','active','last_login','perms']);
+    const uh=us.getRange(1,1,1,7);uh.setBackground('#1a3a5c');uh.setFontColor('#fff');uh.setFontWeight('bold');
+    us.appendRow(['admin@stou.ac.th',hashPw('admin1234'),'superadmin','ผู้ดูแลระบบ',true,'','dash,search,rec-return,rec-lend,rec-special,list,labels,crm,tags,users']);
+    [220,200,100,160,70,150,300].forEach((w,i)=>us.setColumnWidth(i+1,w));
+  }
+
+  // Sheet: Tags
+  let tg = ss.getSheetByName(SH_TAGS);
+  if (!tg) {
+    tg = ss.insertSheet(SH_TAGS);
+    tg.appendRow(['name','color']);
+    const th=tg.getRange(1,1,1,2);th.setBackground('#1a3a5c');th.setFontColor('#fff');th.setFontWeight('bold');
+    [['ปัญหาซ้ำ',3],['ด่วน',4],['วิชาบังคับ',1],['ติดตามแล้ว',5],['สำคัญ',2]].forEach(row=>tg.appendRow(row));
+  }
+
+  // Sheet: CRM (21 คอลัมน์)
+  let cm = ss.getSheetByName(SH_CRM);
+  if (!cm) {
+    cm = ss.insertSheet(SH_CRM);
+    cm.appendRow(['รหัส','วันที่','ชื่อผู้แจ้ง','รหัสนักศึกษา','อีเมล','เบอร์โทร','หน่วยงาน/สาขา','ระดับการศึกษา','ภาค','ปี','ชุดวิชา','ประเภทปัญหา','รายละเอียด','ช่องทาง','ความเร่งด่วน','Tags','สถานะ','ผู้รับเรื่อง','อีเมลผู้รับเรื่อง','ประวัติการตอบ','ผู้บันทึก']);
+    const ch=cm.getRange(1,1,1,21);ch.setBackground('#1a3a5c');ch.setFontColor('#fff');ch.setFontWeight('bold');
+    cm.setFrozenRows(1);
+  }
+
+  Logger.log('ALERT: '+
+    'ตั้งค่าระบบสำเร็จ! ✅\n\n' +
+    'บัญชี Super Admin:\n' +
+    'Email: admin@stou.ac.th\n' +
+    'Password: admin1234\n\n' +
+    '⚠️ กรุณาเปลี่ยน Password ทันทีหลัง Login'
+  );
+}
+
+// backward compat
+function setupSpreadsheet() { setupSystem(); }
+
+// ============================================================
+// HELPERS
+// ============================================================
+function fmtDate(d) {
+  if (!d) return '';
+  try {
+    return Utilities.formatDate(new Date(d), 'Asia/Bangkok', 'dd/MM/yyyy HH:mm');
+  } catch(e) { return d.toString(); }
+}
+
+// ============================================================
+// POSTAL INVESTIGATION — ระบบสอบสวนไปรษณีย์ไทย
+// ============================================================
+const SH_INVEST = 'สอบสวนไปรษณีย์';
+
+function setupInvestSheet() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sh = ss.getSheetByName(SH_INVEST);
+  if (!sh) {
+    sh = ss.insertSheet(SH_INVEST);
+    const hdrs = [
+      'รหัสสอบสวน','รหัสพัสดุอ้างอิง','วันที่สร้าง',
+      'เลขที่สิ่งของ','เลข Barcode','วันที่ฝากส่ง',
+      'รหัสชุดวิชา','ชื่อชุดวิชา','น้ำหนัก','ค่าบริการ',
+      'ชื่อ-นามสกุลผู้รับ','ที่อยู่ผู้รับ',
+      'สาเหตุปัญหา','วันที่แจ้งไปรษณีย์','อีเมลที่แจ้ง','จำนวนรายการในอีเมล',
+      'วันที่ได้รับผลตอบ','จำนวนวันตอบ','ผลสอบสวน','รายละเอียดผล',
+      'สถานะ','ผู้บันทึก','วันที่อัปเดต'
+    ];
+    sh.appendRow(hdrs);
+    const hr = sh.getRange(1,1,1,hdrs.length);
+    hr.setBackground('#1a3a5c');hr.setFontColor('#fff');hr.setFontWeight('bold');
+    sh.setFrozenRows(1);
+  }
+  return sh;
+}
+
+function getInvestigations(filters) {
+  try {
+    const sh = setupInvestSheet();
+    const lr = sh.getLastRow();
+    if (lr < 2) return [];
+    
+    const S = function(v) { return v == null ? '' : String(v); };
+    const D = function(v) {
+      if (!v) return '';
+      try {
+        if (v instanceof Date) return Utilities.formatDate(v, 'Asia/Bangkok', 'dd/MM/yyyy HH:mm');
+        return String(v);
+      } catch(e) { return String(v); }
+    };
+    
+    const rawRows = sh.getRange(2,1,lr-1,23).getValues();
+    const rows = [];
+    for (let i = 0; i < rawRows.length; i++) {
+      const r = rawRows[i];
+      if (!r[0]) continue;
+      rows.push({
+        investId: S(r[0]), refId: S(r[1]), createdAt: D(r[2]),
+        itemNo: S(r[3]), barcode: S(r[4]), sentDate: D(r[5]),
+        courseCode: S(r[6]), courseName: S(r[7]), weight: S(r[8]), fee: S(r[9]),
+        recipientName: S(r[10]), recipientAddr: S(r[11]),
+        cause: S(r[12]), notifyDate: D(r[13]), notifyEmail: S(r[14]), notifyQty: S(r[15]),
+        replyDate: D(r[16]), replyDays: S(r[17]), result: S(r[18]), resultDetail: S(r[19]),
+        status: S(r[20]) || 'รอส่ง', recorder: S(r[21]), updatedAt: D(r[22])
+      });
+    }
+    
+    let result = rows;
+    if (filters) {
+      if (filters.status) result = result.filter(function(r){ return r.status === filters.status; });
+      if (filters.search) {
+        const q = String(filters.search).toLowerCase();
+        result = result.filter(function(r) {
+          return [r.investId, r.refId, r.barcode, r.itemNo, r.courseCode, r.courseName, r.recipientName]
+            .some(function(v){ return v && v.toLowerCase().indexOf(q) !== -1; });
+        });
+      }
+    }
+    return result;
+  } catch(e) { return { error: 'getInvestigations: ' + e.message }; }
+}
+
+function addInvestigation(data) {
+  if (!_autoRefreshSession()) return { success:false, error:'SESSION_EXPIRED' };
+  try {
+    const sh   = setupInvestSheet();
+    const sess = _sess();
+    const now  = new Date();
+    const id   = 'INV-' + Utilities.formatDate(now,'Asia/Bangkok','yyyyMMdd-HHmmss');
+    const row  = [
+      id, data.refId||'', now,
+      data.itemNo||'', data.barcode||'',
+      data.sentDate ? new Date(data.sentDate) : '',  // 🆕 ถ้าไม่มี → เว้นว่าง (ไม่ fallback เป็น now)
+      data.courseCode||'', data.courseName||'', data.weight||'', data.fee||'',
+      data.recipientName||'', data.recipientAddr||'',
+      data.cause||'', '', '', '',
+      '', '', '', '',
+      'รอส่ง', sess.name||sess.email, now
+    ];
+    sh.appendRow(row);
+    return { success:true, id:id };
+  } catch(e) { return { success:false, error:e.message }; }
+}
+
+function updateInvestigation(investId, updates) {
+  if (!_autoRefreshSession()) return { success:false, error:'SESSION_EXPIRED' };
+  try {
+    const sh   = setupInvestSheet();
+    const data = sh.getDataRange().getValues();
+    for (let i=1;i<data.length;i++) {
+      if (data[i][0] === investId) {
+        const row = i+1;
+        // 🆕 อัปเดตข้อมูลพัสดุได้ด้วย
+        if (updates.itemNo)     sh.getRange(row,4).setValue(updates.itemNo);
+        if (updates.barcode)    sh.getRange(row,5).setValue(updates.barcode);
+        if (updates.sentDate)    sh.getRange(row,6).setValue(new Date(updates.sentDate));
+        if (updates.weight !== undefined)  sh.getRange(row,9).setValue(updates.weight);
+        if (updates.fee !== undefined)     sh.getRange(row,10).setValue(updates.fee);
+        // ข้อมูลการแจ้ง/สอบสวน (เดิม)
+        if (updates.notifyDate)  sh.getRange(row,14).setValue(new Date(updates.notifyDate));
+        if (updates.notifyEmail) sh.getRange(row,15).setValue(updates.notifyEmail);
+        if (updates.notifyQty)   sh.getRange(row,16).setValue(updates.notifyQty);
+        if (updates.replyDate)   sh.getRange(row,17).setValue(new Date(updates.replyDate));
+        if (updates.replyDays !== undefined) sh.getRange(row,18).setValue(updates.replyDays);
+        if (updates.result)      sh.getRange(row,19).setValue(updates.result);
+        // 🆕 resultDetail รวม attachmentUrl ด้วย (append URL ไปท้าย detail)
+        if (updates.resultDetail !== undefined) {
+          var detailText = updates.resultDetail;
+          if (updates.attachmentUrl) {
+            detailText += '\n[ไฟล์แนบ: ' + updates.attachmentUrl + ']';
+          }
+          sh.getRange(row,20).setValue(detailText);
+        } else if (updates.attachmentUrl) {
+          // ถ้าแนบไฟล์อย่างเดียว ไม่แก้ detail — append ไปท้าย
+          var curDetail = data[i][19] || '';
+          sh.getRange(row,20).setValue(curDetail + '\n[ไฟล์แนบ: ' + updates.attachmentUrl + ']');
+        }
+        if (updates.status)      sh.getRange(row,21).setValue(updates.status);
+        sh.getRange(row,23).setValue(new Date());
+        logAudit('อัปเดตสอบสวน', investId+' | สถานะ: '+(updates.status||'-')+' | ผล: '+(updates.result||'-'));
+        return { success:true };
+      }
+    }
+    return { success:false, error:'ไม่พบรายการ' };
+  } catch(e) { return { success:false, error:e.message }; }
+}
+
+function addInvestigationsFromLend(recordIds) {
+  if (!_autoRefreshSession()) return { success:false, error:'SESSION_EXPIRED' };
+  try {
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SH_DATA);
+    const data  = sheet.getDataRange().getValues();
+    const results = [];
+    recordIds.forEach(function(rid) {
+      for (let i=1;i<data.length;i++) {
+        if (data[i][0] === rid) {
+          const r = data[i];
+          let courses = [];
+          try { courses = JSON.parse(r[26]||'[]'); } catch(e) {}
+          if (!courses.length && r[6]) courses = [{code:r[6],b1:'',b2:'',track:'',date:''}];
+          courses.forEach(function(c) {
+            if (!c.code) return;
+            const res = addInvestigation({
+              refId: r[0],
+              itemNo: r[0],
+              barcode: c.track||r[20]||'',
+              sentDate: '',  // 🆕 ไม่ดึงวันที่ — ให้เจ้าหน้าที่กรอกเองในหน้าสอบสวน
+              courseCode: c.code,
+              courseName: String(c.b1||c.b2||''),
+              weight: '',
+              fee: '',
+              recipientName: (r[8]||'')+(r[9]||'')+' '+(r[10]||''),
+              recipientAddr: [r[11],r[12],r[13],r[14],r[15],r[16]].filter(Boolean).join(' '),
+              cause: r[18]||'',
+            });
+            results.push(res);
+          });
+          break;
+        }
+      }
+    });
+    return { success:true, created:results.length };
+  } catch(e) { return { success:false, error:e.message }; }
+}
+
+function exportInvestigationsExcel() {
+  // ส่งข้อมูลทั้งหมดกลับเป็น JSON สำหรับ export ฝั่ง client
+  if (!_autoRefreshSession()) return { error:'SESSION_EXPIRED' };
+  return getInvestigations({});
+}
+
+function testLogin() {
+  // ทดสอบด้วย stou1234 (password ที่เพิ่ง reset)
+  const result = login('methita.sap@stou.ac.th', 'stou1234');
+  Logger.log('Login result: ' + JSON.stringify(result));
+  
+  // debug: แสดง hash ที่ควรจะเป็น vs ที่อยู่ใน Sheet
+  const newHash = hashPw('stou1234');
+  Logger.log('Hash of stou1234: ' + newHash);
+  
+  const sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SH_USERS);
+  const data = sh.getDataRange().getValues();
+  for (let i=1; i<data.length; i++) {
+    if ((data[i][0]||'').toString().toLowerCase().includes('methita')) {
+      Logger.log('Sheet hash: ' + data[i][1]);
+      Logger.log('Match: ' + (data[i][1] === newHash));
+      Logger.log('Active: ' + data[i][4]);
+    }
+  }
+}
+function resetAdminHash() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName('ผู้ใช้งาน');
+  const hash = hashPw('admin1234');
+  sheet.getRange('B2').setValue(hash);
+  if (!sheet.getRange('D2').getValue()) sheet.getRange('D2').setValue('ผู้ดูแลระบบ');
+  Logger.log('Hash = ' + hash);
+  Logger.log('ALERT: '+'เสร็จแล้ว! Hash = ' + hash.substring(0,20) + '...');
+}
+
+// อัปเดตสาเหตุตีคืนใน Sheet ตั้งค่า (รันครั้งเดียว)
+// ดึง URL สำหรับ CRM Public (นศ. ใช้แจ้งปัญหา)
+function getPublicUrl() {
+  try {
+    var url = ScriptApp.getService().getUrl();
+    return { success:true, url: url + '?page=crm' };
+  } catch(e) {
+    return { success:false, error:e.message };
+  }
+}
+
+function updateReturnCauses() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const st = ss.getSheetByName(SH_SETTINGS);
+  if (!st) { Logger.log('ALERT: '+'ไม่พบ Sheet ตั้งค่า'); return; }
+  const data = st.getDataRange().getValues();
+  for (let i=0; i<data.length; i++) {
+    if (data[i][0] === 'สาเหตุตีคืน') {
+      st.getRange(i+1,2).setValue('จ่าหน้าไม่ชัดเจน,ไม่มีเลขที่บ้านตามจ่าหน้า,ไม่ยอมรับ,ไม่มีผู้รับตามจ่าหน้า,ไม่มารับภายในกำหนด,ไม่มีจ่าหน้าหรือจ่าหน้าสูญหาย,ย้ายไม่ทราบที่อยู่ใหม่,อื่นๆ');
+      Logger.log('ALERT: '+'อัปเดตสาเหตุตีคืนสำเร็จ ✅');
+      return;
+    }
+  }
+  Logger.log('ALERT: '+'ไม่พบแถว สาเหตุตีคืน');
+}
+
+// อัปเดต CRM settings ใน Sheet ที่มีอยู่แล้ว (รันครั้งเดียว)
+function updateCrmSettings() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const st = ss.getSheetByName(SH_SETTINGS);
+  if (!st) { Logger.log('ALERT: '+'ไม่พบ Sheet ตั้งค่า'); return; }
+  const data = st.getDataRange().getValues();
+  const keys = data.map(r=>r[0]);
+  const updates = {
+    'สาขาวิชา': 'สาขาศิลปศาสตร์,สาขาศึกษาศาสตร์,สาขาวิทยาการจัดการ,สาขานิติศาสตร์,สาขาวิทยาศาสตร์สุขภาพ,สาขาเศรษฐศาสตร์,สาขามนุษยนิเวศศาสตร์,สาขารัฐศาสตร์,สาขาเกษตรศาสตร์และสหกรณ์,สาขานิเทศศาสตร์,สาขาวิทยาศาสตร์และเทคโนโลยี,สาขาพยาบาลศาสตร์',
+    'แผนการศึกษา': 'แผน ก1,แผน ก2,แผน ก3',
+    'ประเภทปัญหา': 'พิมพ์เพิ่ม,ชุดปรับปรุง,ชุดผลิตใหม่,ปัญหาทวงถามหนังสือ (ไม่ได้สั่งซื้อ/แผน ก2-ก3),สอบถามทะเบียนและวัดผล (ลงทะเบียน/สอบ),สอบถามกิจกรรมประจำชุดวิชา,สอบถามอบรมเข้มเสริมประสบการณ์วิชาชีพ,สอบถามสอนเสริมออนไลน์,สอบถามโครงการสัมฤทธิบัตร,ไม่ได้รับเอกสาร,เอกสารชำรุด,ส่งผิดวิชา,อื่นๆ (ระบุเอง)',
+    'ผู้รับเรื่อง': 'หทัย เริงเกษตรกิจ,วรรณี รัตนากร,สุพรรษา ช่อปทุมมา,เมธิตา สาไพรวัน',
+    'สาเหตุตีคืน': 'จ่าหน้าไม่ชัดเจน,ไม่มีเลขที่บ้านตามจ่าหน้า,ไม่ยอมรับ,ไม่มีผู้รับตามจ่าหน้า,ไม่มารับภายในกำหนด,ไม่มีจ่าหน้าหรือจ่าหน้าสูญหาย,ย้ายไม่ทราบที่อยู่ใหม่,อื่นๆ',
+  };
+  Object.keys(updates).forEach(function(key) {
+    const idx = keys.indexOf(key);
+    if (idx > -1) {
+      st.getRange(idx+1, 2).setValue(updates[key]);
+    } else {
+      st.appendRow([key, updates[key]]);
+    }
+  });
+  Logger.log('ALERT: '+'อัปเดตตั้งค่า CRM สำเร็จ ✅');
+}
+
+// ส่งอีเมลแจ้งผู้แจ้งเมื่อปิดเรื่อง CRM
+function sendCrmClosedEmail(crmId) {
+  if (!_autoRefreshSession()) return { success:false, error:'SESSION_EXPIRED' };
+  try {
+    const sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SH_CRM);
+    const data = sh.getDataRange().getValues();
+    for (let i=1;i<data.length;i++) {
+      if (data[i][0] === crmId) {
+        const reporterEmail = data[i][4];
+        const reporterName  = data[i][2];
+        const issueType     = data[i][11];
+        const detail        = data[i][12];
+        const assignee      = data[i][17];
+        if (!reporterEmail) return { success:false, error:'ไม่พบอีเมลผู้แจ้ง' };
+        const subject = 'สำนักบริการการศึกษา มสธ. — อัปเดตการดำเนินการ: '+issueType;
+        const body = 'เรียน '+reporterName+'\n\n'
+          +'เรื่องที่ท่านแจ้งไว้ ('+crmId+') ได้รับการดำเนินการแล้ว\n\n'
+          +'ประเภทปัญหา: '+issueType+'\n'
+          +'รายละเอียด: '+detail+'\n'
+          +'ผู้ดำเนินการ: '+assignee+'\n\n'
+          +'หากมีข้อสงสัยเพิ่มเติม กรุณาติดต่อสำนักบริการการศึกษา\n'
+          +'โทร. 02-504-7788\n\n'
+          +'ขอแสดงความนับถือ\n'
+          +'สำนักบริการการศึกษา มหาวิทยาลัยสุโขทัยธรรมาธิราช';
+        GmailApp.sendEmail(reporterEmail, subject, body);
+        return { success:true };
+      }
+    }
+    return { success:false, error:'ไม่พบรายการ CRM' };
+  } catch(e) { return { success:false, error:e.message }; }
+}
+
+// ดึงข้อมูล CRM เพื่อ prefill ฟอร์ม ตีคืน/ให้ยืม/พิเศษ
+function getCrmForPrefill(crmId) {
+  try {
+    const sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SH_CRM);
+    const data = sh.getDataRange().getValues();
+    for (let i=1;i<data.length;i++) {
+      if (data[i][0] === crmId) {
+        const courses = (data[i][10]||'').toString().split(',').filter(Boolean);
+        return {
+          success: true,
+          studentId:    data[i][3]||'',
+          reporterName: data[i][2]||'',
+          email:        data[i][4]||'',
+          phone:        data[i][5]||'',
+          term:         data[i][8]||'',
+          year:         data[i][9]||'',
+          courseCode:   courses[0]||'',
+          courses:      JSON.stringify(courses.map(function(c){return {code:c,b1:'',b2:'',track:'',date:''};})),
+          issueType:    data[i][11]||'',
+        };
+      }
+    }
+    return { error:'ไม่พบรายการ' };
+  } catch(e) { return { error:e.message }; }
+}
+
+// ============================================================
+// EXPORT — ส่งข้อมูลกลับสำหรับ export Excel (CSV)
+// ============================================================
+function exportRecordsData(filters) {
+  // session check ผ่าน _autoRefreshSession อัตโนมัติ
+  return getRecords(filters||{});
+}
+
+function exportCrmData() {
+  if (!_autoRefreshSession()) return { error:'SESSION_EXPIRED' };
+  return getCrmTickets({});
+}
+
+// ============================================================
+// MONTHLY REPORT — ส่งรายงานประจำเดือน
+// ============================================================
+function sendMonthlyReport() {
+  if (!_autoRefreshSession()) return { success:false, error:'เฉพาะ Super Admin' };
+  try {
+    const sess  = _sess();
+    const now   = new Date();
+    const month = Utilities.formatDate(now,'Asia/Bangkok','MMMM yyyy');
+    const records = getRecords({});
+    if (records.error) return { success:false, error:records.error };
+
+    // สรุปสถิติ
+    const total   = records.length;
+    const ret     = records.filter(r=>r.recType==='return').length;
+    const lend    = records.filter(r=>r.recType==='lend').length;
+    const special = records.filter(r=>r.recType==='special').length;
+    const crm     = getCrmTickets({});
+    const crmTotal= Array.isArray(crm) ? crm.length : 0;
+
+    // จังหวัดสูงสุด
+    const provMap = {};
+    records.forEach(r=>{ if(r.province) provMap[r.province]=(provMap[r.province]||0)+1; });
+    const topProv = Object.entries(provMap).sort((a,b)=>b[1]-a[1]).slice(0,5);
+
+    const subject = 'รายงานประจำเดือน ' + month + ' — ระบบจัดการเอกสารการสอน มสธ.';
+    const body = `รายงานสรุปประจำเดือน ${month}
+สำนักบริการการศึกษา มหาวิทยาลัยสุโขทัยธรรมาธิราช
+
+━━━━━━━━━━━━━━━━━━━━
+สถิติรายการพัสดุ
+━━━━━━━━━━━━━━━━━━━━
+รวมทั้งหมด:    ${total} รายการ
+พัสดุตีคืน:    ${ret} รายการ
+ให้ยืม:        ${lend} รายการ
+ส่งใหม่พิเศษ:  ${special} รายการ
+CRM แจ้งปัญหา: ${crmTotal} รายการ
+
+จังหวัดที่มีปัญหาสูงสุด:
+${topProv.map((p,i)=>`  ${i+1}. ${p[0]}: ${p[1]} รายการ`).join('\n')}
+
+━━━━━━━━━━━━━━━━━━━━
+จัดทำโดยระบบอัตโนมัติ
+ผู้สั่งรายงาน: ${sess.name||sess.email}
+วันที่: ${fmtDate(now)}`;
+
+    GmailApp.sendEmail(sess.email, subject, body);
+    return { success:true, email:sess.email };
+  } catch(e) { return { success:false, error:e.message }; }
+}
+
+// ============================================================
+// AUDIT LOG
+// ============================================================
+const SH_AUDIT = 'Audit Log';
+
+function logAudit(action, detail) {
+  try {
+    const ss   = SpreadsheetApp.getActiveSpreadsheet();
+    let sh     = ss.getSheetByName(SH_AUDIT);
+    if (!sh) {
+      sh = ss.insertSheet(SH_AUDIT);
+      sh.appendRow(['วันที่','ผู้ใช้','อีเมล','การกระทำ','รายละเอียด']);
+      const hr=sh.getRange(1,1,1,5);hr.setBackground('#1a3a5c');hr.setFontColor('#fff');hr.setFontWeight('bold');
+      sh.setFrozenRows(1);
+    }
+    const sess = _sess();
+    sh.appendRow([new Date(), sess.name||'ระบบ', sess.email||'', action, detail||'']);
+    const lr = sh.getLastRow();
+    if (lr%2===0) sh.getRange(lr,1,1,5).setBackground('#f8f9fa');
+  } catch(e) {}
+}
+
+function getAuditLog(limit) {
+  // session check ผ่าน _autoRefreshSession อัตโนมัติ
+  try {
+    const sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SH_AUDIT);
+    if (!sh || sh.getLastRow()<2) return [];
+    const n   = Math.min(limit||100, sh.getLastRow()-1);
+    const rows= sh.getRange(sh.getLastRow()-n+1,1,n,5).getValues().reverse();
+    return rows.map(r=>({
+      date:r[0]?fmtDate(r[0]):'', name:r[1], email:r[2], action:r[3], detail:r[4]
+    }));
+  } catch(e) { return { error:e.message }; }
+}
+
+// เพิ่ม audit ใน addRecord
+const _origAddRecord = typeof addRecord !== 'undefined' ? addRecord : null;
+
+// ============================================================
+// EMAIL NOTIFICATION — แจ้ง นศ. (HTML e-newsletter style)
+// ============================================================
+function sendStudentNotification(data) {
+  if (!_autoRefreshSession()) return { success:false, error:'SESSION_EXPIRED' };
+  if (!data.toEmail) return { success:false, error:'ไม่มีอีเมลผู้รับ' };
+  try {
+    const sess    = _sess();
+    const logoUrl = getOrgLogoUrl();
+    const typeLabel = {return:'พัสดุตีคืน',lend:'ยืมชุดเอกสาร',special:'จัดส่งใหม่กรณีพิเศษ'}[data.recType]||'เอกสารการสอน';
+
+    // สร้าง HTML body แบบ e-newsletter
+    const htmlBody = `<!DOCTYPE html>
+<html lang="th">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+  body{margin:0;padding:0;background:#f4f6fb;font-family:'Sarabun',Arial,sans-serif}
+  .wrap{max-width:600px;margin:24px auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.10)}
+  .header{background:linear-gradient(135deg,#0f2744 0%,#1a4a8a 100%);padding:32px 36px;text-align:center}
+  .header img{height:56px;margin-bottom:14px;display:block;margin-left:auto;margin-right:auto}
+  .header h1{color:#fff;font-size:20px;margin:0 0 4px;font-weight:700}
+  .header p{color:rgba(255,255,255,0.75);font-size:13px;margin:0}
+  .banner{background:#f4a21e;padding:10px 36px;text-align:center}
+  .banner span{color:#0f2744;font-weight:700;font-size:14px}
+  .body{padding:28px 36px}
+  .greeting{font-size:16px;color:#1a2840;margin-bottom:18px}
+  .info-box{background:#f0f4f8;border-radius:8px;padding:18px 20px;margin-bottom:20px}
+  .info-row{display:flex;padding:5px 0;border-bottom:1px solid #e0e8f0;font-size:14px}
+  .info-row:last-child{border-bottom:none}
+  .info-label{color:#8899b4;width:140px;flex-shrink:0;font-size:13px}
+  .info-val{color:#1a2840;font-weight:600}
+  .message-box{background:#fff8e1;border-left:4px solid #f4a21e;padding:14px 18px;border-radius:0 8px 8px 0;margin-bottom:20px;font-size:14px;color:#5c4b00;line-height:1.7}
+  .cta{text-align:center;margin:24px 0}
+  .btn-cta{background:linear-gradient(135deg,#2d7dd2,#1a4a8a);color:#fff;padding:13px 32px;border-radius:8px;text-decoration:none;font-weight:700;font-size:15px;display:inline-block}
+  .footer{background:#f4f6fb;padding:20px 36px;text-align:center;border-top:1px solid #e0e8f0}
+  .footer p{color:#8899b4;font-size:12px;margin:2px 0;line-height:1.7}
+</style></head>
+<body>
+<div class="wrap">
+  <div class="header">
+    ${logoUrl?'<img src="'+logoUrl+'" alt="STOU Logo">':'<div style="font-size:40px;margin-bottom:10px">📚</div>'}
+    <h1>มหาวิทยาลัยสุโขทัยธรรมาธิราช</h1>
+    <p>สำนักบริการการศึกษา — ศูนย์บริการการสอนทางไปรษณีย์</p>
+  </div>
+  <div class="banner"><span>แจ้งสถานะ: ${typeLabel}</span></div>
+  <div class="body">
+    <div class="greeting">เรียน <strong>${data.name||'นักศึกษา'}</strong></div>
+    <div class="info-box">
+      <div class="info-row"><span class="info-label">รหัสนักศึกษา</span><span class="info-val">${data.studentId||'—'}</span></div>
+      <div class="info-row"><span class="info-label">ชุดวิชา</span><span class="info-val">${data.courseCode||'—'}</span></div>
+      <div class="info-row"><span class="info-label">ประเภท</span><span class="info-val">${typeLabel}</span></div>
+      <div class="info-row"><span class="info-label">สาเหตุ</span><span class="info-val">${data.cause||'—'}</span></div>
+      <div class="info-row"><span class="info-label">เลขพัสดุ</span><span class="info-val">${data.trackNo||'—'}</span></div>
+      <div class="info-row"><span class="info-label">วันที่บันทึก</span><span class="info-val">${fmtDate(new Date())}</span></div>
+    </div>
+    <div class="message-box">${data.message||'กรุณาตรวจสอบข้อมูลและติดต่อกลับมายังสำนักบริการการศึกษา หากมีข้อสงสัยหรือต้องการดำเนินการใดๆ'}</div>
+    <div class="cta"><a href="https://www.stou.ac.th" class="btn-cta">ติดต่อสำนักบริการการศึกษา</a></div>
+  </div>
+  <div class="footer">
+    <p><strong>สำนักบริการการศึกษา มสธ.</strong></p>
+    <p>โทร. 02-504-7788 | อีเมล: oes@stou.ac.th</p>
+    <p>9/9 หมู่ 9 ต.บางพูด อ.ปากเกร็ด จ.นนทบุรี 11120</p>
+    <p style="color:#c5cfe0;margin-top:8px">อีเมลนี้ส่งโดยอัตโนมัติจากระบบจัดการเอกสารการสอน มสธ. — กรุณาอย่าตอบกลับอีเมลนี้โดยตรง</p>
+  </div>
+</div>
+</body></html>`;
+
+    GmailApp.sendEmail(data.toEmail, data.subject||('แจ้งสถานะ'+typeLabel+' — มสธ.'), '', {
+      htmlBody: htmlBody,
+      name: 'สำนักบริการการศึกษา มสธ.',
+      replyTo: 'oes@stou.ac.th',
+    });
+    logAudit('ส่งอีเมล นศ.', data.toEmail+' | '+data.studentId+' | '+typeLabel);
+    return { success:true };
+  } catch(e) { return { success:false, error:e.message }; }
+}
+
+// โลโก้หน่วยงาน — เก็บใน PropertiesService
+function getOrgLogoUrl() {
+  try { return PropertiesService.getScriptProperties().getProperty('ORG_LOGO_URL')||''; } catch(e){ return ''; }
+}
+function saveOrgLogoUrl(url) {
+  if (!_autoRefreshSession()) return { success:false, error:'เฉพาะ Super Admin' };
+  try { PropertiesService.getScriptProperties().setProperty('ORG_LOGO_URL', url); return { success:true }; } catch(e){ return { success:false, error:e.message }; }
+}
+function getOrgLogoUrlPublic() {
+  return getOrgLogoUrl();
+}
+
+// ============================================================
+// PERSONAL STATS — สถิติผลการปฏิบัติงานรายบุคคล
+// ============================================================
+function getPersonalStats(period) {
+  try {
+    const sess = _sess();
+    const myEmail = sess.email||'';
+    const myName  = sess.name||'';
+    // ดึงข้อมูลทั้งหมด แล้ว filter ของตัวเอง
+    const all = getRecords({});
+    if (all.error) return all;
+    const crm = getCrmTickets({});
+    const inv = getInvestigations({});
+    const audit = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SH_AUDIT);
+
+    // คำนวณช่วงเวลา
+    const now = new Date();
+    const startWeek = new Date(now); startWeek.setDate(now.getDate() - now.getDay());
+    startWeek.setHours(0,0,0,0);
+    const startMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    // filter audit log ของ user นี้
+    let auditRows = [];
+    if (audit && audit.getLastRow() > 1) {
+      auditRows = audit.getRange(2,1,audit.getLastRow()-1,5).getValues()
+        .filter(r => r[2]===myEmail || r[1]===myName);
+    }
+
+    const filterByDate = (rows, dateStr, startDate) => {
+      return rows.filter(r => {
+        try { return new Date(r[dateStr]||r[0]) >= startDate; } catch(e) { return false; }
+      });
+    };
+
+    const countAuditAction = (rows, action, start) => {
+      return rows.filter(r => {
+        try {
+          const d = new Date(r[0]);
+          return d >= start && (r[3]||'').includes(action);
+        } catch(e){ return false; }
+      }).length;
+    };
+
+    return {
+      success: true,
+      user: myName||myEmail,
+      thisWeek: {
+        records: countAuditAction(auditRows, 'บันทึกพัสดุ', startWeek),
+        crm:     countAuditAction(auditRows, 'รับเรื่อง CRM', startWeek),
+        emails:  countAuditAction(auditRows, 'ส่งอีเมล', startWeek),
+      },
+      thisMonth: {
+        records: countAuditAction(auditRows, 'บันทึกพัสดุ', startMonth),
+        crm:     countAuditAction(auditRows, 'รับเรื่อง CRM', startMonth),
+        emails:  countAuditAction(auditRows, 'ส่งอีเมล', startMonth),
+      },
+      allTime: {
+        records: all.filter(r=>r.recorder&&(r.recorder.includes(myName)||r.recorder.includes(myEmail))).length,
+        crm: Array.isArray(crm)?crm.filter(c=>c.assigneeName&&c.assigneeName.includes(myName)).length:0,
+      },
+    };
+  } catch(e) { return { error:e.message }; }
+}
+
+// TASK BOARD — ระบบสั่งงานรายบุคคล
+// ============================================================
+const SH_TASKS = 'งานที่สั่ง';
+
+function setupTaskSheet() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sh = ss.getSheetByName(SH_TASKS);
+  if (!sh) {
+    sh = ss.insertSheet(SH_TASKS);
+    sh.appendRow(['รหัสงาน','วันที่สั่ง','ผู้สั่ง','ผู้รับผิดชอบ','หัวข้องาน','รายละเอียด',
+      'ประเภทงาน','สถานะ','วันกำหนดส่ง','ไฟล์แนบ URL','หมายเหตุผู้รับ',
+      'ต้องอนุมัติก่อน','สถานะอนุมัติ','ผู้อนุมัติ','วันที่อนุมัติ','วันที่อัปเดต']);
+    const hr=sh.getRange(1,1,1,16);hr.setBackground('#1a3a5c');hr.setFontColor('#fff');hr.setFontWeight('bold');
+    sh.setFrozenRows(1);
+  }
+  return sh;
+}
+
+function getTasks(filters) {
+  // session check ผ่าน _autoRefreshSession อัตโนมัติ
+  try {
+    const sh = setupTaskSheet();
+    const lr = sh.getLastRow();
+    if (lr < 2) return [];
+    const sess = _sess();
+    let rows = sh.getRange(2,1,lr-1,16).getValues().map(r=>({
+      taskId:r[0], createdAt:r[1]?fmtDate(r[1]):'', createdBy:r[2], assignee:r[3],
+      title:r[4], detail:r[5], taskType:r[6], status:r[7]||'รอดำเนินการ',
+      dueDate:r[8]?fmtDate(r[8]):'', fileUrl:r[9], assigneeNote:r[10],
+      needApproval:r[11], approvalStatus:r[12]||'', approvedBy:r[13],
+      approvedAt:r[14]?fmtDate(r[14]):'', updatedAt:r[15]?fmtDate(r[15]):'',
+    })).filter(r=>r.taskId!=='');
+
+    // staff เห็นเฉพาะงานตัวเอง, superadmin เห็นทั้งหมด
+    if (sess.role !== R_SUPER) {
+      rows = rows.filter(r => r.assignee===sess.name || r.assignee===sess.email || r.createdBy===sess.name);
+    }
+    if (filters && filters.status) rows = rows.filter(r=>r.status===filters.status);
+    if (filters && filters.assignee) rows = rows.filter(r=>r.assignee===filters.assignee);
+    return rows;
+  } catch(e) { return { error:e.message }; }
+}
+
+function addTask(data) {
+  if (!_autoRefreshSession()) return { success:false, error:'SESSION_EXPIRED' };
+  try {
+    const sh   = setupTaskSheet();
+    const sess = _sess();
+    const now  = new Date();
+    const id   = 'TASK-'+Utilities.formatDate(now,'Asia/Bangkok','yyyyMMddHHmmss');
+    sh.appendRow([
+      id, now, sess.name||sess.email, data.assignee||'',
+      data.title||'', data.detail||'', data.taskType||'ทั่วไป',
+      'รอดำเนินการ', data.dueDate?new Date(data.dueDate):'',
+      data.fileUrl||'', '', data.needApproval||false, 
+      data.needApproval?'รออนุมัติ':'ไม่ต้องอนุมัติ', '', '', now
+    ]);
+    logAudit('สั่งงาน', id+' | '+data.title+' | ผู้รับ: '+data.assignee);
+    return { success:true, id:id };
+  } catch(e) { return { success:false, error:e.message }; }
+}
+
+function updateTask(taskId, updates) {
+  if (!_autoRefreshSession()) return { success:false, error:'SESSION_EXPIRED' };
+  try {
+    const sh   = setupTaskSheet();
+    const data = sh.getDataRange().getValues();
+    const sess = _sess();
+    for (let i=1;i<data.length;i++) {
+      if (data[i][0] === taskId) {
+        const row = i+1;
+        if (updates.status)       sh.getRange(row,8).setValue(updates.status);
+        if (updates.assigneeNote) sh.getRange(row,11).setValue(updates.assigneeNote);
+        if (updates.fileUrl)      sh.getRange(row,10).setValue(updates.fileUrl);
+        // อนุมัติ (superadmin เท่านั้น)
+        if (updates.approve !== undefined && sess.role === R_SUPER) {
+          sh.getRange(row,13).setValue(updates.approve?'อนุมัติแล้ว':'ไม่อนุมัติ');
+          sh.getRange(row,14).setValue(sess.name||sess.email);
+          sh.getRange(row,15).setValue(new Date());
+          if (updates.approve) sh.getRange(row,8).setValue('อนุมัติแล้ว — พร้อมโพส');
+        }
+        sh.getRange(row,16).setValue(new Date());
+        logAudit('อัปเดตงาน', taskId+' | '+updates.status);
+        return { success:true };
+      }
+    }
+    return { success:false, error:'ไม่พบงาน' };
+  } catch(e) { return { success:false, error:e.message }; }
+}
+
+function getTaskBadgeCount() {
+  // นับงานที่รอดำเนินการของ user ปัจจุบัน
+  if (!_autoRefreshSession()) return 0;
+  try {
+    const tasks = getTasks({status:'รอดำเนินการ'});
+    const approvalTasks = getTasks({status:'รออนุมัติ'});
+    return (Array.isArray(tasks)?tasks.length:0) + (Array.isArray(approvalTasks)?approvalTasks.length:0);
+  } catch(e) { return 0; }
+}
+
+// ============================================================
+// STAFF STATS — สถิติการปฏิบัติงานรายบุคคล
+// ============================================================
+function getStaffStats(days) {
+  // session check ผ่าน _autoRefreshSession อัตโนมัติ
+  try {
+    const sess = _sess();
+    const now  = new Date();
+    days = parseInt(days) || 30;
+    const fromDate = new Date(now);
+    fromDate.setDate(now.getDate() - days + 1);
+    fromDate.setHours(0,0,0,0);
+
+    // Records
+    const recSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SH_DATA);
+    const lr = recSheet ? recSheet.getLastRow() : 0;
+    const recData = lr < 2 ? [] : recSheet.getRange(2,1,lr-1,30).getValues();
+
+    // กรองตาม period
+    const periodRec = recData.filter(r => {
+      if (!r[0]) return false;
+      const d = r[1] ? new Date(r[1]) : null;
+      return d && d >= fromDate;
+    });
+
+    // Audit log สำหรับนับอีเมล
+    const auditSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Audit Log');
+    const auditData  = auditSheet && auditSheet.getLastRow() > 1
+      ? auditSheet.getRange(2,1,auditSheet.getLastRow()-1,5).getValues() : [];
+    const emailCount = auditData.filter(r => {
+      const d = r[0] ? new Date(r[0]) : null;
+      return d && d >= fromDate && (r[1]===sess.name||r[2]===sess.email) && (r[3]||'').includes('ส่งอีเมล');
+    }).length;
+
+    // สถิติรายวัน — แสดงทุกวันใน range
+    const daysToShow = Math.min(days, 30); // แสดงสูงสุด 30 bars
+    const step = days <= 30 ? 1 : Math.ceil(days/30);
+    const daily = [];
+    for (let i = daysToShow-1; i >= 0; i--) {
+      const d = new Date(now); d.setDate(now.getDate()-(i*step));
+      const ds = Utilities.formatDate(d,'Asia/Bangkok','dd/MM');
+      const dayStart = new Date(d); dayStart.setHours(0,0,0,0);
+      const dayEnd   = new Date(d); dayEnd.setHours(23,59,59,999);
+      const dayRec = recData.filter(r => {
+        const rd = r[1] ? new Date(r[1]) : null;
+        return rd && rd >= dayStart && rd <= dayEnd;
+      });
+      daily.push({ date:ds, total:dayRec.length });
+    }
+
+    return {
+      days: days,
+      totalRecords: periodRec.length,
+      countReturn:  periodRec.filter(r=>r[4]==='return').length,
+      countLend:    periodRec.filter(r=>r[4]==='lend').length,
+      countSpecial: periodRec.filter(r=>r[4]==='special').length,
+      countEmail:   emailCount,
+      daily:        daily,
+      recorder:     sess.name||sess.email,
+    };
+  } catch(e) { return { error:e.message }; }
+}
+
+
+// getTaskStats — นับงานค้างสำหรับ badge
+function getTaskStats() {
+  try {
+    const tasks = getTasks({});
+    if (!Array.isArray(tasks)) return { pending:0, total:0 };
+    const pending = tasks.filter(function(t){ return t.status==='รอดำเนินการ'||t.status==='รออนุมัติ'; }).length;
+    return { pending:pending, total:tasks.length };
+  } catch(e) { return { pending:0, total:0, error:e.message }; }
+}
+
+// Reset รหัสผ่านทุก user เป็น stou1234 (รันเมื่อ login ไม่ได้)
+function resetAllPasswords() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sh = ss.getSheetByName(SH_USERS);
+  if (!sh) { Logger.log('ไม่พบ sheet ผู้ใช้งาน'); return; }
+  const data = sh.getDataRange().getValues();
+  const newHash = hashPw('stou1234');
+  let count = 0;
+  for (let i=1; i<data.length; i++) {
+    if (data[i][0]) {
+      sh.getRange(i+1, 2).setValue(newHash);
+      // ทำให้ active
+      sh.getRange(i+1, 5).setValue(true);
+      Logger.log('Reset: ' + data[i][0]);
+      count++;
+    }
+  }
+  Logger.log('DONE: reset ' + count + ' users รหัสผ่านใหม่ = stou1234');
+}
+// ============================================================
+// DEBUG / MAINTENANCE TOOLS
+// ============================================================
+
+// ทดสอบ connection โดยไม่ต้อง session
+function testConnection() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sh = ss.getSheetByName(SH_DATA);
+  const lr = sh ? sh.getLastRow() : 0;
+  const email = Session.getEffectiveUser().getEmail();
+  const sessRaw = PropertiesService.getScriptProperties().getProperty('sess_'+Session.getEffectiveUser().getEmail());
+  let sessInfo = 'none';
+  let sessValid = false;
+  if (sessRaw) {
+    try {
+      const s = JSON.parse(sessRaw);
+      if (s && s.email) {
+        sessInfo = s.email + ' / ' + s.role + ' (valid: '+(Date.now()-s.ts < 8*60*60*1000)+')';
+        sessValid = true;
+      } else {
+        sessInfo = 'MALFORMED: ' + sessRaw.substring(0,50);
+      }
+    } catch(e) {
+      sessInfo = 'INVALID JSON: ' + sessRaw.substring(0,50);
+    }
+  }
+  Logger.log('email='+email+' lastRow='+lr+' sessValid='+sessValid);
+  Logger.log('ALERT: '+
+    '🔍 Connection Test\n\n'+
+    'Email: '+email+'\n'+
+    'Data rows: '+(lr>0?lr-1:0)+' records\n'+
+    'Session: '+sessInfo+'\n\n'+
+    (sessValid ? '✅ พร้อมใช้งาน' : '❌ Session ไม่ valid — รัน forceResetAdminSession ก่อน')
+  );
+}
+
+// รันฟังก์ชันนี้ใน Apps Script เพื่อ reset session ของ admin
+function forceResetAdminSession() {
+  try {
+    const scriptEmail = Session.getEffectiveUser().getEmail();
+    const sp = PropertiesService.getScriptProperties();
+    const users = [];
+
+    // Set session สำหรับทุก user ใน Sheet ผู้ใช้งาน
+    const sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SH_USERS);
+    if (sh && sh.getLastRow() > 1) {
+      const rows = sh.getDataRange().getValues();
+      for (let i=1; i<rows.length; i++) {
+        const uEmail = (rows[i][0]||'').trim();
+        const uRole  = (rows[i][2]||'staff').toString().trim();
+        const uName  = (rows[i][3]||uEmail).toString().trim();
+        if (uEmail) {
+          const sess = {email:uEmail, role:uRole, name:uName, ts:Date.now()};
+          sp.setProperty('sess_'+uEmail, JSON.stringify(sess));
+          users.push(uEmail + ' (' + uRole + ')');
+        }
+      }
+    }
+
+    // Set session สำหรับ script owner (stou.post) ด้วย
+    const ownerSess = {email:scriptEmail, role:'superadmin', name:'Script Owner', ts:Date.now()};
+    sp.setProperty('sess_'+scriptEmail, JSON.stringify(ownerSess));
+
+    Logger.log('ALERT: '+
+      '✅ Reset session สำเร็จ\n\n' +
+      'Script runs as: ' + scriptEmail + '\n' +
+      'Reset สำหรับ ' + users.length + ' user:\n' +
+      users.join('\n') + '\n\n' +
+      'กด Deploy → เวอร์ชันใหม่ → Deploy\nแล้ว reload หน้าเว็บ'
+    );
+  } catch(e) {
+    Logger.log('ALERT: '+'❌ Error: ' + e.message);
+  }
+}
+
+// ทดสอบว่า session ทำงานไหม
+function testGetRecords() {
+  const result = getRecords({});
+  if (result.error) {
+    Logger.log('ERROR: '+result.error);
+    Logger.log('ALERT: '+'❌ getRecords error: '+result.error);
+  } else {
+    Logger.log('SUCCESS: '+result.length+' records');
+    Logger.log('ALERT: '+'✅ getRecords สำเร็จ: '+result.length+' รายการ');
+  }
+}
+
+// Simulate web app call — รันนี้แล้วดูผล
+function testDirectLoad() {
+  var result = getRecords({});
+  Logger.log('Type: ' + typeof result);
+  Logger.log('IsArray: ' + Array.isArray(result));
+  if (Array.isArray(result)) {
+    Logger.log('Length: ' + result.length);
+    if (result.length > 0) {
+      Logger.log('First record: ' + JSON.stringify(result[0]));
+    }
+  } else {
+    Logger.log('Result: ' + JSON.stringify(result));
+  }
+}
+// ============================================================
+// FILE UPLOAD TO GOOGLE DRIVE (สำหรับผลสอบสวน)
+// ============================================================
+const INVEST_FOLDER_NAME = 'STOU_Invest_Attachments';
+
+function uploadInvestAttachment(base64Data, filename, mimeType, investId) {
+  if (!_autoRefreshSession()) return { success:false, error:'SESSION_EXPIRED' };
+  try {
+    // หา/สร้างโฟลเดอร์
+    let folder;
+    const folders = DriveApp.getFoldersByName(INVEST_FOLDER_NAME);
+    if (folders.hasNext()) folder = folders.next();
+    else folder = DriveApp.createFolder(INVEST_FOLDER_NAME);
+    
+    // decode base64 → Blob
+    const parts = base64Data.split(',');
+    const data  = parts.length > 1 ? parts[1] : parts[0];
+    const bytes = Utilities.base64Decode(data);
+    const blob  = Utilities.newBlob(bytes, mimeType||'application/octet-stream', filename);
+    
+    // สร้างไฟล์ใน folder — ตั้งชื่อให้มี investId
+    const safeFn = (investId||'') + '_' + (filename||'file');
+    const file   = folder.createFile(blob).setName(safeFn);
+    file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+    
+    return { 
+      success: true, 
+      url:   file.getUrl(), 
+      id:    file.getId(),
+      name:  safeFn
+    };
+  } catch(e) { 
+    return { success:false, error:e.message }; 
+  }
+}
