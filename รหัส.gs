@@ -161,6 +161,778 @@ function _can(roles) {
 }
 
 // ============================================================
+// FIREBASE INTEGRATION
+// ============================================================
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyDpRytR1M8rLsckJXdJb3HTaHxP2S53HWc",
+  authDomain: "management-crm-stoupost.firebaseapp.com",
+  projectId: "management-crm-stoupost",
+  databaseURL: "https://management-crm-stoupost-default-rtdb.asia-southeast1.firebasedatabase.app",
+  storageBucket: "management-crm-stoupost.firebasestorage.app",
+  messagingSenderId: "766285421505",
+  appId: "1:766285421505:web:6fe74c474b386a6433ad40"
+};
+
+const USE_FIREBASE = false; // ตั้งเป็น true เมื่อต้องการใช้ Firebase
+
+// Firebase REST API Helper
+function firebaseCall(method, path, data = null) {
+  try {
+    const url = FIREBASE_CONFIG.databaseURL + path + '.json?auth=' + getFirebaseToken();
+    const options = {
+      method: method,
+      contentType: 'application/json',
+      muteHttpExceptions: true
+    };
+    if (data) {
+      options.payload = JSON.stringify(data);
+    }
+    const response = UrlFetchApp.fetch(url, options);
+    const result = JSON.parse(response.getContentText());
+    if (response.getResponseCode() >= 400) {
+      Logger.log('Firebase error: ' + response.getResponseCode() + ' ' + JSON.stringify(result));
+      return null;
+    }
+    return result;
+  } catch(e) {
+    Logger.log('firebaseCall error: ' + e.message);
+    return null;
+  }
+}
+
+// Get Firebase token (service account or admin SDK would be better, but using current user for now)
+function getFirebaseToken() {
+  // Note: ในสภาพจริง ควรใช้ Firebase Admin SDK หรือ service account
+  // สำหรับตอนนี้ใช้ API key แทน (จะต้องตั้ง security rules ให้เหมาะสม)
+  return FIREBASE_CONFIG.apiKey;
+}
+
+// ============================================================
+// FIREBASE - AUTH FUNCTIONS
+// ============================================================
+function loginWithFirebase(email, password) {
+  if (!USE_FIREBASE) return login(email, password);
+  try {
+    // Firebase REST API สำหรับ login
+    const url = 'https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=' + FIREBASE_CONFIG.apiKey;
+    const payload = {
+      email: email,
+      password: password,
+      returnSecureToken: true
+    };
+    const response = UrlFetchApp.fetch(url, {
+      method: 'post',
+      contentType: 'application/json',
+      payload: JSON.stringify(payload),
+      muteHttpExceptions: true
+    });
+    const result = JSON.parse(response.getContentText());
+    if (response.getResponseCode() !== 200) {
+      return { success:false, error:'อีเมลหรือรหัสผ่านไม่ถูกต้อง' };
+    }
+    // ดึงข้อมูล user จาก Firebase Realtime Database
+    const userData = firebaseCall('GET', '/users/' + result.localId);
+    if (!userData) {
+      return { success:false, error:'ไม่พบข้อมูลผู้ใช้งาน' };
+    }
+    const sessData = {
+      email: email,
+      role: userData.role || 'staff',
+      name: userData.name || email,
+      uid: result.localId,
+      token: result.idToken,
+      ts: Date.now()
+    };
+    PropertiesService.getScriptProperties().setProperty('sess_' + email, JSON.stringify(sessData));
+    return {
+      success: true,
+      role: userData.role || 'staff',
+      name: userData.name || email,
+      email: email
+    };
+  } catch(e) {
+    return { success:false, error:e.message };
+  }
+}
+
+function checkSessionFirebase() {
+  if (!USE_FIREBASE) return checkSession();
+  try {
+    const sp = PropertiesService.getScriptProperties();
+    let userEmail = '';
+    try { userEmail = Session.getEffectiveUser().getEmail() || ''; } catch(e){}
+
+    if (userEmail) {
+      const raw = sp.getProperty('sess_'+userEmail);
+      if (raw) {
+        try {
+          const s = JSON.parse(raw);
+          if (s && s.email && s.role && (Date.now()-s.ts < 8*60*60*1000)) {
+            return {valid:true, role:s.role, name:s.name||s.email, email:s.email, uid:s.uid};
+          }
+          sp.deleteProperty('sess_'+userEmail);
+        } catch(e) { sp.deleteProperty('sess_'+userEmail); }
+      }
+    }
+    return {valid:false};
+  } catch(e) { return {valid:false}; }
+}
+
+// ============================================================
+// FIREBASE - USERS MANAGEMENT
+// ============================================================
+function getUsersFirebase() {
+  if (!USE_FIREBASE) return getUsers();
+  try {
+    const usersData = firebaseCall('GET', '/users');
+    if (!usersData) return [];
+    const users = [];
+    for (const uid in usersData) {
+      const u = usersData[uid];
+      users.push({
+        uid: uid,
+        email: u.email,
+        role: u.role,
+        name: u.name,
+        active: u.active !== false,
+        lastLogin: u.lastLogin || '-',
+        perms: u.perms || ''
+      });
+    }
+    return users;
+  } catch(e) { return { error:e.message }; }
+}
+
+function addUserFirebase(email, password, role, name, perms) {
+  if (!USE_FIREBASE) return addUser(email, password, role, name, perms);
+
+  if (!_autoRefreshSession()) return { success:false, error:'ไม่มีสิทธิ์' };
+  try {
+    // สร้าง user ผ่าน Firebase Auth REST API
+    const signUpUrl = 'https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=' + FIREBASE_CONFIG.apiKey;
+    const signUpPayload = {
+      email: email,
+      password: password,
+      returnSecureToken: true
+    };
+    const signUpResponse = UrlFetchApp.fetch(signUpUrl, {
+      method: 'post',
+      contentType: 'application/json',
+      payload: JSON.stringify(signUpPayload),
+      muteHttpExceptions: true
+    });
+    const signUpResult = JSON.parse(signUpResponse.getContentText());
+    if (signUpResponse.getResponseCode() !== 200) {
+      return { success:false, error:'ไม่สามารถสร้าง user ได้: ' + signUpResult.error.message };
+    }
+    const uid = signUpResult.localId;
+
+    // เก็บข้อมูล user ใน Realtime Database
+    const userData = {
+      email: email,
+      role: role,
+      name: name,
+      active: true,
+      perms: perms || '',
+      createdAt: new Date().toISOString()
+    };
+    const result = firebaseCall('PUT', '/users/' + uid, userData);
+    if (!result) {
+      return { success:false, error:'ไม่สามารถบันทึกข้อมูล user ได้' };
+    }
+    return { success:true };
+  } catch(e) { return { success:false, error:e.message }; }
+}
+
+// ============================================================
+// FIREBASE - RECORDS/PACKAGES
+// ============================================================
+function addRecordFirebase(data) {
+  if (!USE_FIREBASE) return addRecord(data);
+
+  if (!_autoRefreshSession()) return { success:false, error:'SESSION_EXPIRED' };
+  try {
+    const now = new Date();
+    const sess = _sess();
+    const pfx = {return:'P', lend:'L', special:'S'}[data.recType]||'P';
+    const id = pfx + Utilities.formatDate(now,'Asia/Bangkok','yyyyMMdd') + '-' + Math.random().toString(36).substr(2, 9);
+
+    let status = 'บันทึกแล้ว';
+    if (data.send2Track) status = 'ส่งแล้วครั้งที่ 2';
+    else if (data.send1Track) status = 'ส่งแล้วครั้งที่ 1';
+
+    const record = {
+      id: id,
+      date: now.toISOString(),
+      term: data.term || '',
+      year: data.year || '',
+      recType: data.recType || '',
+      parcelType: data.parcelType || '',
+      courseCode: data.courseCode || '',
+      studentId: data.studentId || '',
+      prefix: data.prefix || '',
+      firstName: data.firstName || '',
+      lastName: data.lastName || '',
+      houseNo: data.houseNo || '',
+      street: data.street || '',
+      subDistrict: data.subDistrict || '',
+      district: data.district || '',
+      province: data.province || '',
+      zipCode: data.zipCode || '',
+      phone: data.phone || '',
+      cause: data.cause || '',
+      contactStatus: data.contactStatus || '',
+      send1Track: data.send1Track || '',
+      send1Date: data.send1Date || '',
+      send2Track: data.send2Track || '',
+      send2Date: data.send2Date || '',
+      tags: data.tags || '',
+      remark: data.remark || '',
+      courses: data.courses || '[]',
+      status: status,
+      updatedAt: now.toISOString(),
+      recorder: sess.name || sess.email || 'ผู้ใช้งาน'
+    };
+
+    const result = firebaseCall('PUT', '/records/' + id, record);
+    if (!result) {
+      return { success:false, error:'ไม่สามารถบันทึกข้อมูลได้' };
+    }
+    logAudit('บันทึกพัสดุ (Firebase)', id + ' | ' + data.recType + ' | นศ.' + data.studentId + ' | ' + data.courseCode);
+    return { success:true, id:id };
+  } catch(e) { return { success:false, error:e.message }; }
+}
+
+function getRecordsFirebase(filters) {
+  if (!USE_FIREBASE) return getRecords(filters);
+
+  try {
+    const recordsData = firebaseCall('GET', '/records');
+    if (!recordsData) return [];
+
+    let rows = [];
+    for (const id in recordsData) {
+      const r = recordsData[id];
+      rows.push({
+        id: r.id || id,
+        date: r.date || '',
+        term: r.term || '',
+        year: r.year || '',
+        recType: r.recType || '',
+        parcelType: r.parcelType || '',
+        courseCode: r.courseCode || '',
+        studentId: r.studentId || '',
+        prefix: r.prefix || '',
+        firstName: r.firstName || '',
+        lastName: r.lastName || '',
+        houseNo: r.houseNo || '',
+        street: r.street || '',
+        subDistrict: r.subDistrict || '',
+        district: r.district || '',
+        province: r.province || '',
+        zipCode: r.zipCode || '',
+        phone: r.phone || '',
+        cause: r.cause || '',
+        contactStatus: r.contactStatus || '',
+        send1Track: r.send1Track || '',
+        send1Date: r.send1Date || '',
+        send2Track: r.send2Track || '',
+        send2Date: r.send2Date || '',
+        tags: r.tags || '',
+        remark: r.remark || '',
+        courses: r.courses || '[]',
+        status: r.status || '',
+        updatedAt: r.updatedAt || '',
+        recorder: r.recorder || ''
+      });
+    }
+
+    if (filters) {
+      let filtered = rows;
+      if (filters.recType) filtered = filtered.filter(function(r){ return r.recType === filters.recType; });
+      if (filters.term) filtered = filtered.filter(function(r){ return r.term == filters.term; });
+      if (filters.year) filtered = filtered.filter(function(r){ return r.year == filters.year; });
+      if (filters.contactStatus) filtered = filtered.filter(function(r){ return r.contactStatus === filters.contactStatus; });
+      if (filters.courseCode) filtered = filtered.filter(function(r){ return r.courseCode.indexOf(filters.courseCode) !== -1; });
+      if (filters.search) {
+        const q = String(filters.search).toLowerCase();
+        filtered = filtered.filter(function(r) {
+          return [r.studentId, r.firstName, r.lastName, r.province, r.district, r.zipCode, r.courseCode, r.tags, r.send1Track, r.send2Track]
+            .some(function(v) { return v && v.toLowerCase().indexOf(q) !== -1; });
+        });
+      }
+      return filtered;
+    }
+    return rows;
+  } catch(e) {
+    return { error: 'getRecordsFirebase error: ' + e.message };
+  }
+}
+
+// ============================================================
+// FIREBASE - CRM TICKETS
+// ============================================================
+function addCrmTicketFirebase(data) {
+  if (!USE_FIREBASE) return addCrmTicket(data);
+
+  try {
+    const now = new Date();
+    const sess = _sess();
+    const id = 'CRM-' + Utilities.formatDate(now,'Asia/Bangkok','yyyyMMdd') + '-' + Math.random().toString(36).substr(2, 9);
+    const assigneeName = data.assigneeName || (sess.valid ? sess.name||sess.email : '');
+    const recorderName = data.recorderName || (sess.valid ? sess.name||sess.email : 'ผู้แจ้งออนไลน์');
+
+    const ticket = {
+      id: id,
+      date: now.toISOString(),
+      reporterName: data.reporterName || '',
+      studentId: data.studentId || '',
+      reporterEmail: data.reporterEmail || '',
+      reporterPhone: data.reporterPhone || '',
+      department: data.department || '',
+      educationLevel: data.educationLevel || '',
+      term: data.term || '',
+      year: data.year || '',
+      courses: data.courses || '',
+      issueType: data.issueType || '',
+      detail: data.detail || '',
+      channel: data.channel || 'online',
+      priority: data.priority || 'normal',
+      tags: data.tags || '',
+      status: 'open',
+      assigneeName: assigneeName,
+      assigneeEmail: '',
+      replies: '[]',
+      recorderName: recorderName
+    };
+
+    const result = firebaseCall('PUT', '/crm/' + id, ticket);
+    if (!result) {
+      return { success:false, error:'ไม่สามารถบันทึก CRM ได้' };
+    }
+    logAudit('รับเรื่อง CRM (Firebase)', id + ' | ' + data.reporterName + ' | ' + data.issueType + ' | ผู้รับ: ' + assigneeName);
+    return { success:true, id:id };
+  } catch(e) { return { success:false, error:e.message }; }
+}
+
+function getCrmTicketsFirebase(filters) {
+  if (!USE_FIREBASE) return getCrmTickets(filters);
+
+  try {
+    const crmData = firebaseCall('GET', '/crm');
+    if (!crmData) return [];
+
+    let rows = [];
+    for (const id in crmData) {
+      const r = crmData[id];
+      rows.push({
+        id: r.id || id,
+        date: r.date || '',
+        reporterName: r.reporterName || '',
+        studentId: r.studentId || '',
+        reporterEmail: r.reporterEmail || '',
+        reporterPhone: r.reporterPhone || '',
+        department: r.department || '',
+        educationLevel: r.educationLevel || '',
+        term: r.term || '',
+        year: r.year || '',
+        courses: r.courses || '',
+        issueType: r.issueType || '',
+        detail: r.detail || '',
+        channel: r.channel || '',
+        priority: r.priority || '',
+        tags: r.tags || '',
+        status: r.status || '',
+        assigneeName: r.assigneeName || '',
+        assigneeEmail: r.assigneeEmail || '',
+        replies: r.replies || '[]',
+        recorderName: r.recorderName || ''
+      });
+    }
+
+    let result = rows;
+    if (filters) {
+      if (filters.status) result = result.filter(function(r){ return r.status === filters.status; });
+      if (filters.channel) result = result.filter(function(r){ return r.channel === filters.channel; });
+      if (filters.search) {
+        const q = String(filters.search).toLowerCase();
+        result = result.filter(function(r) {
+          return [r.reporterName, r.studentId, r.detail, r.issueType, r.department]
+            .some(function(v){ return v && v.toLowerCase().indexOf(q) !== -1; });
+        });
+      }
+    }
+    return result.reverse();
+  } catch(e) { return { error: 'getCrmTicketsFirebase: ' + e.message }; }
+}
+
+function replyCrmTicketFirebase(id, text, adminName, adminEmail) {
+  if (!USE_FIREBASE) return replyCrmTicket(id, text, adminName);
+
+  if (!_autoRefreshSession()) return { success:false, error:'SESSION_EXPIRED' };
+  try {
+    const crmData = firebaseCall('GET', '/crm/' + id);
+    if (!crmData) return { success:false, error:'ไม่พบ Ticket' };
+
+    const replies = [];
+    if (crmData.replies) {
+      try {
+        const parsed = JSON.parse(crmData.replies);
+        replies.push(...parsed);
+      } catch(e) {}
+    }
+    replies.push({
+      name: adminName,
+      email: adminEmail || '',
+      text: text,
+      time: new Date().toISOString()
+    });
+
+    const updates = {
+      replies: JSON.stringify(replies)
+    };
+    if (crmData.status === 'open') {
+      updates.status = 'inprogress';
+    }
+
+    const result = firebaseCall('PATCH', '/crm/' + id, updates);
+    if (!result) {
+      return { success:false, error:'ไม่สามารถบันทึก reply ได้' };
+    }
+    return { success:true };
+  } catch(e) { return { success:false, error:e.message }; }
+}
+
+function updateCrmStatusFirebase(id, status) {
+  if (!USE_FIREBASE) return updateCrmStatus(id, status);
+
+  if (!_autoRefreshSession()) return { success:false, error:'SESSION_EXPIRED' };
+  try {
+    const result = firebaseCall('PATCH', '/crm/' + id, { status: status });
+    if (!result) return { success:false, error:'ไม่สามารถอัปเดตได้' };
+    return { success:true };
+  } catch(e) { return { success:false, error:e.message }; }
+}
+
+// ============================================================
+// FIREBASE - INVESTIGATIONS
+// ============================================================
+function getInvestigationsFirebase(filters) {
+  if (!USE_FIREBASE) return getInvestigations(filters);
+
+  try {
+    const investData = firebaseCall('GET', '/investigations');
+    if (!investData) return [];
+
+    let rows = [];
+    for (const id in investData) {
+      const r = investData[id];
+      rows.push({
+        investId: r.investId || id,
+        refId: r.refId || '',
+        createdAt: r.createdAt || '',
+        itemNo: r.itemNo || '',
+        barcode: r.barcode || '',
+        sentDate: r.sentDate || '',
+        courseCode: r.courseCode || '',
+        courseName: r.courseName || '',
+        weight: r.weight || '',
+        fee: r.fee || '',
+        recipientName: r.recipientName || '',
+        recipientAddr: r.recipientAddr || '',
+        cause: r.cause || '',
+        notifyDate: r.notifyDate || '',
+        notifyEmail: r.notifyEmail || '',
+        notifyQty: r.notifyQty || '',
+        replyDate: r.replyDate || '',
+        replyDays: r.replyDays || '',
+        result: r.result || '',
+        resultDetail: r.resultDetail || '',
+        status: r.status || 'รอส่ง',
+        recorder: r.recorder || '',
+        updatedAt: r.updatedAt || ''
+      });
+    }
+
+    let result = rows;
+    if (filters) {
+      if (filters.status) result = result.filter(function(r){ return r.status === filters.status; });
+      if (filters.search) {
+        const q = String(filters.search).toLowerCase();
+        result = result.filter(function(r) {
+          return [r.investId, r.refId, r.barcode, r.itemNo, r.courseCode, r.courseName, r.recipientName]
+            .some(function(v){ return v && v.toLowerCase().indexOf(q) !== -1; });
+        });
+      }
+    }
+    return result;
+  } catch(e) { return { error: 'getInvestigationsFirebase: ' + e.message }; }
+}
+
+function addInvestigationFirebase(data) {
+  if (!USE_FIREBASE) return addInvestigation(data);
+
+  if (!_autoRefreshSession()) return { success:false, error:'SESSION_EXPIRED' };
+  try {
+    const sess = _sess();
+    const now = new Date();
+    const id = 'INV-' + Utilities.formatDate(now,'Asia/Bangkok','yyyyMMdd-HHmmss');
+
+    const investigation = {
+      investId: id,
+      refId: data.refId || '',
+      createdAt: now.toISOString(),
+      itemNo: data.itemNo || '',
+      barcode: data.barcode || '',
+      sentDate: data.sentDate || '',
+      courseCode: data.courseCode || '',
+      courseName: data.courseName || '',
+      weight: data.weight || '',
+      fee: data.fee || '',
+      recipientName: data.recipientName || '',
+      recipientAddr: data.recipientAddr || '',
+      cause: data.cause || '',
+      notifyDate: '',
+      notifyEmail: '',
+      notifyQty: '',
+      replyDate: '',
+      replyDays: '',
+      result: '',
+      resultDetail: '',
+      status: 'รอส่ง',
+      recorder: sess.name || sess.email,
+      updatedAt: now.toISOString()
+    };
+
+    const result = firebaseCall('PUT', '/investigations/' + id, investigation);
+    if (!result) {
+      return { success:false, error:'ไม่สามารถบันทึก investigation ได้' };
+    }
+    return { success:true, id:id };
+  } catch(e) { return { success:false, error:e.message }; }
+}
+
+function updateInvestigationFirebase(investId, updates) {
+  if (!USE_FIREBASE) return updateInvestigation(investId, updates);
+
+  if (!_autoRefreshSession()) return { success:false, error:'SESSION_EXPIRED' };
+  try {
+    const updateData = {};
+    if (updates.itemNo !== undefined) updateData.itemNo = updates.itemNo;
+    if (updates.barcode !== undefined) updateData.barcode = updates.barcode;
+    if (updates.sentDate !== undefined) updateData.sentDate = updates.sentDate;
+    if (updates.weight !== undefined) updateData.weight = updates.weight;
+    if (updates.fee !== undefined) updateData.fee = updates.fee;
+    if (updates.notifyDate !== undefined) updateData.notifyDate = updates.notifyDate;
+    if (updates.notifyEmail !== undefined) updateData.notifyEmail = updates.notifyEmail;
+    if (updates.notifyQty !== undefined) updateData.notifyQty = updates.notifyQty;
+    if (updates.replyDate !== undefined) updateData.replyDate = updates.replyDate;
+    if (updates.replyDays !== undefined) updateData.replyDays = updates.replyDays;
+    if (updates.result !== undefined) updateData.result = updates.result;
+    if (updates.resultDetail !== undefined) updateData.resultDetail = updates.resultDetail;
+    if (updates.status !== undefined) updateData.status = updates.status;
+    updateData.updatedAt = new Date().toISOString();
+
+    const result = firebaseCall('PATCH', '/investigations/' + investId, updateData);
+    if (!result) {
+      return { success:false, error:'ไม่สามารถอัปเดตได้' };
+    }
+    logAudit('อัปเดตสอบสวน (Firebase)', investId + ' | สถานะ: ' + (updates.status||'-') + ' | ผล: ' + (updates.result||'-'));
+    return { success:true };
+  } catch(e) { return { success:false, error:e.message }; }
+}
+
+// ============================================================
+// MIGRATION FUNCTIONS - Sheets → Firebase
+// ============================================================
+function migrateUsersToFirebase() {
+  if (!USE_FIREBASE) return { success:false, error:'Firebase ยังไม่เปิดใช้' };
+  try {
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SH_USERS);
+    if (!sheet) return { success:false, error:'ไม่พบ Sheet ผู้ใช้งาน' };
+
+    const data = sheet.getDataRange().getValues();
+    let count = 0;
+    for (let i = 1; i < data.length; i++) {
+      const row = data[i];
+      if (!row[0]) continue; // skip empty rows
+
+      const userData = {
+        email: row[0],
+        passwordHash: row[1],
+        role: row[2] || 'staff',
+        name: row[3] || '',
+        active: row[4] !== false && row[4] !== 'FALSE',
+        lastLogin: row[5] || '',
+        perms: row[6] || ''
+      };
+
+      const result = firebaseCall('PUT', '/users/' + encodeURIComponent(row[0]), userData);
+      if (result) count++;
+    }
+    return { success:true, migratedCount:count, message:'โอนย้าย ' + count + ' ผู้ใช้งานแล้ว' };
+  } catch(e) { return { success:false, error:e.message }; }
+}
+
+function migrateRecordsToFirebase() {
+  if (!USE_FIREBASE) return { success:false, error:'Firebase ยังไม่เปิดใช้' };
+  try {
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SH_DATA);
+    if (!sheet) return { success:false, error:'ไม่พบ Sheet ข้อมูลพัสดุ' };
+
+    const data = sheet.getDataRange().getValues();
+    let count = 0;
+    for (let i = 1; i < data.length; i++) {
+      const row = data[i];
+      if (!row[0]) continue;
+
+      const record = {
+        id: row[0],
+        date: row[1] instanceof Date ? row[1].toISOString() : row[1],
+        term: row[2],
+        year: row[3],
+        recType: row[4],
+        parcelType: row[5],
+        courseCode: row[6],
+        studentId: row[7],
+        prefix: row[8],
+        firstName: row[9],
+        lastName: row[10],
+        houseNo: row[11],
+        street: row[12],
+        subDistrict: row[13],
+        district: row[14],
+        province: row[15],
+        zipCode: row[16],
+        phone: row[17],
+        cause: row[18],
+        contactStatus: row[19],
+        send1Track: row[20],
+        send1Date: row[21] instanceof Date ? row[21].toISOString() : row[21],
+        send2Track: row[22],
+        send2Date: row[23] instanceof Date ? row[23].toISOString() : row[23],
+        tags: row[24],
+        remark: row[25],
+        courses: row[26],
+        status: row[27],
+        updatedAt: row[28] instanceof Date ? row[28].toISOString() : row[28],
+        recorder: row[29]
+      };
+
+      const result = firebaseCall('PUT', '/records/' + row[0], record);
+      if (result) count++;
+    }
+    return { success:true, migratedCount:count, message:'โอนย้าย ' + count + ' พัสดุแล้ว' };
+  } catch(e) { return { success:false, error:e.message }; }
+}
+
+function migrateCrmToFirebase() {
+  if (!USE_FIREBASE) return { success:false, error:'Firebase ยังไม่เปิดใช้' };
+  try {
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SH_CRM);
+    if (!sheet) return { success:false, error:'ไม่พบ Sheet CRM' };
+
+    const data = sheet.getDataRange().getValues();
+    let count = 0;
+    for (let i = 1; i < data.length; i++) {
+      const row = data[i];
+      if (!row[0]) continue;
+
+      const ticket = {
+        id: row[0],
+        date: row[1] instanceof Date ? row[1].toISOString() : row[1],
+        reporterName: row[2],
+        studentId: row[3],
+        reporterEmail: row[4],
+        reporterPhone: row[5],
+        department: row[6],
+        educationLevel: row[7],
+        term: row[8],
+        year: row[9],
+        courses: row[10],
+        issueType: row[11],
+        detail: row[12],
+        channel: row[13],
+        priority: row[14],
+        tags: row[15],
+        status: row[16],
+        assigneeName: row[17],
+        assigneeEmail: row[18],
+        replies: row[19],
+        recorderName: row[20]
+      };
+
+      const result = firebaseCall('PUT', '/crm/' + row[0], ticket);
+      if (result) count++;
+    }
+    return { success:true, migratedCount:count, message:'โอนย้าย ' + count + ' CRM tickets แล้ว' };
+  } catch(e) { return { success:false, error:e.message }; }
+}
+
+function migrateInvestigationsToFirebase() {
+  if (!USE_FIREBASE) return { success:false, error:'Firebase ยังไม่เปิดใช้' };
+  try {
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SH_INVEST);
+    if (!sheet) return { success:false, error:'ไม่พบ Sheet investigations' };
+
+    const data = sheet.getDataRange().getValues();
+    let count = 0;
+    for (let i = 1; i < data.length; i++) {
+      const row = data[i];
+      if (!row[0]) continue;
+
+      const investigation = {
+        investId: row[0],
+        refId: row[1],
+        createdAt: row[2] instanceof Date ? row[2].toISOString() : row[2],
+        itemNo: row[3],
+        barcode: row[4],
+        sentDate: row[5] instanceof Date ? row[5].toISOString() : row[5],
+        courseCode: row[6],
+        courseName: row[7],
+        weight: row[8],
+        fee: row[9],
+        recipientName: row[10],
+        recipientAddr: row[11],
+        cause: row[12],
+        notifyDate: row[13] instanceof Date ? row[13].toISOString() : row[13],
+        notifyEmail: row[14],
+        notifyQty: row[15],
+        replyDate: row[16] instanceof Date ? row[16].toISOString() : row[16],
+        replyDays: row[17],
+        result: row[18],
+        resultDetail: row[19],
+        status: row[20],
+        recorder: row[21],
+        updatedAt: row[22] instanceof Date ? row[22].toISOString() : row[22]
+      };
+
+      const result = firebaseCall('PUT', '/investigations/' + row[0], investigation);
+      if (result) count++;
+    }
+    return { success:true, migratedCount:count, message:'โอนย้าย ' + count + ' investigations แล้ว' };
+  } catch(e) { return { success:false, error:e.message }; }
+}
+
+// Run all migrations at once
+function migrateAllToFirebase() {
+  if (!USE_FIREBASE) return { success:false, error:'Firebase ยังไม่เปิดใช้ - ตั้ง USE_FIREBASE = true ก่อน' };
+  try {
+    Logger.log('เริ่มการโอนย้ายข้อมูลทั้งหมดไปยัง Firebase...');
+    const results = {
+      users: migrateUsersToFirebase(),
+      records: migrateRecordsToFirebase(),
+      crm: migrateCrmToFirebase(),
+      investigations: migrateInvestigationsToFirebase()
+    };
+    Logger.log('โอนย้ายเสร็จ: ' + JSON.stringify(results));
+    return { success:true, results:results };
+  } catch(e) {
+    return { success:false, error:e.message };
+  }
+}
+
+// ============================================================
 // SETTINGS
 // ============================================================
 function getSettings() {
