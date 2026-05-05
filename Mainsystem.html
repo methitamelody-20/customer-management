@@ -966,6 +966,14 @@ tbody td{padding:12px;vertical-align:middle}
               <tbody id="listBody"><tr><td colspan="14" style="text-align:center;padding:30px;color:var(--gray3)">กำลังโหลด...</td></tr></tbody>
             </table>
           </div>
+          <div style="padding:12px 16px;border-top:1px solid var(--gray1);display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap" class="no-print" id="listPagination">
+            <div style="font-size:13px;color:var(--gray3)">หน้า <span id="listPage">1</span> / <span id="listPages">1</span></div>
+            <div style="display:flex;gap:6px">
+              <button class="btn btn-outline btn-sm" id="listPrevBtn" onclick="changeListPage(-1)">← ก่อนหน้า</button>
+              <button class="btn btn-outline btn-sm" id="listNextBtn" onclick="changeListPage(1)">ถัดไป →</button>
+            </div>
+            <div style="font-size:12px;color:var(--gray3)">แสดง <span id="listStart">0</span>-<span id="listEnd">0</span> จาก <span id="listTotal">0</span> รายการ</div>
+          </div>
         </div>
       </div>
 
@@ -3039,6 +3047,8 @@ function clearRecord(type) {
 // ============================================================
 // LIST — ดึงจาก Sheets จริง
 // ============================================================
+var listPageState = { currentPage: 1, pageSize: 20, totalRecords: 0, allRecords: [] };
+
 function loadList() {
   const filters={
     recType:document.getElementById('lt_type').value,
@@ -3047,10 +3057,10 @@ function loadList() {
     contactStatus:document.getElementById('lt_contact').value,
     search:document.getElementById('lt_search').value.trim(),
   };
+  listPageState.currentPage = 1;
   document.getElementById('listBody').innerHTML='<tr><td colspan="14" style="text-align:center;padding:30px;color:var(--gray3)"><div class="spinner" style="margin:0 auto 10px"></div>กำลังโหลด...</td></tr>';
   google.script.run
     .withSuccessHandler(function(res){
-      // debug: แสดง response จริง
       console.log('getRecords response:', JSON.stringify(res).substring(0,200));
       renderList(res);
     })
@@ -3063,11 +3073,26 @@ function loadList() {
     .getRecords(filters);
 }
 
+function changeListPage(direction) {
+  const maxPages = Math.ceil(listPageState.totalRecords / listPageState.pageSize);
+  const newPage = listPageState.currentPage + direction;
+  if (newPage < 1 || newPage > maxPages) return;
+  listPageState.currentPage = newPage;
+  renderListPage();
+}
+
+function renderListPage() {
+  const start = (listPageState.currentPage - 1) * listPageState.pageSize;
+  const end = start + listPageState.pageSize;
+  const pageRecords = listPageState.allRecords.slice(start, end);
+  renderListRows(pageRecords, start);
+  updateListPagination();
+}
+
 function renderList(rows) {
   if(!rows||rows.error){
     var errMsg = (rows&&rows.error)||'เกิดข้อผิดพลาด';
     if(errMsg==='SESSION_EXPIRED') {
-      // session หมด — login ใหม่อัตโนมัติด้วย credential เดิม
       var savedEmail = localStorage.getItem('stou_email')||'';
       var savedPass  = localStorage.getItem('stou_pass')||'';
       if(savedEmail && savedPass) {
@@ -3090,15 +3115,22 @@ function renderList(rows) {
     return;
   }
   allRecords=rows;
+  listPageState.allRecords=rows;
+  listPageState.totalRecords=rows.length;
   document.getElementById('listSub').textContent='พบ '+rows.length+' รายการ';
-  const canDel=currentRole==='superadmin';
-  const now=new Date(); const todayStr=formatDate(now).split(' ')[0];
   if(!rows.length){
     document.getElementById('listBody').innerHTML='<tr><td colspan="14" style="text-align:center;padding:30px;color:var(--gray3)">ไม่พบรายการ</td></tr>';
+    document.getElementById('listPagination').style.display='none';
     return;
   }
+  document.getElementById('listPagination').style.display='flex';
+  renderListPage();
+}
+
+function renderListRows(rows, startIdx) {
+  const canDel=currentRole==='superadmin';
+  const now=new Date(); const todayStr=formatDate(now).split(' ')[0];
   document.getElementById('listBody').innerHTML=rows.map(function(r,i){
-    // ชุดวิชา — แสดงจาก courses JSON
     var coursesTxt = r.courseCode||'-';
     try { var cs=JSON.parse(r.courses||'[]'); if(cs.length) coursesTxt=cs.map(function(c){return c.code;}).join(', '); } catch(e){}
     var isNew=r.date&&r.date.toString().split(' ')[0]===todayStr;
@@ -3106,9 +3138,8 @@ function renderList(rows) {
     var tags=r.tags?r.tags.split(',').filter(Boolean):[];
     var delBtn=canDel?('<button class="btn btn-sm" style="background:var(--red);color:#fff;font-size:11px;padding:4px 8px" onclick="deleteItem(\''+r.id+'\')">🗑️</button>'):'—';
     var printBtn='<button class="btn btn-outline btn-sm" title="พิมพ์" onclick="printById(\''+r.id+'\')" style="font-size:11px;padding:4px 8px">🖨️</button>';
-    var emailBtn=r.phone?'':'';  // จะเพิ่มถ้ามีอีเมล นศ.
     return '<tr'+(isNew?' style="background:#fffbf0"':'')+'>'
-      +'<td style="color:var(--gray3)">'+(i+1)+nb+'</td>'
+      +'<td style="color:var(--gray3)">'+(startIdx+i+1)+nb+'</td>'
       +'<td>'+typeBadge(r.recType)+'</td>'
       +'<td style="font-size:11px;white-space:nowrap">'+(r.date||'')+'</td>'
       +'<td style="font-size:11px">'+(r.term||'')+'/'+(r.year||'')+'</td>'
@@ -3125,6 +3156,19 @@ function renderList(rows) {
       +'<td class="no-print">'+delBtn+'</td>'
       +'</tr>';
   }).join('');
+}
+
+function updateListPagination() {
+  const maxPages = Math.ceil(listPageState.totalRecords / listPageState.pageSize);
+  const start = (listPageState.currentPage - 1) * listPageState.pageSize + 1;
+  const end = Math.min(listPageState.currentPage * listPageState.pageSize, listPageState.totalRecords);
+  document.getElementById('listPage').textContent = listPageState.currentPage;
+  document.getElementById('listPages').textContent = maxPages || 1;
+  document.getElementById('listStart').textContent = start;
+  document.getElementById('listEnd').textContent = end;
+  document.getElementById('listTotal').textContent = listPageState.totalRecords;
+  document.getElementById('listPrevBtn').disabled = listPageState.currentPage <= 1;
+  document.getElementById('listNextBtn').disabled = listPageState.currentPage >= maxPages;
 }
 
 function deleteItem(id) {
