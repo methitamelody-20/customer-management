@@ -476,8 +476,12 @@ tbody td{padding:12px;vertical-align:middle}
       <button class="nav-btn" onclick="go('labels',this)" data-page="labels"><span class="ic">🖨️</span>พิมพ์ใบจ่าหน้า</button>
       <button class="nav-btn" onclick="go('invest',this)" data-page="invest"><span class="ic">🔎</span>สอบสวนไปรษณีย์</button>
       <button class="nav-btn" onclick="go('crm',this)" data-page="crm">
-        <span class="ic">💬</span>CRM แจ้งปัญหา
-        <span class="cnt red" id="crmBadge">3</span>
+        <span class="ic">📝</span>บันทึกข้อมูลรับแจ้งปัญหา CRM
+        <span class="cnt red" id="crmBadge" style="display:none">0</span>
+      </button>
+      <button class="nav-btn" onclick="go('crm-list',this)" data-page="crm-list">
+        <span class="ic">💬</span>รายการรวมแจ้งปัญหา CRM
+        <span class="cnt red" id="crmBadge2">3</span>
       </button>
 
       <div class="nav-sec nav-superadmin" style="margin-top:6px">จัดการระบบ</div>
@@ -962,8 +966,8 @@ tbody td{padding:12px;vertical-align:middle}
         <div class="card" style="padding:0">
           <div class="table-wrap">
             <table>
-              <thead><tr><th>#</th><th>ประเภท</th><th>วันที่</th><th>ภาค/ปี</th><th>ชุดวิชา</th><th>รหัสนักศึกษา</th><th>ชื่อ-สกุล</th><th>จังหวัด/อำเภอ</th><th>สาเหตุ</th><th>ติดต่อ</th><th>Tag</th><th>ใบจ่าหน้า/อีเมล</th><th class="no-print">ลบข้อมูล</th><th class="no-print">จัดการ</th></tr></thead>
-              <tbody id="listBody"><tr><td colspan="14" style="text-align:center;padding:30px;color:var(--gray3)">กำลังโหลด...</td></tr></tbody>
+              <thead><tr><th>#</th><th>ประเภท</th><th>วันที่</th><th>ภาค/ปี</th><th>ชุดวิชา</th><th>รหัสนักศึกษา</th><th>ชื่อ-สกุล</th><th>จังหวัด/อำเภอ</th><th>สาเหตุ</th><th>ติดต่อ</th><th>Tag</th><th>สถานะ</th><th>หมายเหตุ</th><th>ใบจ่าหน้า/อีเมล</th><th class="no-print">ลบข้อมูล</th><th class="no-print">จัดการ</th></tr></thead>
+              <tbody id="listBody"><tr><td colspan="16" style="text-align:center;padding:30px;color:var(--gray3)">กำลังโหลด...</td></tr></tbody>
             </table>
           </div>
           <div style="padding:12px 16px;border-top:1px solid var(--gray1);display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap" class="no-print" id="listPagination">
@@ -1275,15 +1279,14 @@ tbody td{padding:12px;vertical-align:middle}
 
       <div id="page-crm" class="page">
         <div class="sec-head">
-          <div><h2>CRM แจ้งปัญหา</h2><div class="sub">รับและติดตามปัญหาจากนักศึกษาและหน่วยงาน</div></div>
+          <div><h2>บันทึกข้อมูลรับแจ้งปัญหา CRM</h2><div class="sub">กรอกข้อมูลจาก นศ./หน่วยงาน</div></div>
           <div style="display:flex;gap:8px">
-            <button class="btn btn-primary btn-sm" id="btnToggleCrmForm" onclick="toggleCrmForm()">➕ รับแจ้งด้วยตนเอง</button>
-            <button class="btn btn-outline btn-sm" onclick="showCrmPublicLink()">🔗 ลิงก์สำหรับ นศ.</button>
+            <button class="btn btn-outline btn-sm" onclick="showCrmPublicLink()">🔗 ลิ้งค์แจ้งปัญหาสำหรับภายนอก</button>
           </div>
         </div>
 
         <!-- ฟอร์มรับแจ้ง — ฝังในหน้า ซ่อน/แสดงได้ -->
-        <div id="crmInlineForm" style="display:none;margin-bottom:18px">
+        <div id="crmInlineForm" style="display:block;margin-bottom:18px">
           <div class="card">
             <div class="card-title" style="margin-bottom:14px">💬 รับแจ้งปัญหา (เจ้าหน้าที่)
               <span style="font-size:12px;font-weight:400;color:var(--gray3);margin-left:8px">กรอกข้อมูลจาก นศ./หน่วยงาน</span>
@@ -1418,12 +1421,20 @@ tbody td{padding:12px;vertical-align:middle}
           </div><!-- /card -->
         </div><!-- /crmInlineForm -->
 
+      </div>
+
+      <div id="page-crm-list" class="page">
+        <div class="sec-head">
+          <div><h2>รายการรวมแจ้งปัญหา CRM</h2><div class="sub">ติดตามปัญหาจากนักศึกษาและหน่วยงานทั้งหมด</div></div>
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-outline btn-sm" onclick="showCrmPublicLink()">🔗 ลิ้งค์แจ้งปัญหาสำหรับภายนอก</button>
+          </div>
+        </div>
         <div class="filter-bar no-print">
           <div><label>สถานะ</label><select class="fsel" id="crm_filter_status" onchange="loadCrm()" style="width:140px"><option value="">ทั้งหมด</option><option value="open">รอรับเรื่อง</option><option value="inprogress">กำลังดำเนินการ</option><option value="resolved">แก้ไขแล้ว</option><option value="closed">ปิดเรื่อง</option></select></div>
           <div><label>ช่องทาง</label><select class="fsel" id="crm_filter_ch" onchange="loadCrm()" style="width:120px"><option value="">ทั้งหมด</option><option value="online">ออนไลน์</option><option value="phone">โทรศัพท์</option><option value="line">LINE</option><option value="letter">จดหมาย</option><option value="walkin">มาด้วยตนเอง</option></select></div>
           <div><label>ค้นหา</label><input class="finput" id="crm_search" placeholder="ชื่อ / รหัส / ปัญหา" oninput="loadCrm()" style="width:180px"></div>
         </div>
-
         <div class="crm-list" id="crmList">
           <div style="text-align:center;padding:30px;color:var(--gray3)">กำลังโหลด...</div>
         </div>
@@ -3111,7 +3122,7 @@ function renderList(rows) {
   listPageState.totalRecords=rows.length;
   document.getElementById('listSub').textContent='พบ '+rows.length+' รายการ';
   if(!rows.length){
-    document.getElementById('listBody').innerHTML='<tr><td colspan="14" style="text-align:center;padding:30px;color:var(--gray3)">ไม่พบรายการ</td></tr>';
+    document.getElementById('listBody').innerHTML='<tr><td colspan="16" style="text-align:center;padding:30px;color:var(--gray3)">ไม่พบรายการ</td></tr>';
     document.getElementById('listPagination').style.display='none';
     return;
   }
@@ -3130,6 +3141,13 @@ function renderListRows(rows, startIdx) {
     var tags=r.tags?r.tags.split(',').filter(Boolean):[];
     var delBtn=canDel?('<button class="btn btn-sm" style="background:var(--red);color:#fff;font-size:11px;padding:4px 8px" onclick="deleteItem(\''+r.id+'\')">🗑️</button>'):'—';
     var printBtn='<button class="btn btn-outline btn-sm" title="พิมพ์" onclick="printById(\''+r.id+'\')" style="font-size:11px;padding:4px 8px">🖨️</button>';
+    var statusOpts=['ส่งใหม่แล้ว','รอดำเนินการ','อื่นๆ'];
+    var statusCell='<select style="font-size:11px;padding:3px 6px;border:1px solid #ccc;border-radius:4px;max-width:110px" onchange="quickUpdateStatus(\''+r.id+'\',this.value)">'
+      +statusOpts.map(function(s){return '<option'+(r.status===s?' selected':'')+'>'+s+'</option>';}).join('')
+      +'</select>';
+    var remarkTxt=(r.remark||'').slice(0,40)+(r.remark&&r.remark.length>40?'…':'');
+    var remarkCell='<span style="font-size:11px;color:var(--gray3)" title="'+(r.remark||'')+'">'+remarkTxt+'</span>';
+    var editBtn='<button class="btn btn-outline btn-sm" title="ดูรายละเอียด/แก้ไข" onclick="openRecordDetail('+JSON.stringify(r)+')" style="font-size:11px;padding:4px 8px">✏️</button>';
     return '<tr'+(isNew?' style="background:#fffbf0"':'')+'>'
       +'<td style="color:var(--gray3)">'+(startIdx+i+1)+nb+'</td>'
       +'<td>'+typeBadge(r.recType)+'</td>'
@@ -3142,10 +3160,13 @@ function renderListRows(rows, startIdx) {
       +'<td style="color:var(--red);font-size:11px">'+(r.cause||'')+'</td>'
       +'<td>'+contactIcon(r.contactStatus)+'</td>'
       +'<td>'+renderTagChips(tags)+'</td>'
+      +'<td>'+statusCell+'</td>'
+      +'<td style="max-width:140px">'+remarkCell+'</td>'
       +'<td class="no-print" style="white-space:nowrap">'+printBtn
         +'<button class="btn btn-outline btn-sm" title="แจ้งทางอีเมล" onclick="openEmailModalById(\''+r.id+'\')" style="font-size:11px;padding:4px 8px;margin-left:4px">📧</button>'
       +'</td>'
       +'<td class="no-print">'+delBtn+'</td>'
+      +'<td class="no-print">'+editBtn+'</td>'
       +'</tr>';
   }).join('');
 }
@@ -3173,6 +3194,67 @@ function deleteItem(id) {
     })
     .withFailureHandler(showError)
     .deleteRecord(id);
+}
+
+function quickUpdateStatus(id, status) {
+  google.script.run
+    .withSuccessHandler(function(res){ if(res.success) showToast('อัปเดตสถานะแล้ว','success'); else showToast('❌ '+res.error,'error'); })
+    .withFailureHandler(showError)
+    .updateRecordField(id, 'status', status);
+}
+
+function openRecordDetail(r) {
+  var coursesTxt = r.courseCode||'-';
+  try { var cs=JSON.parse(r.courses||'[]'); if(cs.length) coursesTxt=cs.map(function(c){return c.code+(c.name?' ('+c.name+')':'');}).join(', '); } catch(e){}
+  var html = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px 20px;font-size:13px">'
+    +'<div><span style="color:var(--gray3)">รหัส:</span> <strong>'+esc(r.id||'')+'</strong></div>'
+    +'<div><span style="color:var(--gray3)">ประเภท:</span> '+typeBadge(r.recType||'')+'</div>'
+    +'<div><span style="color:var(--gray3)">วันที่:</span> '+esc(r.date||'')+'</div>'
+    +'<div><span style="color:var(--gray3)">ภาค/ปี:</span> '+(r.term||'')+' / '+(r.year||'')+'</div>'
+    +'<div><span style="color:var(--gray3)">รหัสนักศึกษา:</span> '+esc(r.studentId||'')+'</div>'
+    +'<div><span style="color:var(--gray3)">ชื่อ-สกุล:</span> '+esc((r.prefix||'')+(r.firstName||'')+' '+(r.lastName||''))+'</div>'
+    +'<div class="full" style="grid-column:1/-1"><span style="color:var(--gray3)">ชุดวิชา:</span> '+esc(coursesTxt)+'</div>'
+    +'<div><span style="color:var(--gray3)">จังหวัด:</span> '+esc(r.province||'')+'</div>'
+    +'<div><span style="color:var(--gray3)">อำเภอ:</span> '+esc(r.district||'')+'</div>'
+    +'<div><span style="color:var(--gray3)">สาเหตุ:</span> <span style="color:var(--red)">'+esc(r.cause||'')+'</span></div>'
+    +'<div><span style="color:var(--gray3)">ติดต่อ:</span> '+contactIcon(r.contactStatus)+'</div>'
+    +'<div><span style="color:var(--gray3)">ผู้บันทึก:</span> '+esc(r.recorder||'')+'</div>'
+    +'<div><span style="color:var(--gray3)">วันที่อัปเดต:</span> '+esc(r.updatedAt||'')+'</div>'
+    +'</div>'
+    +'<hr style="margin:14px 0;border-color:var(--gray1)">'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:13px">'
+    +'<div class="fg"><label class="flbl">สถานะ</label>'
+    +'<select class="fsel" id="rd_status"><option>ส่งใหม่แล้ว</option><option>รอดำเนินการ</option><option>อื่นๆ</option></select></div>'
+    +'<div class="fg"><label class="flbl">หมายเหตุ</label>'
+    +'<input class="finput" id="rd_remark" value="'+esc(r.remark||'')+'" placeholder="หมายเหตุ..."></div>'
+    +'</div>'
+    +'<div style="margin-top:14px;display:flex;gap:8px">'
+    +'<button class="btn btn-primary btn-sm" onclick="saveRecordDetail(\''+esc(r.id||'')+'\')">💾 บันทึก</button>'
+    +'<button class="btn btn-outline btn-sm" onclick="document.getElementById(\'recordDetailModal\').classList.add(\'hidden\')">ปิด</button>'
+    +'</div>';
+  var modal = document.getElementById('recordDetailModal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'recordDetailModal';
+    modal.className = 'modal-overlay';
+    modal.innerHTML = '<div class="modal-box" style="max-width:640px"><div class="modal-title">📋 รายละเอียดรายการ <button onclick="this.closest(\'.modal-overlay\').classList.add(\'hidden\')" style="float:right;border:none;background:none;font-size:18px;cursor:pointer">✕</button></div><div id="recordDetailBody"></div></div>';
+    document.body.appendChild(modal);
+  }
+  document.getElementById('recordDetailBody').innerHTML = html;
+  modal.classList.remove('hidden');
+  setTimeout(function(){ var s=document.getElementById('rd_status'); if(s && r.status) s.value=r.status; },50);
+}
+
+function saveRecordDetail(id) {
+  var status = document.getElementById('rd_status')?.value || '';
+  var remark = document.getElementById('rd_remark')?.value || '';
+  google.script.run
+    .withSuccessHandler(function(res){
+      if(res.success){ showToast('บันทึกแล้ว','success'); loadList(); document.getElementById('recordDetailModal').classList.add('hidden'); }
+      else showToast('❌ '+res.error,'error');
+    })
+    .withFailureHandler(showError)
+    .updateRecordFields(id, {status:status, remark:remark});
 }
 
 // ============================================================

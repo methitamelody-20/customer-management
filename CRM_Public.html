@@ -120,7 +120,7 @@ html,body{min-height:100%;font-family:var(--font);color:var(--text);background:v
       <div class="logo-ico">📚</div>
       <div>
         <h1>ติดตามปัญหาเอกสารการสอน</h1>
-        <p>งานนวัตกรรมเพื่อการบริการการศึกษา ศูนย์บริการการสอนทางไปรษณย์ สำนักบริการการศึกษา มหาวิทยาลัยสุโขทัยธรรมาธิราช</p>
+        <p>งานนวัตกรรมเพื่อการบริการการศึกษา ศูนย์บริการการสอนทางไปรษณีย์ สำนักบริการการศึกษา มหาวิทยาลัยสุโขทัยธรรมาธิราช</p>
       </div>
     </div>
     <p>กรอกแบบฟอร์มนี้เพื่อแจ้งปัญหาเกี่ยวกับเอกสารการสอน เจ้าหน้าที่จะติดต่อกลับโดยเร็ว</p>
@@ -137,7 +137,7 @@ html,body{min-height:100%;font-family:var(--font);color:var(--text);background:v
 
     <!-- 1. ข้อมูลผู้แจ้ง -->
     <div class="card">
-      <div class="card-title"><span class="num">2</span> ข้อมูลผู้แจ้งปัญหา</div>
+      <div class="card-title"><span class="num">1</span> ข้อมูลผู้แจ้งปัญหา</div>
       <div class="grid2">
         <div class="fg">
           <label class="flbl">ชื่อ-นามสกุล <span class="req">*</span></label>
@@ -212,11 +212,50 @@ html,body{min-height:100%;font-family:var(--font);color:var(--text);background:v
           </select>
         </div>
       </div>
+      <div class="section-divider"></div>
+      <div class="fg" style="margin-bottom:8px">
+        <label class="flbl" style="cursor:pointer;user-select:none" onclick="toggleAddress()">
+          📍 ที่อยู่ <span class="hint">(กรอกกรณีเปลี่ยนที่อยู่ด่วน)</span>
+          <span id="addrToggleIcon" style="margin-left:6px;font-size:12px;color:var(--sky)">▼ แสดง</span>
+        </label>
+      </div>
+      <div id="addrSection" style="display:none">
+        <div class="grid2">
+          <div class="fg">
+            <label class="flbl">บ้านเลขที่</label>
+            <input class="finput" id="f_hno" placeholder="123/45">
+          </div>
+          <div class="fg">
+            <label class="flbl">ถนน</label>
+            <input class="finput" id="f_road" placeholder="ถนน">
+          </div>
+        </div>
+        <div class="grid2">
+          <div class="fg">
+            <label class="flbl">ตำบล/แขวง</label>
+            <input class="finput" id="f_sub" placeholder="พิมพ์ตำบล...">
+          </div>
+          <div class="fg">
+            <label class="flbl">อำเภอ/เขต</label>
+            <input class="finput" id="f_dist" placeholder="พิมพ์อำเภอ...">
+          </div>
+        </div>
+        <div class="grid2">
+          <div class="fg">
+            <label class="flbl">จังหวัด</label>
+            <input class="finput" id="f_prov" placeholder="จังหวัด">
+          </div>
+          <div class="fg">
+            <label class="flbl">รหัสไปรษณีย์</label>
+            <input class="finput" id="f_zip" placeholder="10120" maxlength="5">
+          </div>
+        </div>
+      </div>
     </div>
 
-    <!-- 3. ประเภทปัญหา -->
+    <!-- 2. ประเภทปัญหา -->
     <div class="card">
-      <div class="card-title"><span class="num">3</span> ประเภทปัญหา</div>
+      <div class="card-title"><span class="num">2</span> ประเภทปัญหา</div>
       <div class="fg">
         <label class="flbl">ประเภทปัญหาที่ต้องการสอบถาม <span class="req">*</span></label>
         <select class="fsel" id="f_issuetype" onchange="checkIssueOther(this.value)" required>
@@ -228,9 +267,9 @@ html,body{min-height:100%;font-family:var(--font);color:var(--text);background:v
       </div>
     </div>
 
-    <!-- 2. ภาค/ปี + ชุดวิชา -->
+    <!-- 3. ภาค/ปี + ชุดวิชา -->
     <div class="card">
-      <div class="card-title"><span class="num">2</span> ภาคการศึกษาและชุดวิชา</div>
+      <div class="card-title"><span class="num">3</span> ภาคการศึกษาและชุดวิชา</div>
       <div class="grid2" style="margin-bottom:14px">
         <div class="fg">
           <label class="flbl">ภาคการศึกษา <span class="req">*</span></label>
@@ -446,6 +485,17 @@ function acKeydown(e, ns) {
 }
 
 // ============================================================
+// ADDRESS TOGGLE
+// ============================================================
+function toggleAddress() {
+  const sec = document.getElementById('addrSection');
+  const ico = document.getElementById('addrToggleIcon');
+  const shown = sec.style.display !== 'none';
+  sec.style.display = shown ? 'none' : 'block';
+  ico.textContent = shown ? '▼ แสดง' : '▲ ซ่อน';
+}
+
+// ============================================================
 // QUESTION TYPE
 // ============================================================
 function selQ(btn, val) {
@@ -628,6 +678,14 @@ function submitForm() {
     priority:        document.getElementById('f_priority').value,
     tags:            '',
     recorderName:    'ผู้แจ้งออนไลน์',
+    address:         [
+      document.getElementById('f_hno')?.value.trim(),
+      document.getElementById('f_road')?.value.trim(),
+      document.getElementById('f_sub')?.value.trim(),
+      document.getElementById('f_dist')?.value.trim(),
+      document.getElementById('f_prov')?.value.trim(),
+      document.getElementById('f_zip')?.value.trim(),
+    ].filter(Boolean).join(' '),
   };
 
   google.script.run
@@ -683,12 +741,15 @@ function loadIssueTypes() {
     .withSuccessHandler(function(settings) {
       const issueSelect = document.getElementById('f_issuetype');
       if (!issueSelect) return;
-      const issues = (settings && settings.issueTypes) ? settings.issueTypes : [
-        'สอบถามเกี่ยวกับเอกสารการสอน',
-        'ไม่ได้รับเอกสาร',
-        'เอกสารชำรุด/ไม่ครบ',
-        'ส่งผิดวิชา',
-        'เอกสารไม่ถึงตามกำหนด'
+      const issues = (settings && settings.issueTypes && settings.issueTypes.length) ? settings.issueTypes : [
+        'พิมพ์เพิ่ม','ชุดปรับปรุง','ชุดผลิตใหม่',
+        'ปัญหาทวงถามหนังสือ (ไม่ได้สั่งซื้อ/แผน ก2-ก3)',
+        'สอบถามทะเบียนและวัดผล (ลงทะเบียน/สอบ)',
+        'สอบถามกิจกรรมประจำชุดวิชา',
+        'สอบถามอบรมเข้มเสริมประสบการณ์วิชาชีพ',
+        'สอบถามสอนเสริมออนไลน์',
+        'สอบถามโครงการสัมฤทธิบัตร',
+        'ไม่ได้รับเอกสาร','เอกสารชำรุด','ส่งผิดวิชา'
       ];
       const currentVal = issueSelect.value;
       issueSelect.innerHTML = '<option value="">— เลือกประเภทปัญหา —</option>' +
