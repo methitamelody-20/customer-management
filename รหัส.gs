@@ -1302,23 +1302,106 @@ function assignCrmTicket(id, adminName) {
   return _updateCrmField(id, 18, adminName);
 }
 
-function replyCrmTicket(id, text, adminName) {
+function replyCrmTicket(id, text, adminName, adminEmail) {
   if (!_autoRefreshSession()) return { success:false, error:'SESSION_EXPIRED' };
   try {
+    const sess = _sess();
+    const fromEmail = adminEmail || (sess && sess.email) || '';
+    const fromName  = adminName  || (sess && sess.name)  || 'เจ้าหน้าที่';
+
     const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SH_CRM);
     const data  = sheet.getDataRange().getValues();
     for (let i=1;i<data.length;i++) {
       if (data[i][0]===id) {
         const replies = JSON.parse(data[i][19]||'[]');
-        replies.push({name:adminName, text:text, time:fmtDate(new Date())});
+        replies.push({name:fromName, email:fromEmail, text:text, time:fmtDate(new Date())});
         sheet.getRange(i+1,20).setValue(JSON.stringify(replies));
         // อัปเดตสถานะเป็น inprogress ถ้ายังเป็น open
         if (data[i][16]==='open') sheet.getRange(i+1,17).setValue('inprogress');
-        return { success:true };
+
+        // ส่งอีเมลไปหา นศ./ผู้แจ้ง
+        const reporterEmail = (data[i][4]||'').toString().trim();
+        const reporterName  = (data[i][2]||'').toString().trim() || 'ผู้แจ้ง';
+        const issueType     = (data[i][11]||'').toString().trim() || 'แจ้งปัญหา';
+
+        let emailSent = false;
+        let emailError = '';
+        if (reporterEmail && /\S+@\S+\.\S+/.test(reporterEmail)) {
+          try {
+            const subject = '[มสธ.] ตอบกลับเรื่องที่ท่านแจ้ง: ' + issueType + ' (' + id + ')';
+            const htmlBody = ''
+              + '<div style="font-family:Sarabun,Arial,sans-serif;max-width:600px;margin:0 auto;background:#f4f6fb;padding:20px">'
+              +   '<div style="background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 4px 16px rgba(0,0,0,0.08)">'
+              +     '<div style="background:linear-gradient(135deg,#0f2744,#1a4a8a);padding:24px;text-align:center;color:#fff">'
+              +       '<div style="font-size:32px;margin-bottom:6px">📚</div>'
+              +       '<h2 style="margin:0;font-size:18px">มหาวิทยาลัยสุโขทัยธรรมาธิราช</h2>'
+              +       '<p style="margin:4px 0 0;font-size:13px;color:rgba(255,255,255,0.8)">สำนักบริการการศึกษา</p>'
+              +     '</div>'
+              +     '<div style="padding:24px">'
+              +       '<p style="font-size:15px;color:#1a2840">เรียน ' + _esc(reporterName) + '</p>'
+              +       '<p style="color:#1a2840">เจ้าหน้าที่ได้ตอบกลับเรื่องที่ท่านแจ้งไว้ดังนี้</p>'
+              +       '<div style="background:#f0f4f8;border-left:4px solid #2d7dd2;padding:12px 16px;margin:16px 0;border-radius:4px">'
+              +         '<div style="font-size:12px;color:#8899b4;margin-bottom:4px">รหัสเรื่อง: <strong>' + _esc(id) + '</strong></div>'
+              +         '<div style="font-size:12px;color:#8899b4;margin-bottom:4px">ประเภท: <strong>' + _esc(issueType) + '</strong></div>'
+              +         '<div style="font-size:12px;color:#8899b4">ผู้ตอบ: <strong>' + _esc(fromName) + '</strong></div>'
+              +       '</div>'
+              +       '<div style="background:#fff8e1;border-left:4px solid #f4a21e;padding:14px 18px;border-radius:4px;margin-bottom:16px">'
+              +         '<div style="font-size:13px;color:#5c4b00;line-height:1.7;white-space:pre-wrap">' + _esc(text) + '</div>'
+              +       '</div>'
+              +       '<p style="color:#1a2840;font-size:13px">หากต้องการสอบถามเพิ่มเติม กรุณาตอบกลับอีเมลฉบับนี้ หรือโทร 02-504-7788</p>'
+              +     '</div>'
+              +     '<div style="background:#f4f6fb;padding:16px 24px;text-align:center;border-top:1px solid #e0e8f0">'
+              +       '<p style="margin:0;font-size:11px;color:#8899b4">ขอแสดงความนับถือ<br>สำนักบริการการศึกษา มสธ.</p>'
+              +     '</div>'
+              +   '</div>'
+              + '</div>';
+
+            const textBody = 'เรียน ' + reporterName + '\n\n'
+              + 'เจ้าหน้าที่ได้ตอบกลับเรื่องที่ท่านแจ้ง (' + id + ') ดังนี้\n\n'
+              + 'ประเภท: ' + issueType + '\n'
+              + 'ผู้ตอบ: ' + fromName + '\n\n'
+              + '----------------------------------------\n'
+              + text + '\n'
+              + '----------------------------------------\n\n'
+              + 'หากต้องการสอบถามเพิ่มเติม กรุณาตอบกลับอีเมลฉบับนี้ หรือโทร 02-504-7788\n\n'
+              + 'ขอแสดงความนับถือ\n'
+              + 'สำนักบริการการศึกษา มสธ.';
+
+            const opts = {
+              htmlBody: htmlBody,
+              name: fromName + ' — สำนักบริการการศึกษา มสธ.'
+            };
+            if (fromEmail && /\S+@\S+\.\S+/.test(fromEmail)) opts.replyTo = fromEmail;
+
+            GmailApp.sendEmail(reporterEmail, subject, textBody, opts);
+            emailSent = true;
+          } catch(mailErr) {
+            emailError = mailErr.message;
+          }
+        } else {
+          emailError = 'ไม่พบอีเมลผู้แจ้ง';
+        }
+
+        // บันทึก audit log
+        logAudit('ตอบกลับ CRM', id + ' | ' + reporterName + ' | ' + (text||'').substring(0,80) + (emailSent ? ' | ส่งอีเมลแล้ว' : ''));
+
+        return {
+          success: true,
+          emailSent: emailSent,
+          emailError: emailError,
+          sentTo: reporterEmail,
+          sentFrom: fromEmail
+        };
       }
     }
     return { success:false, error:'ไม่พบ Ticket' };
   } catch(e) { return { success:false, error:e.message }; }
+}
+
+// helper สำหรับ escape HTML
+function _esc(s) {
+  if (s == null) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
 function updateCrmStatus(id, status) {
@@ -1613,6 +1696,79 @@ function updateInvestigation(investId, updates) {
     }
     return { success:false, error:'ไม่พบรายการ' };
   } catch(e) { return { success:false, error:e.message }; }
+}
+
+// ============================================================
+// ส่งอีเมลสอบสวนไปรษณีย์ (batch) - ส่งจากอีเมล admin โดยตรง
+// ============================================================
+function sendInvestigationBatchEmail(payload) {
+  if (!_autoRefreshSession()) return { success:false, error:'SESSION_EXPIRED' };
+  try {
+    const sess = _sess();
+    const fromName  = (sess && sess.name)  || 'เจ้าหน้าที่';
+    const fromEmail = (sess && sess.email) || '';
+
+    const toEmail   = (payload.to || '').toString().trim();
+    const ccEmail   = (payload.cc || '').toString().trim();
+    const subject   = (payload.subject || 'ขอสอบสวนสิ่งของฝากส่งทางไปรษณีย์ — มสธ.').toString();
+    const bodyText  = (payload.body || '').toString();
+    const ids       = Array.isArray(payload.ids) ? payload.ids : [];
+
+    if (!toEmail || !/\S+@\S+\.\S+/.test(toEmail)) {
+      return { success:false, error:'อีเมลผู้รับไม่ถูกต้อง' };
+    }
+    if (!bodyText) return { success:false, error:'ไม่มีเนื้อหาอีเมล' };
+
+    // แปลงเนื้อหาเป็น HTML
+    const htmlBody = ''
+      + '<div style="font-family:Sarabun,Arial,sans-serif;max-width:680px;margin:0 auto;background:#fff;padding:24px;color:#1a2840;line-height:1.7">'
+      +   '<div style="border-bottom:3px solid #2d7dd2;padding-bottom:14px;margin-bottom:18px">'
+      +     '<h2 style="margin:0;color:#0f2744">📮 ขอสอบสวนสิ่งของฝากส่งทางไปรษณีย์</h2>'
+      +     '<p style="margin:4px 0 0;font-size:13px;color:#8899b4">สำนักบริการการศึกษา มหาวิทยาลัยสุโขทัยธรรมาธิราช</p>'
+      +   '</div>'
+      +   '<pre style="font-family:Sarabun,Arial,sans-serif;white-space:pre-wrap;font-size:14px;margin:0">' + _esc(bodyText) + '</pre>'
+      +   '<div style="margin-top:24px;padding-top:14px;border-top:1px solid #e0e8f0;font-size:12px;color:#8899b4">'
+      +     'ส่งโดย: ' + _esc(fromName) + (fromEmail ? ' &lt;' + _esc(fromEmail) + '&gt;' : '')
+      +   '</div>'
+      + '</div>';
+
+    const opts = {
+      htmlBody: htmlBody,
+      name: fromName + ' — สำนักบริการการศึกษา มสธ.'
+    };
+    if (ccEmail) opts.cc = ccEmail;
+    if (fromEmail && /\S+@\S+\.\S+/.test(fromEmail)) opts.replyTo = fromEmail;
+
+    GmailApp.sendEmail(toEmail, subject, bodyText, opts);
+
+    // อัปเดตสถานะของรายการที่ส่ง
+    const today = Utilities.formatDate(new Date(),'Asia/Bangkok','yyyy-MM-dd');
+    let updatedCount = 0;
+    ids.forEach(function(id) {
+      try {
+        const res = updateInvestigation(id, {
+          notifyDate: today,
+          notifyEmail: toEmail,
+          notifyQty: ids.length,
+          status: 'ส่งแล้ว',
+          result: 'รอประสาน'
+        });
+        if (res && res.success) updatedCount++;
+      } catch(e) {}
+    });
+
+    logAudit('ส่งอีเมลสอบสวน', 'จำนวน '+ids.length+' รายการ ถึง '+toEmail);
+
+    return {
+      success: true,
+      sentTo: toEmail,
+      cc: ccEmail,
+      sentFrom: fromEmail,
+      itemsUpdated: updatedCount
+    };
+  } catch(e) {
+    return { success:false, error:e.message };
+  }
 }
 
 function addInvestigationsFromLend(recordIds) {
