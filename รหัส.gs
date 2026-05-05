@@ -1302,7 +1302,7 @@ function assignCrmTicket(id, adminName) {
   return _updateCrmField(id, 18, adminName);
 }
 
-function replyCrmTicket(id, text, adminName, adminEmail) {
+function replyCrmTicket(id, text, adminName, adminEmail, sendEmail) {
   if (!_autoRefreshSession()) return { success:false, error:'SESSION_EXPIRED' };
   try {
     const sess = _sess();
@@ -1319,14 +1319,14 @@ function replyCrmTicket(id, text, adminName, adminEmail) {
         // อัปเดตสถานะเป็น inprogress ถ้ายังเป็น open
         if (data[i][16]==='open') sheet.getRange(i+1,17).setValue('inprogress');
 
-        // ส่งอีเมลไปหา นศ./ผู้แจ้ง
+        // ส่งอีเมลไปหา นศ./ผู้แจ้ง (ถ้า sendEmail === true)
         const reporterEmail = (data[i][4]||'').toString().trim();
         const reporterName  = (data[i][2]||'').toString().trim() || 'ผู้แจ้ง';
         const issueType     = (data[i][11]||'').toString().trim() || 'แจ้งปัญหา';
 
         let emailSent = false;
         let emailError = '';
-        if (reporterEmail && /\S+@\S+\.\S+/.test(reporterEmail)) {
+        if (sendEmail && reporterEmail && /\S+@\S+\.\S+/.test(reporterEmail)) {
           try {
             const subject = '[มสธ.] ตอบกลับเรื่องที่ท่านแจ้ง: ' + issueType + ' (' + id + ')';
             const htmlBody = ''
@@ -2666,13 +2666,130 @@ function uploadInvestAttachment(base64Data, filename, mimeType, investId) {
     const file   = folder.createFile(blob).setName(safeFn);
     file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
     
-    return { 
-      success: true, 
-      url:   file.getUrl(), 
+    return {
+      success: true,
+      url:   file.getUrl(),
       id:    file.getId(),
       name:  safeFn
     };
-  } catch(e) { 
-    return { success:false, error:e.message }; 
+  } catch(e) {
+    return { success:false, error:e.message };
   }
+}
+
+// ============================================================
+// SEND INVESTIGATION EMAIL
+// ============================================================
+function sendInvestEmail(data) {
+  if (!_autoRefreshSession()) return { success:false, error:'SESSION_EXPIRED' };
+  try {
+    const sess = _sess();
+    const toEmail = (data.to||'').toString().trim();
+    const ccEmail = (data.cc||'').toString().trim();
+    const subject = data.subject || 'ขอสอบสวน';
+    const body = data.body || '';
+    const fromName = data.fromName || (sess && sess.name) || 'เจ้าหน้าที่';
+    const fromEmail = data.fromEmail || (sess && sess.email) || '';
+
+    if (!toEmail || !/\S+@\S+\.\S+/.test(toEmail)) {
+      return { success:false, error:'อีเมลผู้รับไม่ถูกต้อง' };
+    }
+
+    const opts = {
+      name: fromName + ' — สำนักบริการการศึกษา มสธ.'
+    };
+    if (ccEmail && /\S+@\S+\.\S+/.test(ccEmail)) {
+      opts.cc = ccEmail;
+    }
+    if (fromEmail && /\S+@\S+\.\S+/.test(fromEmail)) {
+      opts.replyTo = fromEmail;
+    }
+
+    // ส่งอีเมล
+    GmailApp.sendEmail(toEmail, subject, body, opts);
+
+    // บันทึก audit log
+    logAudit('ส่งอีเมลสอบสวน', 'ถึง: ' + toEmail + ' | ' + subject.substring(0,60));
+
+    return { success:true };
+  } catch(e) {
+    return { success:false, error:e.message };
+  }
+}
+
+// ============================================================
+// SEND POST EMAIL (LEND EMAIL)
+// ============================================================
+function sendPostEmail(data) {
+  if (!_autoRefreshSession()) return { success:false, error:'SESSION_EXPIRED' };
+  try {
+    const sess = _sess();
+    const toEmail = (data.to||'').toString().trim();
+    const ccEmail = (data.cc||'').toString().trim();
+    const subject = data.subject || '';
+    const body = data.body || '';
+    const fromName = data.fromName || (sess && sess.name) || 'เจ้าหน้าที่';
+    const fromEmail = data.fromEmail || (sess && sess.email) || '';
+
+    if (!toEmail || !/\S+@\S+\.\S+/.test(toEmail)) {
+      return { success:false, error:'อีเมลผู้รับไม่ถูกต้อง' };
+    }
+
+    const opts = {
+      name: fromName + ' — สำนักบริการการศึกษา มสธ.'
+    };
+    if (ccEmail && /\S+@\S+\.\S+/.test(ccEmail)) {
+      opts.cc = ccEmail;
+    }
+    if (fromEmail && /\S+@\S+\.\S+/.test(fromEmail)) {
+      opts.replyTo = fromEmail;
+    }
+
+    // ส่งอีเมล
+    GmailApp.sendEmail(toEmail, subject, body, opts);
+
+    // บันทึก audit log
+    logAudit('ส่งอีเมลไปรษณีย์', 'ถึง: ' + toEmail + ' | ' + subject.substring(0,60));
+
+    return { success:true };
+  } catch(e) {
+    return { success:false, error:e.message };
+  }
+}
+
+// ============================================================
+// CRM FILE UPLOAD
+// ============================================================
+function uploadCrmAttachment(filename, base64content, crmId) {
+  if (!_autoRefreshSession()) return { success:false, error:'SESSION_EXPIRED' };
+  try {
+    const folder = DriveApp.getFoldersByName('CRM Attachments').hasNext()
+      ? DriveApp.getFoldersByName('CRM Attachments').next()
+      : DriveApp.getRootFolder().createFolder('CRM Attachments');
+
+    const blob = Utilities.newBlob(Utilities.base64Decode(base64content), getMimeType(filename), filename);
+    const file = folder.createFile(blob);
+    file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+
+    logAudit('อัปโหลดไฟล์ CRM', 'ID: ' + crmId + ' | ไฟล์: ' + filename);
+    return { success:true, fileUrl:file.getUrl(), fileId:file.getId() };
+  } catch(e) {
+    return { success:false, error:e.message };
+  }
+}
+
+function getMimeType(filename) {
+  const ext = filename.substring(filename.lastIndexOf('.')).toLowerCase();
+  const types = {
+    '.pdf':'application/pdf',
+    '.doc':'application/msword',
+    '.docx':'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    '.xls':'application/vnd.ms-excel',
+    '.xlsx':'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    '.jpg':'image/jpeg', '.jpeg':'image/jpeg',
+    '.png':'image/png',
+    '.gif':'image/gif',
+    '.txt':'text/plain'
+  };
+  return types[ext] || 'application/octet-stream';
 }

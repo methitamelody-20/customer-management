@@ -966,6 +966,14 @@ tbody td{padding:12px;vertical-align:middle}
               <tbody id="listBody"><tr><td colspan="14" style="text-align:center;padding:30px;color:var(--gray3)">กำลังโหลด...</td></tr></tbody>
             </table>
           </div>
+          <div style="padding:12px 16px;border-top:1px solid var(--gray1);display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap" class="no-print" id="listPagination">
+            <div style="font-size:13px;color:var(--gray3)">หน้า <span id="listPage">1</span> / <span id="listPages">1</span></div>
+            <div style="display:flex;gap:6px">
+              <button class="btn btn-outline btn-sm" id="listPrevBtn" onclick="changeListPage(-1)">← ก่อนหน้า</button>
+              <button class="btn btn-outline btn-sm" id="listNextBtn" onclick="changeListPage(1)">ถัดไป →</button>
+            </div>
+            <div style="font-size:12px;color:var(--gray3)">แสดง <span id="listStart">0</span>-<span id="listEnd">0</span> จาก <span id="listTotal">0</span> รายการ</div>
+          </div>
         </div>
       </div>
 
@@ -1039,6 +1047,14 @@ tbody td{padding:12px;vertical-align:middle}
               <tr><td colspan="13" style="text-align:center;padding:40px;color:var(--gray3)">⏳ กำลังโหลด...</td></tr>
             </tbody>
           </table>
+          <div style="padding:12px 16px;border-top:1px solid var(--gray1);display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap" class="no-print" id="investPagination">
+            <div style="font-size:13px;color:var(--gray3)">หน้า <span id="investPage">1</span> / <span id="investPages">1</span></div>
+            <div style="display:flex;gap:6px">
+              <button class="btn btn-outline btn-sm" id="investPrevBtn" onclick="changeInvestPage(-1)">← ก่อนหน้า</button>
+              <button class="btn btn-outline btn-sm" id="investNextBtn" onclick="changeInvestPage(1)">ถัดไป →</button>
+            </div>
+            <div style="font-size:12px;color:var(--gray3)">แสดง <span id="investStart">0</span>-<span id="investEnd">0</span> จาก <span id="investTotal">0</span> รายการ</div>
+          </div>
         </div>
       </div>
 
@@ -2714,39 +2730,23 @@ function loadDash() {
     tag:      dTag  ? dTag.value : '',
   };
   google.script.run
-    .withSuccessHandler(function(rows) {
-      console.log('loadDash response type:', typeof rows, Array.isArray(rows) ? 'array len='+rows.length : (rows&&rows.error?'error='+rows.error:'not array'));
-      if(!rows || rows.error){
-        if(rows && rows.error==='SESSION_EXPIRED'){
-          if(handleSessionError(rows, loadDash)) return;
+    .withSuccessHandler(function(d) {
+      if(!d || d.error){
+        if(d && d.error==='SESSION_EXPIRED'){
+          if(handleSessionError(d, loadDash)) return;
         }
-        showToast('❌ '+(rows&&rows.error||'ไม่มีข้อมูล'),'error');
+        showToast('❌ '+(d&&d.error||'ไม่มีข้อมูล'),'error');
         return;
       }
-      allRecords = rows;
-      // คำนวณ dashboard stats จาก records
-      var d = {
-        total: rows.length,
-        records: rows,
-        countReturn:  rows.filter(function(r){return r.recType==='return';}).length,
-        countLend:    rows.filter(function(r){return r.recType==='lend';}).length,
-        countSpecial: rows.filter(function(r){return r.recType==='special';}).length,
-        countContact: rows.filter(function(r){return r.contactStatus==='yes';}).length,
-        crmPending: 0,
-        byCause:    countGroup(rows,'cause'),
-        byType:     countGroup(rows,'parcelType'),
-        byProvince: countGroup(rows,'province'),
-        byDistrict: countGroup(rows,'district'),
-        byTag:      countTags(rows),
-      };
+      allRecords = d.records || [];
       renderDash(d, filters);
-      updateGeoDropdowns(rows);
+      updateGeoDropdowns(d.records || []);
     })
     .withFailureHandler(function(e){
       console.log('loadDash FAIL:', e&&e.message||e);
       showError(e);
     })
-    .getRecords(filters);
+    .getDashboardData(filters);
   // โหลดสถิติสอบสวน
   google.script.run
     .withSuccessHandler(function(rows){
@@ -3039,6 +3039,8 @@ function clearRecord(type) {
 // ============================================================
 // LIST — ดึงจาก Sheets จริง
 // ============================================================
+var listPageState = { currentPage: 1, pageSize: 20, totalRecords: 0, allRecords: [] };
+
 function loadList() {
   const filters={
     recType:document.getElementById('lt_type').value,
@@ -3047,10 +3049,10 @@ function loadList() {
     contactStatus:document.getElementById('lt_contact').value,
     search:document.getElementById('lt_search').value.trim(),
   };
+  listPageState.currentPage = 1;
   document.getElementById('listBody').innerHTML='<tr><td colspan="14" style="text-align:center;padding:30px;color:var(--gray3)"><div class="spinner" style="margin:0 auto 10px"></div>กำลังโหลด...</td></tr>';
   google.script.run
     .withSuccessHandler(function(res){
-      // debug: แสดง response จริง
       console.log('getRecords response:', JSON.stringify(res).substring(0,200));
       renderList(res);
     })
@@ -3063,11 +3065,26 @@ function loadList() {
     .getRecords(filters);
 }
 
+function changeListPage(direction) {
+  const maxPages = Math.ceil(listPageState.totalRecords / listPageState.pageSize);
+  const newPage = listPageState.currentPage + direction;
+  if (newPage < 1 || newPage > maxPages) return;
+  listPageState.currentPage = newPage;
+  renderListPage();
+}
+
+function renderListPage() {
+  const start = (listPageState.currentPage - 1) * listPageState.pageSize;
+  const end = start + listPageState.pageSize;
+  const pageRecords = listPageState.allRecords.slice(start, end);
+  renderListRows(pageRecords, start);
+  updateListPagination();
+}
+
 function renderList(rows) {
   if(!rows||rows.error){
     var errMsg = (rows&&rows.error)||'เกิดข้อผิดพลาด';
     if(errMsg==='SESSION_EXPIRED') {
-      // session หมด — login ใหม่อัตโนมัติด้วย credential เดิม
       var savedEmail = localStorage.getItem('stou_email')||'';
       var savedPass  = localStorage.getItem('stou_pass')||'';
       if(savedEmail && savedPass) {
@@ -3090,15 +3107,22 @@ function renderList(rows) {
     return;
   }
   allRecords=rows;
+  listPageState.allRecords=rows;
+  listPageState.totalRecords=rows.length;
   document.getElementById('listSub').textContent='พบ '+rows.length+' รายการ';
-  const canDel=currentRole==='superadmin';
-  const now=new Date(); const todayStr=formatDate(now).split(' ')[0];
   if(!rows.length){
     document.getElementById('listBody').innerHTML='<tr><td colspan="14" style="text-align:center;padding:30px;color:var(--gray3)">ไม่พบรายการ</td></tr>';
+    document.getElementById('listPagination').style.display='none';
     return;
   }
+  document.getElementById('listPagination').style.display='flex';
+  renderListPage();
+}
+
+function renderListRows(rows, startIdx) {
+  const canDel=currentRole==='superadmin';
+  const now=new Date(); const todayStr=formatDate(now).split(' ')[0];
   document.getElementById('listBody').innerHTML=rows.map(function(r,i){
-    // ชุดวิชา — แสดงจาก courses JSON
     var coursesTxt = r.courseCode||'-';
     try { var cs=JSON.parse(r.courses||'[]'); if(cs.length) coursesTxt=cs.map(function(c){return c.code;}).join(', '); } catch(e){}
     var isNew=r.date&&r.date.toString().split(' ')[0]===todayStr;
@@ -3106,9 +3130,8 @@ function renderList(rows) {
     var tags=r.tags?r.tags.split(',').filter(Boolean):[];
     var delBtn=canDel?('<button class="btn btn-sm" style="background:var(--red);color:#fff;font-size:11px;padding:4px 8px" onclick="deleteItem(\''+r.id+'\')">🗑️</button>'):'—';
     var printBtn='<button class="btn btn-outline btn-sm" title="พิมพ์" onclick="printById(\''+r.id+'\')" style="font-size:11px;padding:4px 8px">🖨️</button>';
-    var emailBtn=r.phone?'':'';  // จะเพิ่มถ้ามีอีเมล นศ.
     return '<tr'+(isNew?' style="background:#fffbf0"':'')+'>'
-      +'<td style="color:var(--gray3)">'+(i+1)+nb+'</td>'
+      +'<td style="color:var(--gray3)">'+(startIdx+i+1)+nb+'</td>'
       +'<td>'+typeBadge(r.recType)+'</td>'
       +'<td style="font-size:11px;white-space:nowrap">'+(r.date||'')+'</td>'
       +'<td style="font-size:11px">'+(r.term||'')+'/'+(r.year||'')+'</td>'
@@ -3125,6 +3148,19 @@ function renderList(rows) {
       +'<td class="no-print">'+delBtn+'</td>'
       +'</tr>';
   }).join('');
+}
+
+function updateListPagination() {
+  const maxPages = Math.ceil(listPageState.totalRecords / listPageState.pageSize);
+  const start = (listPageState.currentPage - 1) * listPageState.pageSize + 1;
+  const end = Math.min(listPageState.currentPage * listPageState.pageSize, listPageState.totalRecords);
+  document.getElementById('listPage').textContent = listPageState.currentPage;
+  document.getElementById('listPages').textContent = maxPages || 1;
+  document.getElementById('listStart').textContent = start;
+  document.getElementById('listEnd').textContent = end;
+  document.getElementById('listTotal').textContent = listPageState.totalRecords;
+  document.getElementById('listPrevBtn').disabled = listPageState.currentPage <= 1;
+  document.getElementById('listNextBtn').disabled = listPageState.currentPage >= maxPages;
 }
 
 function deleteItem(id) {
@@ -3401,10 +3437,21 @@ function renderCrmList(items) {
       +'</div>'
       +'<div class="reply-thread '+(replies.length?'show':'')+'" id="thread_'+cid+'">'
         +repliesHtml
-        +'<div class="reply-input-row">'
-          +'<input placeholder="ตอบกลับหรือบันทึกการดำเนินการ..." id="ri_'+cid+'" data-cid="'+cid+'">'
-          +'<button class="btn btn-primary btn-sm" data-cid="'+cid+'" onclick="sendReplyCrm(this.dataset.cid)">ส่ง</button>'
-          +'<select class="fsel btn-sm" style="width:140px" id="rs_'+cid+'" data-cid="'+cid+'" onchange="onCrmStatusSel(this)">'
+        +'<div style="background:var(--light);border-radius:8px;padding:12px;margin-bottom:8px">'
+          +'<textarea class="ftextarea" placeholder="ตอบกลับหรือบันทึกการดำเนินการ..." id="ri_'+cid+'" data-cid="'+cid+'" style="min-height:60px;margin-bottom:10px"></textarea>'
+          +'<div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;margin-bottom:8px">'
+            +'<div style="flex:1;min-width:200px">'
+              +'<label style="font-size:12px;color:var(--gray3);display:block;margin-bottom:4px">📎 แนบไฟล์ (เลือก)</label>'
+              +'<input type="file" id="ri_file_'+cid+'" style="font-size:12px;cursor:pointer" data-cid="'+cid+'">'
+            +'</div>'
+            +'<div>'
+              +'<label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer">'
+                +'<input type="checkbox" id="ri_email_'+cid+'" data-cid="'+cid+'" style="cursor:pointer"> 📧 ส่งอีเมลผู้แจ้ง'
+              +'</label>'
+            +'</div>'
+            +'<button class="btn btn-primary btn-sm" data-cid="'+cid+'" onclick="sendReplyCrm(this.dataset.cid)">✉️ ส่ง</button>'
+          +'</div>'
+          +'<select class="fsel" style="width:100%;font-size:13px" id="rs_'+cid+'" data-cid="'+cid+'" onchange="onCrmStatusSel(this)">'
             +'<option value="">เปลี่ยนสถานะ</option>'
             +'<option value="inprogress">กำลังดำเนินการ</option>'
             +'<option value="resolved">แก้ไขแล้ว</option>'
@@ -3480,26 +3527,85 @@ function assignCrm(id) {
 
 function sendReply(id) {
   const text=document.getElementById('ri_'+id).value.trim();
-  if(!text)return;
+  const sendEmail = document.getElementById('ri_email_'+id)?.checked || false;
+  const fileInput = document.getElementById('ri_file_'+id);
+
+  if(!text){showToast('กรุณากรอกข้อความ','error');return;}
+
   showToast('⏳ กำลังส่ง...','');
+
+  const hasFile = fileInput && fileInput.files && fileInput.files.length > 0;
+  if (hasFile) {
+    const file = fileInput.files[0];
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      const base64 = e.target.result.split(',')[1];
+      google.script.run
+        .withSuccessHandler(res=>{
+          if(res.success) {
+            doSendReplyWithAttachment(id, text, sendEmail, res.fileUrl);
+          } else {
+            showToast('❌ อัปโหลดไฟล์ไม่ได้: '+res.error,'error');
+          }
+        })
+        .withFailureHandler(e=>{
+          showToast('❌ อัปโหลดไฟล์ไม่ได้','error');
+        })
+        .uploadCrmAttachment(file.name, base64, id);
+    };
+    reader.readAsDataURL(file);
+  } else {
+    doSendReplyOnly(id, text, sendEmail);
+  }
+}
+
+function doSendReplyOnly(id, text, sendEmail) {
   google.script.run
     .withSuccessHandler(res=>{
       if(res.success){
-        if(res.emailSent){
-          showToast('✅ ส่งแล้ว + อีเมลถึง '+res.sentTo,'success');
-        } else if(res.emailError){
-          showToast('⚠️ บันทึกแล้ว แต่ส่งอีเมลไม่ได้: '+res.emailError,'error');
-        } else {
-          showToast('✅ บันทึกแล้ว','success');
+        let msg = '✅ บันทึกแล้ว';
+        if(sendEmail){
+          if(res.emailSent) msg = '✅ ส่งแล้ว + อีเมลถึง '+res.sentTo;
+          else if(res.emailError) msg = '⚠️ บันทึกแล้ว แต่ส่งอีเมลไม่ได้: '+res.emailError;
         }
-        document.getElementById('ri_'+id).value='';
+        showToast(msg,'success');
+        clearReplyForm(id);
         loadCrm();
       } else {
         showToast('❌ '+res.error,'error');
       }
     })
     .withFailureHandler(showError)
-    .replyCrmTicket(id, text, currentUser, currentEmail);
+    .replyCrmTicket(id, text, currentUser, currentEmail, sendEmail);
+}
+
+function doSendReplyWithAttachment(id, text, sendEmail, fileUrl) {
+  const textWithLink = text + '\n\n📎 ไฟล์แนบ: ' + fileUrl;
+  google.script.run
+    .withSuccessHandler(res=>{
+      if(res.success){
+        let msg = '✅ บันทึกและอัปโหลดไฟล์แล้ว';
+        if(sendEmail){
+          if(res.emailSent) msg = '✅ ส่งแล้ว + อีเมลถึง '+res.sentTo;
+          else if(res.emailError) msg = '⚠️ บันทึกแล้ว แต่ส่งอีเมลไม่ได้: '+res.emailError;
+        }
+        showToast(msg,'success');
+        clearReplyForm(id);
+        loadCrm();
+      } else {
+        showToast('❌ '+res.error,'error');
+      }
+    })
+    .withFailureHandler(showError)
+    .replyCrmTicket(id, textWithLink, currentUser, currentEmail, sendEmail);
+}
+
+function clearReplyForm(id) {
+  document.getElementById('ri_'+id).value='';
+  const fileInput = document.getElementById('ri_file_'+id);
+  if(fileInput) fileInput.value='';
+  const emailCheckbox = document.getElementById('ri_email_'+id);
+  if(emailCheckbox) emailCheckbox.checked=false;
 }
 
 function updateCrmStatus(id, status) {
@@ -4298,12 +4404,16 @@ function onInvestChange(val) {
 let investData = [];
 let investFilterStatus = '';
 
+var investPageState = { currentPage: 1, pageSize: 20, totalRecords: 0, allRecords: [] };
+
 function loadInvestigations() {
   document.getElementById('investTbody').innerHTML = '<tr><td colspan="13" style="text-align:center;padding:40px;color:var(--gray3)">⏳ กำลังโหลด...</td></tr>';
+  investPageState.currentPage = 1;
   google.script.run
     .withSuccessHandler(function(rows) {
       if (rows && rows.error) { showToast('❌ '+rows.error,'error'); return; }
       investData = rows || [];
+      investPageState.allRecords = rows || [];
       renderInvestTable();
     })
     .withFailureHandler(showError)
@@ -4317,7 +4427,23 @@ function setInvestFilter(el, status) {
   renderInvestTable();
 }
 
-function filterInvestTable() { renderInvestTable(); }
+function filterInvestTable() { investPageState.currentPage = 1; renderInvestTable(); }
+
+function changeInvestPage(direction) {
+  const maxPages = Math.ceil(investPageState.totalRecords / investPageState.pageSize);
+  const newPage = investPageState.currentPage + direction;
+  if (newPage < 1 || newPage > maxPages) return;
+  investPageState.currentPage = newPage;
+  renderInvestPage();
+}
+
+function renderInvestPage() {
+  const start = (investPageState.currentPage - 1) * investPageState.pageSize;
+  const end = start + investPageState.pageSize;
+  const pageRecords = investPageState.filteredRecords.slice(start, end);
+  renderInvestRows(pageRecords, start);
+  updateInvestPagination();
+}
 
 // 🆕 ตัด timezone string ออกจากชื่อชุดวิชา
 function cleanCourseName(v) {
@@ -4358,22 +4484,27 @@ function renderInvestTable() {
     .some(v=>v&&v.toString().toLowerCase().includes(q))
   );
   document.getElementById('invest_count').textContent = `พบ ${rows.length} รายการ`;
+  investPageState.filteredRecords = rows;
+  investPageState.totalRecords = rows.length;
   if (!rows.length) {
     document.getElementById('investTbody').innerHTML = '<tr><td colspan="13" style="text-align:center;padding:40px;color:var(--gray3)">ไม่พบข้อมูล</td></tr>';
+    document.getElementById('investPagination').style.display='none';
     return;
   }
+  document.getElementById('investPagination').style.display='flex';
+  renderInvestPage();
+}
+
+function renderInvestRows(rows, startIdx) {
   const statusBadge = function(s) {
     const m = {'รอส่ง':'ibadge-wait','ส่งแล้ว':'ibadge-sent','มีผลตอบ':'ibadge-replied','ปิดแล้ว':'ibadge-closed'};
     return '<span class="ibadge '+(m[s]||'ibadge-wait')+'">'+(s||'รอส่ง')+'</span>';
   };
-  
-  // 🆕 แสดงวันที่แบบสั้น — ตัด time zone และ GMT+0700 ออก
+
   const fmtDateShort = function(v) {
     if (!v) return '—';
     var s = String(v).trim();
-    // ถ้ามีรูป "dd/MM/yyyy HH:mm" เอาแค่ dd/MM/yyyy
     if (/^\d{1,2}\/\d{1,2}\/\d{4}/.test(s)) return s.split(' ')[0];
-    // ถ้าเป็น Date object string แบบ "Sat Aug 01 2026 00:00:00 GMT+0700..."
     try {
       var d = new Date(s);
       if (!isNaN(d.getTime())) {
@@ -4382,7 +4513,7 @@ function renderInvestTable() {
     } catch(e) {}
     return s.substring(0,10);
   };
-  
+
   document.getElementById('investTbody').innerHTML = rows.map(function(r, i) {
     return '<tr style="'+(i%2===0?'background:var(--light)':'')+'">'
       +'<td style="padding:8px;text-align:center"><input type="checkbox" class="invest-chk" data-id="'+r.investId+'" style="accent-color:var(--sky)"></td>'
@@ -4408,6 +4539,19 @@ function renderInvestTable() {
       +'</td>'
       +'</tr>';
   }).join('');
+}
+
+function updateInvestPagination() {
+  const maxPages = Math.ceil(investPageState.totalRecords / investPageState.pageSize);
+  const start = (investPageState.currentPage - 1) * investPageState.pageSize + 1;
+  const end = Math.min(investPageState.currentPage * investPageState.pageSize, investPageState.totalRecords);
+  document.getElementById('investPage').textContent = investPageState.currentPage;
+  document.getElementById('investPages').textContent = maxPages || 1;
+  document.getElementById('investStart').textContent = start;
+  document.getElementById('investEnd').textContent = end;
+  document.getElementById('investTotal').textContent = investPageState.totalRecords;
+  document.getElementById('investPrevBtn').disabled = investPageState.currentPage <= 1;
+  document.getElementById('investNextBtn').disabled = investPageState.currentPage >= maxPages;
 }
 
 function toggleAllInvest(checked) {
@@ -4710,34 +4854,58 @@ ${tableRows}กรุณาดำเนินการสอบสวนแล�
 }
 
 function sendBatchEmail() {
-  const to      = encodeURIComponent(document.getElementById('batch_to').value);
-  const cc      = encodeURIComponent(document.getElementById('batch_cc').value);
-  const subject = encodeURIComponent(document.getElementById('batch_subject').value);
-  const body    = encodeURIComponent(document.getElementById('batch_body').value);
-  window.open('mailto:'+to+'?cc='+cc+'&subject='+subject+'&body='+body);
-  // badge + อัปเดต status → ส่งแล้ว
-  const badge = document.getElementById('batch_sent_badge');
-  const now = new Date().toLocaleDateString('th-TH',{year:'numeric',month:'short',day:'numeric'});
-  badge.textContent = '✅ ส่งแล้ว '+now;
-  badge.style.display = 'inline-block';
-  // อัปเดต status ของรายการที่เลือก
+  const to      = document.getElementById('batch_to').value;
+  const cc      = document.getElementById('batch_cc').value;
+  const subject = document.getElementById('batch_subject').value;
+  const body    = document.getElementById('batch_body').value;
+
+  if (!to) { showToast('กรุณากรอกอีเมลผู้รับ','error'); return; }
+  if (!subject) { showToast('กรุณากรอกหัวข้อ','error'); return; }
+  if (!body) { showToast('กรุณากรอกเนื้อหา','error'); return; }
+
+  showToast('⏳ กำลังส่งอีเมล...','');
   const ids = getCheckedInvestItems();
-  const email = document.getElementById('batch_to').value;
   const today = new Date().toISOString().split('T')[0];
-  ids.forEach(function(id) {
-    google.script.run.updateInvestigation(id, {
-      notifyDate: today,
-      notifyEmail: email,
-      notifyQty: ids.length,
-      status: 'ส่งแล้ว',
-      result: 'รอประสาน'  // 🆕 auto-set เป็น รอประสาน
+  const email = to;
+
+  google.script.run
+    .withSuccessHandler(function(res) {
+      if (res.success) {
+        showToast('✅ ส่งอีเมลแล้ว','success');
+        // badge + อัปเดต status → ส่งแล้ว
+        const badge = document.getElementById('batch_sent_badge');
+        const now = new Date().toLocaleDateString('th-TH',{year:'numeric',month:'short',day:'numeric'});
+        badge.textContent = '✅ ส่งแล้ว '+now;
+        badge.style.display = 'inline-block';
+        // อัปเดต status ของรายการที่เลือก
+        ids.forEach(function(id) {
+          google.script.run.updateInvestigation(id, {
+            notifyDate: today,
+            notifyEmail: email,
+            notifyQty: ids.length,
+            status: 'ส่งแล้ว',
+            result: 'รอประสาน'
+          });
+        });
+        setTimeout(function(){
+          document.getElementById('batchEmailModal').classList.add('hidden');
+          loadInvestigations();
+        }, 2500);
+      } else {
+        showToast('❌ ส่งอีเมลไม่ได้: '+(res.error||'Unknown error'),'error');
+      }
+    })
+    .withFailureHandler(function(e) {
+      showToast('❌ เกิดข้อผิดพลาด: '+e.message,'error');
+    })
+    .sendInvestEmail({
+      to: to,
+      cc: cc,
+      subject: subject,
+      body: body,
+      fromName: currentUser,
+      fromEmail: currentEmail
     });
-  });
-  showToast('📨 เปิดโปรแกรมอีเมลแล้ว — อย่าลืมกด Send ด้วย','success');
-  setTimeout(function(){
-    document.getElementById('batchEmailModal').classList.add('hidden');
-    loadInvestigations();
-  }, 2500);
 }
 
 function copyBatchEmail() {
@@ -4948,40 +5116,62 @@ function showEmailPreview() {
 }
 
 function sendEmailAction() {
-  const to      = encodeURIComponent(document.getElementById('pe_to').value);
-  const cc      = encodeURIComponent(document.getElementById('pe_cc').value);
-  const subject = encodeURIComponent(document.getElementById('pe_subject').value);
-  const body    = encodeURIComponent(document.getElementById('pe_body').value);
-  const mailto  = 'mailto:'+to+'?cc='+cc+'&subject='+subject+'&body='+body;
-  window.open(mailto);
+  const to      = document.getElementById('pe_to').value;
+  const cc      = document.getElementById('pe_cc').value;
+  const subject = document.getElementById('pe_subject').value;
+  const body    = document.getElementById('pe_body').value;
 
-  // แสดง badge "ส่งแล้ว" และบันทึกวันที่
-  const badge = document.getElementById('pe_sent_badge');
-  if (badge) {
-    const now = new Date().toLocaleDateString('th-TH',{year:'numeric',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
-    badge.textContent = '✅ ส่งแล้ว ' + now;
-    badge.style.display = 'inline-block';
-  }
-  // อัปเดตวันที่ในฟอร์ม ld_post_date ถ้ายังว่าง
-  const postDateEl = document.getElementById('ld_post_date');
-  if (postDateEl && !postDateEl.value) {
-    postDateEl.value = new Date().toISOString().split('T')[0];
-  }
-  // อัปเดตอีเมลในช่อง ld_post_email
-  const postEmailEl = document.getElementById('ld_post_email');
-  if (postEmailEl && !postEmailEl.value) {
-    postEmailEl.value = document.getElementById('pe_to').value;
-  }
+  if (!to) { showToast('กรุณากรอกอีเมลผู้รับ','error'); return; }
+  if (!subject) { showToast('กรุณากรอกหัวข้อ','error'); return; }
+  if (!body) { showToast('กรุณากรอกเนื้อหา','error'); return; }
 
-  showToast('📨 เปิดโปรแกรมอีเมลแล้ว — อย่าลืมกด Send ในโปรแกรมอีเมลด้วย', 'success');
+  showToast('⏳ กำลังส่งอีเมล...','');
 
-  // ปิด modal หลัง 2 วิ
-  setTimeout(function(){
-    document.getElementById('postEmailModal').classList.add('hidden');
-    // reset steps
-    document.getElementById('pe_step1').style.display = 'block';
-    document.getElementById('pe_step2').style.display = 'none';
-  }, 2000);
+  google.script.run
+    .withSuccessHandler(function(res) {
+      if (res.success) {
+        // แสดง badge "ส่งแล้ว" และบันทึกวันที่
+        const badge = document.getElementById('pe_sent_badge');
+        if (badge) {
+          const now = new Date().toLocaleDateString('th-TH',{year:'numeric',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
+          badge.textContent = '✅ ส่งแล้ว ' + now;
+          badge.style.display = 'inline-block';
+        }
+        // อัปเดตวันที่ในฟอร์ม ld_post_date ถ้ายังว่าง
+        const postDateEl = document.getElementById('ld_post_date');
+        if (postDateEl && !postDateEl.value) {
+          postDateEl.value = new Date().toISOString().split('T')[0];
+        }
+        // อัปเดตอีเมลในช่อง ld_post_email
+        const postEmailEl = document.getElementById('ld_post_email');
+        if (postEmailEl && !postEmailEl.value) {
+          postEmailEl.value = to;
+        }
+
+        showToast('✅ ส่งอีเมลแล้ว', 'success');
+
+        // ปิด modal หลัง 2 วิ
+        setTimeout(function(){
+          document.getElementById('postEmailModal').classList.add('hidden');
+          // reset steps
+          document.getElementById('pe_step1').style.display = 'block';
+          document.getElementById('pe_step2').style.display = 'none';
+        }, 2000);
+      } else {
+        showToast('❌ ส่งอีเมลไม่ได้: '+(res.error||'Unknown error'),'error');
+      }
+    })
+    .withFailureHandler(function(e) {
+      showToast('❌ เกิดข้อผิดพลาด: '+e.message,'error');
+    })
+    .sendPostEmail({
+      to: to,
+      cc: cc,
+      subject: subject,
+      body: body,
+      fromName: currentUser,
+      fromEmail: currentEmail
+    });
 }
 function copyPostEmail() {
   const body = document.getElementById('pe_body').value;
