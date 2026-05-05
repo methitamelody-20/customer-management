@@ -1637,6 +1637,22 @@ tbody td{padding:12px;vertical-align:middle}
           </div>
         </div>
 
+        <!-- จัดการประเภทปัญหา -->
+        <div class="card" style="margin-bottom:14px">
+          <div class="card-sec">🏷️ จัดการประเภทปัญหา (CRM)</div>
+          <div style="font-size:13px;color:var(--gray3);margin-bottom:12px">เพิ่ม/ลบ/แก้ไขตัวเลือกประเภทปัญหาใน CRM แจ้งปัญหา</div>
+          <div id="issueTypesList" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px">
+            <!-- filled by JS -->
+          </div>
+          <div style="display:flex;gap:8px;align-items:flex-end">
+            <div style="flex:1">
+              <label class="flbl" style="display:block;margin-bottom:6px">เพิ่มประเภทใหม่</label>
+              <input class="finput" id="newIssueType" placeholder="พิมพ์ประเภทปัญหา..." style="width:100%">
+            </div>
+            <button class="btn btn-primary btn-sm" onclick="addIssueType()">➕ เพิ่ม</button>
+          </div>
+        </div>
+
         <!-- รายงานประจำเดือน -->
         <div class="card" style="margin-bottom:14px">
           <div class="card-sec">📊 รายงานประจำเดือน</div>
@@ -2558,6 +2574,77 @@ function populateDropdowns() {
     }, 200);
   }
   refreshTagDropdowns();
+}
+
+function loadIssueTypesUI() {
+  var DEFAULT_ISSUES = ['พิมพ์เพิ่ม','ชุดปรับปรุง','ชุดผลิตใหม่','ปัญหาทวงถามหนังสือ (ไม่ได้สั่งซื้อ/แผน ก2-ก3)','สอบถามทะเบียนและวัดผล (ลงทะเบียน/สอบ)','สอบถามกิจกรรมประจำชุดวิชา','สอบถามอบรมเข้มเสริมประสบการณ์วิชาชีพ','สอบถามสอนเสริมออนไลน์','สอบถามโครงการสัมฤทธิบัตร','ไม่ได้รับเอกสาร','เอกสารชำรุด','ส่งผิดวิชา','อื่นๆ (ระบุเอง)'];
+  var issues = (settings.issueTypes && settings.issueTypes.length) ? settings.issueTypes : DEFAULT_ISSUES;
+  var container = document.getElementById('issueTypesList');
+  if(!container) return;
+
+  container.innerHTML = issues.map(function(issue, idx){
+    return '<div style="display:flex;align-items:center;gap:6px;padding:6px 10px;background:var(--primary-container);border-radius:12px;font-size:13px">'
+      +'<span style="flex:1">'+issue+'</span>'
+      +(idx >= 13 ? '<button style="border:none;background:none;cursor:pointer;color:var(--red);font-weight:700;padding:0" onclick="removeIssueType('+idx+')">✕</button>' : '')
+      +'</div>';
+  }).join('');
+}
+
+function addIssueType() {
+  var input = document.getElementById('newIssueType');
+  if(!input || !input.value.trim()) {
+    showToast('กรุณาระบุประเภทปัญหา','error');
+    return;
+  }
+  var newType = input.value.trim();
+  var DEFAULT_ISSUES = ['พิมพ์เพิ่ม','ชุดปรับปรุง','ชุดผลิตใหม่','ปัญหาทวงถามหนังสือ (ไม่ได้สั่งซื้อ/แผน ก2-ก3)','สอบถามทะเบียนและวัดผล (ลงทะเบียน/สอบ)','สอบถามกิจกรรมประจำชุดวิชา','สอบถามอบรมเข้มเสริมประสบการณ์วิชาชีพ','สอบถามสอนเสริมออนไลน์','สอบถามโครงการสัมฤทธิบัตร','ไม่ได้รับเอกสาร','เอกสารชำรุด','ส่งผิดวิชา','อื่นๆ (ระบุเอง)'];
+  var issues = (settings.issueTypes && settings.issueTypes.length) ? settings.issueTypes : DEFAULT_ISSUES;
+
+  if(issues.includes(newType)) {
+    showToast('ประเภทนี้มีอยู่แล้ว','error');
+    return;
+  }
+
+  issues.push(newType);
+  settings.issueTypes = issues;
+  input.value = '';
+
+  google.script.run
+    .withSuccessHandler(function(res) {
+      if(res.success) {
+        showToast('✅ เพิ่มประเภทแล้ว','success');
+        loadIssueTypesUI();
+        populateDropdowns();
+      } else {
+        showToast('❌ '+res.error,'error');
+      }
+    })
+    .withFailureHandler(showError)
+    .saveSettings(settings);
+}
+
+function removeIssueType(idx) {
+  var DEFAULT_ISSUES = ['พิมพ์เพิ่ม','ชุดปรับปรุง','ชุดผลิตใหม่','ปัญหาทวงถามหนังสือ (ไม่ได้สั่งซื้อ/แผน ก2-ก3)','สอบถามทะเบียนและวัดผล (ลงทะเบียน/สอบ)','สอบถามกิจกรรมประจำชุดวิชา','สอบถามอบรมเข้มเสริมประสบการณ์วิชาชีพ','สอบถามสอนเสริมออนไลน์','สอบถามโครงการสัมฤทธิบัตร','ไม่ได้รับเอกสาร','เอกสารชำรุด','ส่งผิดวิชา','อื่นๆ (ระบุเอง)'];
+  var issues = (settings.issueTypes && settings.issueTypes.length) ? settings.issueTypes : DEFAULT_ISSUES;
+  if(idx < 13) {
+    showToast('ไม่สามารถลบประเภทมาตรฐาน','error');
+    return;
+  }
+  issues.splice(idx, 1);
+  settings.issueTypes = issues;
+
+  google.script.run
+    .withSuccessHandler(function(res) {
+      if(res.success) {
+        showToast('✅ ลบประเภทแล้ว','success');
+        loadIssueTypesUI();
+        populateDropdowns();
+      } else {
+        showToast('❌ '+res.error,'error');
+      }
+    })
+    .withFailureHandler(showError)
+    .saveSettings(settings);
 }
 
 function refreshTagDropdowns() {
@@ -5222,6 +5309,7 @@ function loadAuditLog() {
 // SETTINGS
 // ============================================================
 function loadSettings_page() {
+  loadIssueTypesUI();
   google.script.run
     .withSuccessHandler(function(url){
       if(url){ document.getElementById('logo_url_input').value=url; updateLogoPreview(url); }
