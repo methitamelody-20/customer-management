@@ -309,6 +309,34 @@ tbody td{padding:9px 12px;vertical-align:middle}
   body{background:#fff}
 }
 </style>
+
+<!-- Firebase SDK -->
+<script type="module">
+  // Firebase Web SDK Configuration
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
+  import { getDatabase, ref, get, push, set, update, query, orderByChild, equalTo } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-database.js";
+  import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js";
+
+  // Firebase configuration
+  const firebaseConfig = {
+    apiKey: "AIzaSyDpRytR1M8rLsckJXdJb3HTaHxP2S53HWc",
+    authDomain: "management-crm-stoupost.firebaseapp.com",
+    projectId: "management-crm-stoupost",
+    databaseURL: "https://management-crm-stoupost-default-rtdb.asia-southeast1.firebasedatabase.app",
+    storageBucket: "management-crm-stoupost.firebasestorage.app",
+    messagingSenderId: "766285421505",
+    appId: "1:766285421505:web:6fe74c474b386a6433ad40"
+  };
+
+  // Initialize Firebase
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getDatabase(app);
+
+  // Expose to global window for use in HTML
+  window.firebase = { app, auth, db, getDatabase, ref, get, push, set, update, query, orderByChild, equalTo };
+</script>
+
 </head>
 <body>
 
@@ -1849,9 +1877,149 @@ let settings={parcelTypes:[],returnCauses:[],prefixes:[],terms:[]};
 let allYears=[], allTags=[];
 let tagSelectedColor=0;
 let allRecords=[], allCrm=[];  // cache จาก Sheets
+let useFirebase = false; // ถ้า Firebase เปิด จะ set เป็น true
 
 // ============================================================
-// INIT — ตรวจ session จาก Apps Script
+// FIREBASE WRAPPER
+// ============================================================
+const firebaseAPI = {
+  async checkSession() {
+    // ลอง Firebase auth ก่อน ถ้า enabled
+    if (useFirebase && window.firebase && window.firebase.auth.currentUser) {
+      const user = window.firebase.auth.currentUser;
+      // ดึง user data จาก Realtime Database
+      const db = window.firebase.db;
+      const userRef = window.firebase.ref(db, '/users/' + encodeURIComponent(user.email));
+      const snapshot = await window.firebase.get(userRef);
+      if (snapshot.exists()) {
+        return { valid: true, email: user.email, ...snapshot.val() };
+      }
+    }
+    // Fallback: ใช้ Apps Script
+    return new Promise((resolve) => {
+      google.script.run
+        .withSuccessHandler(resolve)
+        .withFailureHandler(() => resolve({valid:false}))
+        .checkSession();
+    });
+  },
+
+  async addCrmTicket(data) {
+    if (useFirebase && window.firebase) {
+      const db = window.firebase.db;
+      const crmRef = window.firebase.ref(db, '/crm');
+      const newRef = await window.firebase.push(crmRef, {
+        date: new Date().toISOString(),
+        reporterName: data.reporterName || '',
+        studentId: data.studentId || '',
+        reporterEmail: data.reporterEmail || '',
+        reporterPhone: data.reporterPhone || '',
+        department: data.department || '',
+        educationLevel: data.educationLevel || '',
+        term: data.term || '',
+        year: data.year || '',
+        courses: data.courses || '',
+        issueType: data.issueType || '',
+        detail: data.detail || '',
+        channel: data.channel || 'online',
+        priority: data.priority || 'normal',
+        tags: data.tags || '',
+        status: 'open',
+        assigneeName: '',
+        assigneeEmail: '',
+        replies: '[]',
+        recorderName: data.recorderName || 'ผู้แจ้งออนไลน์'
+      });
+      return { success: true, id: newRef.key };
+    }
+    // Fallback: Apps Script
+    return new Promise((resolve) => {
+      google.script.run
+        .withSuccessHandler(resolve)
+        .withFailureHandler((e) => resolve({success:false, error:e.message}))
+        .addCrmTicket(data);
+    });
+  },
+
+  async getCrmTickets(filters) {
+    if (useFirebase && window.firebase) {
+      const db = window.firebase.db;
+      const crmRef = window.firebase.ref(db, '/crm');
+      const snapshot = await window.firebase.get(crmRef);
+      if (!snapshot.exists()) return [];
+      const tickets = [];
+      snapshot.forEach((childSnapshot) => {
+        tickets.push({
+          id: childSnapshot.key,
+          ...childSnapshot.val()
+        });
+      });
+      return tickets.reverse();
+    }
+    // Fallback
+    return new Promise((resolve) => {
+      google.script.run
+        .withSuccessHandler(resolve)
+        .withFailureHandler(() => resolve([]))
+        .getCrmTickets(filters);
+    });
+  },
+
+  async replyCrmTicket(id, text, adminName, adminEmail) {
+    if (useFirebase && window.firebase) {
+      const db = window.firebase.db;
+      const ticketRef = window.firebase.ref(db, '/crm/' + id);
+      const snapshot = await window.firebase.get(ticketRef);
+      if (!snapshot.exists()) return { success: false, error: 'ไม่พบ Ticket' };
+      const ticket = snapshot.val();
+      const replies = ticket.replies ? JSON.parse(ticket.replies) : [];
+      replies.push({
+        name: adminName,
+        email: adminEmail || '',
+        text: text,
+        time: new Date().toISOString()
+      });
+      const updates = { replies: JSON.stringify(replies) };
+      if (ticket.status === 'open') updates.status = 'inprogress';
+      await window.firebase.update(ticketRef, updates);
+      return { success: true };
+    }
+    // Fallback
+    return new Promise((resolve) => {
+      google.script.run
+        .withSuccessHandler(resolve)
+        .withFailureHandler((e) => resolve({success:false, error:e.message}))
+        .replyCrmTicket(id, text, adminName);
+    });
+  },
+
+  async getRecords(filters) {
+    if (useFirebase && window.firebase) {
+      const db = window.firebase.db;
+      const recordsRef = window.firebase.ref(db, '/records');
+      const snapshot = await window.firebase.get(recordsRef);
+      if (!snapshot.exists()) return [];
+      const records = [];
+      snapshot.forEach((childSnapshot) => {
+        records.push({
+          id: childSnapshot.key,
+          ...childSnapshot.val()
+        });
+      });
+      return records;
+    }
+    // Fallback
+    return new Promise((resolve) => {
+      google.script.run
+        .withSuccessHandler(resolve)
+        .withFailureHandler(() => resolve([]))
+        .getRecords(filters);
+    });
+  }
+};
+
+// ============================================================
+// INIT — ตรวจ session จาก Apps Script / Firebase
 // ============================================================
 window.onload = function() {
   // โหลด saved credentials ถ้าเคยติ๊ก "จดจำรหัสผ่าน"
