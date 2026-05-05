@@ -755,10 +755,11 @@ function migrateUsersToFirebase() {
     let count = 0;
     for (let i = 1; i < data.length; i++) {
       const row = data[i];
-      if (!row[0]) continue; // skip empty rows
+      const email = (row[0] || '').toString().trim();
+      if (!email) continue; // skip empty rows
 
       const userData = {
-        email: row[0],
+        email: email,
         passwordHash: row[1],
         role: row[2] || 'staff',
         name: row[3] || '',
@@ -767,7 +768,8 @@ function migrateUsersToFirebase() {
         perms: row[6] || ''
       };
 
-      const result = firebaseCall('PUT', '/users/' + encodeURIComponent(row[0]), userData);
+      const safeKey = email.replace(/[@.]/g, '_');
+      const result = firebaseCall('PUT', '/users/' + safeKey, userData);
       if (result) count++;
     }
     return { success:true, migratedCount:count, message:'โอนย้าย ' + count + ' ผู้ใช้งานแล้ว' };
