@@ -3533,6 +3533,33 @@ function sendReply(id) {
   if(!text){showToast('กรุณากรอกข้อความ','error');return;}
 
   showToast('⏳ กำลังส่ง...','');
+
+  const hasFile = fileInput && fileInput.files && fileInput.files.length > 0;
+  if (hasFile) {
+    const file = fileInput.files[0];
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      const base64 = e.target.result.split(',')[1];
+      google.script.run
+        .withSuccessHandler(res=>{
+          if(res.success) {
+            doSendReplyWithAttachment(id, text, sendEmail, res.fileUrl);
+          } else {
+            showToast('❌ อัปโหลดไฟล์ไม่ได้: '+res.error,'error');
+          }
+        })
+        .withFailureHandler(e=>{
+          showToast('❌ อัปโหลดไฟล์ไม่ได้','error');
+        })
+        .uploadCrmAttachment(file.name, base64, id);
+    };
+    reader.readAsDataURL(file);
+  } else {
+    doSendReplyOnly(id, text, sendEmail);
+  }
+}
+
+function doSendReplyOnly(id, text, sendEmail) {
   google.script.run
     .withSuccessHandler(res=>{
       if(res.success){
@@ -3542,9 +3569,7 @@ function sendReply(id) {
           else if(res.emailError) msg = '⚠️ บันทึกแล้ว แต่ส่งอีเมลไม่ได้: '+res.emailError;
         }
         showToast(msg,'success');
-        document.getElementById('ri_'+id).value='';
-        if(fileInput) fileInput.value='';
-        if(document.getElementById('ri_email_'+id)) document.getElementById('ri_email_'+id).checked=false;
+        clearReplyForm(id);
         loadCrm();
       } else {
         showToast('❌ '+res.error,'error');
@@ -3552,6 +3577,35 @@ function sendReply(id) {
     })
     .withFailureHandler(showError)
     .replyCrmTicket(id, text, currentUser, currentEmail, sendEmail);
+}
+
+function doSendReplyWithAttachment(id, text, sendEmail, fileUrl) {
+  const textWithLink = text + '\n\n📎 ไฟล์แนบ: ' + fileUrl;
+  google.script.run
+    .withSuccessHandler(res=>{
+      if(res.success){
+        let msg = '✅ บันทึกและอัปโหลดไฟล์แล้ว';
+        if(sendEmail){
+          if(res.emailSent) msg = '✅ ส่งแล้ว + อีเมลถึง '+res.sentTo;
+          else if(res.emailError) msg = '⚠️ บันทึกแล้ว แต่ส่งอีเมลไม่ได้: '+res.emailError;
+        }
+        showToast(msg,'success');
+        clearReplyForm(id);
+        loadCrm();
+      } else {
+        showToast('❌ '+res.error,'error');
+      }
+    })
+    .withFailureHandler(showError)
+    .replyCrmTicket(id, textWithLink, currentUser, currentEmail, sendEmail);
+}
+
+function clearReplyForm(id) {
+  document.getElementById('ri_'+id).value='';
+  const fileInput = document.getElementById('ri_file_'+id);
+  if(fileInput) fileInput.value='';
+  const emailCheckbox = document.getElementById('ri_email_'+id);
+  if(emailCheckbox) emailCheckbox.checked=false;
 }
 
 function updateCrmStatus(id, status) {

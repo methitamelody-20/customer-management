@@ -2756,3 +2756,40 @@ function sendPostEmail(data) {
     return { success:false, error:e.message };
   }
 }
+
+// ============================================================
+// CRM FILE UPLOAD
+// ============================================================
+function uploadCrmAttachment(filename, base64content, crmId) {
+  if (!_autoRefreshSession()) return { success:false, error:'SESSION_EXPIRED' };
+  try {
+    const folder = DriveApp.getFoldersByName('CRM Attachments').hasNext()
+      ? DriveApp.getFoldersByName('CRM Attachments').next()
+      : DriveApp.getRootFolder().createFolder('CRM Attachments');
+
+    const blob = Utilities.newBlob(Utilities.base64Decode(base64content), getMimeType(filename), filename);
+    const file = folder.createFile(blob);
+    file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+
+    logAudit('อัปโหลดไฟล์ CRM', 'ID: ' + crmId + ' | ไฟล์: ' + filename);
+    return { success:true, fileUrl:file.getUrl(), fileId:file.getId() };
+  } catch(e) {
+    return { success:false, error:e.message };
+  }
+}
+
+function getMimeType(filename) {
+  const ext = filename.substring(filename.lastIndexOf('.')).toLowerCase();
+  const types = {
+    '.pdf':'application/pdf',
+    '.doc':'application/msword',
+    '.docx':'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    '.xls':'application/vnd.ms-excel',
+    '.xlsx':'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    '.jpg':'image/jpeg', '.jpeg':'image/jpeg',
+    '.png':'image/png',
+    '.gif':'image/gif',
+    '.txt':'text/plain'
+  };
+  return types[ext] || 'application/octet-stream';
+}
