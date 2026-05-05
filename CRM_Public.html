@@ -1,0 +1,722 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ติดตามปัญหาเอกสารการสอน — มสธ.</title>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&family=Prompt:wght@600;700&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --navy:#0f2744;--blue:#1a4a8a;--sky:#2d7dd2;--accent:#f4a21e;
+  --red:#c0392b;--green:#1e8a4a;
+  --light:#f0f4f8;--white:#fff;--gray1:#e8edf4;--gray2:#c5cfe0;--gray3:#8899b4;--text:#1a2840;
+  --r:12px;--rsm:8px;--font:'Sarabun',sans-serif;--font-h:'Prompt',sans-serif;
+}
+html,body{min-height:100%;font-family:var(--font);color:var(--text);background:var(--light)}
+.wrap{max-width:680px;margin:0 auto;padding:28px 16px 60px}
+
+/* HEADER */
+.header{background:linear-gradient(135deg,var(--navy),var(--blue));border-radius:var(--r);padding:28px 28px 24px;margin-bottom:22px;color:#fff;position:relative;overflow:hidden}
+.header::before{content:'';position:absolute;right:-30px;top:-30px;width:180px;height:180px;border-radius:50%;background:rgba(255,255,255,0.05)}
+.header .logo{display:flex;align-items:center;gap:14px;margin-bottom:14px;position:relative}
+.header .logo-ico{width:48px;height:48px;border-radius:12px;background:linear-gradient(135deg,var(--sky),var(--accent));display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0}
+.header h1{font-family:var(--font-h);font-size:18px;line-height:1.4}
+.header p{font-size:13px;opacity:.75;position:relative}
+.header .contact-info{display:flex;gap:16px;flex-wrap:wrap;margin-top:12px;font-size:12px;opacity:.8;position:relative}
+.header .contact-info span{display:flex;align-items:center;gap:5px}
+
+/* CARD */
+.card{background:var(--white);border-radius:var(--r);padding:24px;margin-bottom:16px;box-shadow:0 2px 12px rgba(15,39,68,0.08)}
+.card-title{font-family:var(--font-h);font-size:14px;font-weight:700;color:var(--navy);margin-bottom:16px;display:flex;align-items:center;gap:8px}
+.card-title .num{width:24px;height:24px;border-radius:50%;background:linear-gradient(135deg,var(--sky),var(--blue));color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0}
+
+/* FORM */
+.fg{display:flex;flex-direction:column;gap:5px;margin-bottom:14px}
+.fg:last-child{margin-bottom:0}
+.flbl{font-size:13px;font-weight:600;color:var(--navy);display:flex;align-items:center;gap:5px}
+.req{color:var(--red);font-size:14px}
+.flbl .hint{font-size:11px;font-weight:400;color:var(--gray3)}
+.finput,.fsel,.ftextarea{border:1.5px solid var(--gray2);border-radius:var(--rsm);padding:10px 13px;font-family:var(--font);font-size:14px;color:var(--text);background:#fff;outline:none;width:100%;transition:border-color .2s,box-shadow .2s}
+.finput:focus,.fsel:focus,.ftextarea:focus{border-color:var(--sky);box-shadow:0 0 0 3px rgba(45,125,210,0.10)}
+.finput.err,.fsel.err{border-color:var(--red);background:#fff8f8}
+.ftextarea{resize:vertical;min-height:90px;line-height:1.7}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:500px){.grid2{grid-template-columns:1fr}}
+
+/* AUTOCOMPLETE */
+.ac-wrap{position:relative}
+.ac-drop{position:absolute;top:100%;left:0;right:0;background:#fff;border:1.5px solid var(--sky);border-radius:var(--rsm);box-shadow:0 6px 20px rgba(0,0,0,0.12);z-index:200;max-height:200px;overflow-y:auto;display:none}
+.ac-item{padding:9px 13px;font-size:13px;cursor:pointer;transition:background .12s;display:flex;align-items:center;gap:8px}
+.ac-item:hover,.ac-item.focused{background:var(--gray1)}
+.ac-item .ac-icon{font-size:14px;color:var(--gray3)}
+.ac-item .ac-new{font-size:11px;color:var(--sky);margin-left:auto;font-weight:600}
+.ac-tip{font-size:11px;color:var(--gray3);margin-top:3px}
+
+/* CHIPS */
+.q-chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px}
+.q-chip{padding:8px 16px;border:1.5px solid var(--gray2);border-radius:30px;font-size:13px;cursor:pointer;transition:all .2s;background:#fff;font-family:var(--font)}
+.q-chip:hover{border-color:var(--sky);color:var(--sky)}
+.q-chip.selected{border-color:var(--sky);background:var(--sky);color:#fff;font-weight:600}
+
+/* YEAR SELECT */
+.year-wrap{display:flex;gap:8px}
+.year-wrap .fsel{flex:1}
+.year-wrap .add-yr{padding:0 12px;border:1.5px dashed var(--gray2);border-radius:var(--rsm);background:none;cursor:pointer;font-size:18px;color:var(--gray3);transition:all .2s;white-space:nowrap}
+.year-wrap .add-yr:hover{border-color:var(--sky);color:var(--sky)}
+
+/* COURSE */
+.course-block{background:var(--light);border-radius:var(--rsm);padding:14px;margin-bottom:10px;position:relative}
+.course-block .cb-num{font-size:11px;font-weight:700;color:var(--gray3);margin-bottom:8px}
+.course-block .rm-course{position:absolute;top:10px;right:10px;border:none;background:none;cursor:pointer;color:var(--red);font-size:16px;padding:0;line-height:1}
+.add-btn{display:flex;align-items:center;justify-content:center;gap:7px;padding:10px;border:1.5px dashed var(--gray2);border-radius:var(--rsm);background:none;cursor:pointer;font-family:var(--font);font-size:13px;color:var(--gray3);width:100%;transition:all .2s}
+.add-btn:hover{border-color:var(--sky);color:var(--sky)}
+
+/* CHANNEL */
+.ch-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px;margin-top:4px}
+.ch-card{padding:10px 8px;border:1.5px solid var(--gray2);border-radius:var(--rsm);text-align:center;cursor:pointer;transition:all .2s;background:#fff}
+.ch-card:hover{border-color:var(--sky)}
+.ch-card.selected{border-color:var(--sky);background:var(--sky);color:#fff}
+.ch-card .ch-ico{font-size:22px;margin-bottom:4px}
+.ch-card .ch-lbl{font-size:11px;font-weight:600}
+
+/* PRIORITY */
+.priority-sel{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px}
+.prio-btn{padding:7px 16px;border:1.5px solid var(--gray2);border-radius:30px;font-size:12px;font-weight:600;cursor:pointer;background:#fff;font-family:var(--font);transition:all .2s}
+.prio-btn.p-normal.sel{background:#6c757d;color:#fff;border-color:#6c757d}
+.prio-btn.p-high.sel{background:var(--accent);color:var(--navy);border-color:var(--accent)}
+.prio-btn.p-urgent.sel{background:var(--red);color:#fff;border-color:var(--red)}
+
+/* FILE */
+.file-drop{border:2px dashed var(--gray2);border-radius:var(--rsm);padding:20px;text-align:center;cursor:pointer;background:#fafbfd;transition:all .2s}
+.file-drop:hover,.file-drop.dragover{border-color:var(--sky);background:#f0f6ff}
+.file-list{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.file-item{display:flex;align-items:center;gap:6px;padding:5px 10px;background:var(--gray1);border-radius:6px;font-size:12px}
+.file-item .rm{border:none;background:none;cursor:pointer;color:var(--red);font-weight:700;font-size:14px;padding:0;line-height:1}
+
+/* PROGRESS */
+.progress-bar{background:var(--gray1);border-radius:20px;height:6px;margin-bottom:22px;overflow:hidden}
+.progress-fill{height:100%;background:linear-gradient(90deg,var(--sky),var(--blue));border-radius:20px;transition:width .4s}
+
+/* SUBMIT */
+.submit-btn{width:100%;padding:14px;border:none;border-radius:var(--rsm);background:linear-gradient(135deg,var(--sky),var(--blue));color:#fff;font-family:var(--font);font-size:16px;font-weight:700;cursor:pointer;transition:filter .2s;box-shadow:0 4px 16px rgba(45,125,210,0.3)}
+.submit-btn:hover{filter:brightness(1.07)}
+.submit-btn:disabled{opacity:.5;cursor:not-allowed}
+
+/* SUCCESS */
+#successScreen{display:none;text-align:center;padding:40px 20px}
+.success-ico{font-size:64px;margin-bottom:16px}
+.success-id{font-family:monospace;font-size:20px;font-weight:700;color:var(--sky);background:var(--gray1);padding:8px 20px;border-radius:8px;display:inline-block;margin:10px 0}
+
+.tip{font-size:11px;color:var(--gray3);margin-top:3px;display:flex;align-items:center;gap:4px}
+.section-divider{border-top:1px solid var(--gray1);margin:16px 0}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="header">
+    <div class="logo">
+      <div class="logo-ico">📚</div>
+      <div>
+        <h1>ติดตามปัญหาเอกสารการสอน</h1>
+        <p>งานนวัตกรรมเพื่อการบริการการศึกษา ศูนย์บริการการสอนทางไปรษณย์ สำนักบริการการศึกษา มหาวิทยาลัยสุโขทัยธรรมาธิราช</p>
+      </div>
+    </div>
+    <p>กรอกแบบฟอร์มนี้เพื่อแจ้งปัญหาเกี่ยวกับเอกสารการสอน เจ้าหน้าที่จะติดต่อกลับโดยเร็ว</p>
+    <div class="contact-info">
+      <span>📧 stou.post@g.stou.ac.th</span>
+      <span>📞 02-504-7623,7626</span>
+      <span>⏰ จ-ศ 8:30–16:30 น.</span>
+    </div>
+  </div>
+
+  <div class="progress-bar"><div class="progress-fill" id="progFill" style="width:0%"></div></div>
+
+  <div id="mainForm">
+
+    <!-- 1. ประเภทปัญหา (autocomplete + เพิ่มเองได้) -->
+    <div class="card">
+      <div class="card-title"><span class="num">1</span> ประเภทปัญหาที่พบ <span class="req">*</span></div>
+      <div class="q-chips" id="qtypes">
+        <button class="q-chip" onclick="selQ(this,'สอบถามเกี่ยวกับเอกสารการสอน')">🔍 สอบถามเกี่ยวกับเอกสารการสอน</button>
+        <button class="q-chip" onclick="selQ(this,'ไม่ได้รับเอกสาร')">📭 ไม่ได้รับเอกสาร</button>
+        <button class="q-chip" onclick="selQ(this,'เอกสารชำรุด/ไม่ครบ')">📄 เอกสารชำรุด/ไม่ครบ</button>
+        <button class="q-chip" onclick="selQ(this,'ส่งผิดวิชา')">🔄 ส่งผิดวิชา</button>
+        <button class="q-chip" onclick="selQ(this,'เอกสารไม่ถึงตามกำหนด')">⏳ เอกสารไม่ถึงตามกำหนด</button>
+        <button class="q-chip" id="otherQChip" onclick="selQ(this,'อื่นๆ')">✏️ อื่นๆ / ระบุเอง</button>
+      </div>
+      <input type="hidden" id="f_qtype">
+      <!-- กรอกเองหรือเลือกจาก history -->
+      <div id="custom_q_wrap" style="display:none;margin-top:12px">
+        <div class="fg" style="margin-bottom:0">
+          <label class="flbl">ระบุประเภทปัญหา <span class="hint">(หรือเลือกจากที่เคยแจ้ง)</span></label>
+          <div class="ac-wrap">
+            <input class="finput" id="f_custom_q" placeholder="พิมพ์หรือเลือก..." autocomplete="off"
+              oninput="acSearch(this,'custom_q',customQHistory)" onfocus="acSearch(this,'custom_q',customQHistory)"
+              onblur="setTimeout(()=>closeAc('custom_q'),200)"
+              onkeydown="acKeydown(event,'custom_q')">
+            <div class="ac-drop" id="ac_custom_q"></div>
+          </div>
+          <div class="tip">💡 พิมพ์แล้วกด Enter เพื่อเพิ่มประเภทปัญหาใหม่</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2. ข้อมูลผู้แจ้ง -->
+    <div class="card">
+      <div class="card-title"><span class="num">2</span> ข้อมูลผู้แจ้งปัญหา</div>
+      <div class="grid2">
+        <div class="fg">
+          <label class="flbl">ชื่อ-นามสกุล <span class="req">*</span></label>
+          <div class="ac-wrap">
+            <input class="finput" id="f_name" placeholder="ชื่อ นามสกุล" autocomplete="off"
+              oninput="acSearch(this,'name',nameHistory)" onfocus="acSearch(this,'name',nameHistory)"
+              onblur="setTimeout(()=>closeAc('name'),200)"
+              onkeydown="acKeydown(event,'name')" oninput="updateProgress()">
+            <div class="ac-drop" id="ac_name"></div>
+          </div>
+        </div>
+        <div class="fg">
+          <label class="flbl">รหัสนักศึกษา</label>
+          <div class="ac-wrap">
+            <input class="finput" id="f_sid" placeholder="เช่น 6400012345" maxlength="10" autocomplete="off"
+              oninput="acSearch(this,'sid',sidHistory)" onfocus="acSearch(this,'sid',sidHistory)"
+              onblur="setTimeout(()=>closeAc('sid'),200)"
+              onkeydown="acKeydown(event,'sid')">
+            <div class="ac-drop" id="ac_sid"></div>
+          </div>
+          <div class="tip">ℹ️ กรอกเพื่อให้เจ้าหน้าที่ตรวจสอบได้รวดเร็ว</div>
+        </div>
+      </div>
+      <div class="grid2">
+        <div class="fg">
+          <label class="flbl">อีเมล <span class="req">*</span></label>
+          <input class="finput" id="f_email" type="email" placeholder="example@email.com" oninput="updateProgress()">
+          <div class="tip">📧 Admin จะตอบกลับการดำเนินการทางอีเมลนี้</div>
+        </div>
+        <div class="fg">
+          <label class="flbl">เบอร์โทรศัพท์</label>
+          <input class="finput" id="f_phone" placeholder="08X-XXX-XXXX">
+        </div>
+      </div>
+      <div class="grid2">
+        <div class="fg">
+          <label class="flbl">สาขาวิชา <span class="hint">(ไม่บังคับ)</span></label>
+          <select class="fsel" id="f_dept">
+            <option value="">— เลือกสาขาวิชา —</option>
+            <option>สาขาศิลปศาสตร์</option>
+            <option>สาขาศึกษาศาสตร์</option>
+            <option>สาขาวิทยาการจัดการ</option>
+            <option>สาขานิติศาสตร์</option>
+            <option>สาขาวิทยาศาสตร์สุขภาพ</option>
+            <option>สาขาเศรษฐศาสตร์</option>
+            <option>สาขามนุษยนิเวศศาสตร์</option>
+            <option>สาขารัฐศาสตร์</option>
+            <option>สาขาเกษตรศาสตร์และสหกรณ์</option>
+            <option>สาขานิเทศศาสตร์</option>
+            <option>สาขาวิทยาศาสตร์และเทคโนโลยี</option>
+            <option>สาขาพยาบาลศาสตร์</option>
+          </select>
+        </div>
+        <div class="fg">
+          <label class="flbl">ระดับการศึกษา</label>
+          <select class="fsel" id="f_edu">
+            <option value="">— เลือก —</option>
+            <option>ปริญญาตรี</option>
+            <option>ปริญญาโท</option>
+            <option>ปริญญาเอก</option>
+            <option>ประกาศนียบัตร</option>
+            <option>สัมฤทธิบัตร</option>
+          </select>
+        </div>
+        <div class="fg">
+          <label class="flbl">แผนการศึกษา <span class="hint">(ถ้ามี)</span></label>
+          <select class="fsel" id="f_plan">
+            <option value="">— เลือกแผน —</option>
+            <option>แผน ก1</option>
+            <option>แผน ก2</option>
+            <option>แผน ก3</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- ประเภทปัญหา -->
+    <div class="card">
+      <div class="card-title"><span class="num" style="background:var(--sky)">★</span> ประเภทปัญหา</div>
+      <div class="fg">
+        <label class="flbl">ประเภทปัญหาที่ต้องการสอบถาม <span class="req">*</span></label>
+        <select class="fsel" id="f_issuetype" onchange="checkIssueOther(this.value)" required>
+          <option value="">— เลือกประเภทปัญหา —</option>
+          <option>พิมพ์เพิ่ม</option>
+          <option>ชุดปรับปรุง</option>
+          <option>ชุดผลิตใหม่</option>
+          <option>ปัญหาทวงถามหนังสือ (ไม่ได้สั่งซื้อ/แผน ก2-ก3)</option>
+          <option>สอบถามทะเบียนและวัดผล (ลงทะเบียน/สอบ)</option>
+          <option>สอบถามกิจกรรมประจำชุดวิชา</option>
+          <option>สอบถามอบรมเข้มเสริมประสบการณ์วิชาชีพ</option>
+          <option>สอบถามสอนเสริมออนไลน์</option>
+          <option>สอบถามโครงการสัมฤทธิบัตร</option>
+          <option>ไม่ได้รับเอกสาร</option>
+          <option>เอกสารชำรุด</option>
+          <option>ส่งผิดวิชา</option>
+          <option>อื่นๆ (ระบุเอง)</option>
+        </select>
+        <div id="f_issuetype_other_wrap" style="display:none;margin-top:8px">
+          <input class="finput" id="f_issuetype_other" placeholder="ระบุประเภทปัญหา...">
+        </div>
+      </div>
+    </div>
+
+    <!-- 3. ภาค/ปี + ชุดวิชา -->
+    <div class="card">
+      <div class="card-title"><span class="num">3</span> ภาคการศึกษาและชุดวิชา</div>
+      <div class="grid2" style="margin-bottom:14px">
+        <div class="fg">
+          <label class="flbl">ภาคการศึกษา <span class="req">*</span></label>
+          <select class="fsel" id="f_term" onchange="updateProgress()">
+            <option value="">— เลือก —</option>
+            <option>1</option><option>2</option><option>3</option>
+          </select>
+        </div>
+        <div class="fg">
+          <label class="flbl">ปีการศึกษา <span class="req">*</span></label>
+          <div class="year-wrap">
+            <select class="fsel" id="f_year" onchange="updateProgress()">
+              <option value="">— เลือก —</option>
+            </select>
+            <button class="add-yr" onclick="addYear()" title="เพิ่มปีการศึกษา" type="button">＋</button>
+          </div>
+        </div>
+      </div>
+      <label class="flbl" style="margin-bottom:10px;display:block">
+        ชุดวิชาที่พบปัญหา <span class="hint">(กรอกได้สูงสุด 3 วิชา)</span>
+      </label>
+      <div id="courseBlocks">
+        <div class="course-block" data-n="1">
+          <div class="cb-num">ชุดวิชาที่ 1</div>
+          <div class="grid2">
+            <div class="fg">
+              <label class="flbl">รหัสชุดวิชา</label>
+              <div class="ac-wrap">
+                <input class="finput" placeholder="เช่น 10101" autocomplete="off"
+                  oninput="acSearch(this,'course',courseHistory)" onfocus="acSearch(this,'course',courseHistory)"
+                  onblur="setTimeout(()=>closeAc('course'),200)"
+                  onkeydown="acKeydown(event,'course')">
+                <div class="ac-drop" id="ac_course"></div>
+              </div>
+            </div>
+            <div class="fg"><label class="flbl">ชื่อชุดวิชา</label><input class="finput" placeholder="ชื่อวิชา (ถ้าทราบ)"></div>
+          </div>
+        </div>
+      </div>
+      <button class="add-btn" id="addCourseBtn" onclick="addCourse()" type="button">
+        + เพิ่มชุดวิชา (ได้อีก <span id="courseLeft">2</span> วิชา)
+      </button>
+    </div>
+
+    <!-- 4. รายละเอียดปัญหา (ไม่บังคับ) -->
+    <div class="card">
+      <div class="card-title"><span class="num">4</span> รายละเอียดปัญหา</div>
+      <div class="fg" style="margin-bottom:14px">
+        <label class="flbl">อธิบายปัญหา <span class="hint">(ไม่บังคับ)</span></label>
+        <textarea class="ftextarea" id="f_detail" placeholder="อธิบายปัญหาเพิ่มเติม เช่น สั่งซื้อเมื่อไหร่ ได้รับหรือไม่ สภาพเอกสารเป็นอย่างไร..."></textarea>
+      </div>
+      <div class="fg">
+        <label class="flbl">ความเร่งด่วน</label>
+        <div class="priority-sel">
+          <button class="prio-btn p-normal sel" id="pr_normal" onclick="selPrio('normal')" type="button">⚪ ปกติ</button>
+          <button class="prio-btn p-high" id="pr_high" onclick="selPrio('high')" type="button">🟡 สำคัญ</button>
+          <button class="prio-btn p-urgent" id="pr_urgent" onclick="selPrio('urgent')" type="button">🔴 เร่งด่วน</button>
+        </div>
+        <input type="hidden" id="f_priority" value="normal">
+      </div>
+    </div>
+
+    <!-- 5. ช่องทางแจ้ง -->
+    <div class="card">
+      <div class="card-title"><span class="num">5</span> แจ้งผ่านช่องทาง</div>
+      <div class="ch-grid">
+        <div class="ch-card selected" id="ch_online" onclick="selCh('online')"><div class="ch-ico">🌐</div><div class="ch-lbl">ออนไลน์</div></div>
+        <div class="ch-card" id="ch_phone" onclick="selCh('phone')"><div class="ch-ico">📞</div><div class="ch-lbl">โทรศัพท์</div></div>
+        <div class="ch-card" id="ch_line" onclick="selCh('line')"><div class="ch-ico">💚</div><div class="ch-lbl">LINE</div></div>
+        <div class="ch-card" id="ch_letter" onclick="selCh('letter')"><div class="ch-ico">✉️</div><div class="ch-lbl">จดหมาย</div></div>
+        <div class="ch-card" id="ch_walkin" onclick="selCh('walkin')"><div class="ch-ico">🚶</div><div class="ch-lbl">มาด้วยตนเอง</div></div>
+      </div>
+      <input type="hidden" id="f_channel" value="online">
+    </div>
+
+    <!-- 6. แนบเอกสาร -->
+    <div class="card">
+      <div class="card-title"><span class="num">6</span> แนบภาพ/เอกสาร <span style="font-size:12px;font-weight:400;color:var(--gray3)">(ถ้ามี)</span></div>
+      <div class="file-drop" id="fileDropArea"
+        ondragover="this.classList.add('dragover');event.preventDefault()"
+        ondragleave="this.classList.remove('dragover')"
+        ondrop="handleFileDrop(event)" onclick="document.getElementById('fileInp').click()">
+        <div style="font-size:36px;margin-bottom:8px">📎</div>
+        <p style="font-size:13px;color:var(--gray3)">ลากไฟล์มาวางที่นี่ หรือ <strong style="color:var(--sky);cursor:pointer">คลิกเพื่อเลือก</strong></p>
+        <p style="font-size:11px;color:var(--gray3);margin-top:4px">รองรับ JPG, PNG, PDF ขนาดไม่เกิน 5MB/ไฟล์</p>
+      </div>
+      <input type="file" id="fileInp" multiple accept="image/*,.pdf" style="display:none" onchange="handleFileSelect(this)">
+      <div class="file-list" id="fileList"></div>
+    </div>
+
+    <!-- SUBMIT -->
+    <div style="margin-top:8px">
+      <button class="submit-btn" id="submitBtn" onclick="submitForm()" type="button">📨 ส่งแบบฟอร์ม</button>
+      <p style="text-align:center;font-size:11px;color:var(--gray3);margin-top:12px">ข้อมูลของท่านจะถูกส่งถึงเจ้าหน้าที่ มสธ. โดยตรง จะไม่เปิดเผยต่อบุคคลอื่น</p>
+    </div>
+  </div>
+
+  <!-- SUCCESS -->
+  <div id="successScreen">
+    <div class="success-ico">✅</div>
+    <h2 style="font-family:var(--font-h);font-size:22px;color:var(--navy);margin-bottom:8px">รับเรื่องเรียบร้อยแล้ว!</h2>
+    <p style="color:var(--gray3);font-size:14px;margin-bottom:4px">เจ้าหน้าที่จะติดต่อกลับทางอีเมล <strong id="confirmEmail" style="color:var(--navy)"></strong></p>
+    <p style="color:var(--gray3);font-size:13px;margin-bottom:14px">ภายใน 1–2 วันทำการ</p>
+    <p style="font-size:13px;color:var(--text)">รหัสอ้างอิงของท่าน</p>
+    <div class="success-id" id="ticketId">CRM-XXXX</div>
+    <p style="font-size:11px;color:var(--gray3);margin-top:8px">กรุณาเก็บรหัสนี้ไว้เพื่อติดตามสถานะ</p>
+    <button onclick="resetForm()" type="button" style="margin-top:24px;padding:10px 28px;border:none;border-radius:8px;background:linear-gradient(135deg,var(--sky),var(--blue));color:#fff;font-family:var(--font);font-size:14px;font-weight:600;cursor:pointer">แจ้งปัญหาใหม่</button>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// HISTORY (localStorage สำหรับ autocomplete)
+// ============================================================
+function loadHistory(key) {
+  try { return JSON.parse(localStorage.getItem('crm_'+key) || '[]'); } catch(e) { return []; }
+}
+function saveHistory(key, val) {
+  if (!val || val.length < 2) return;
+  let h = loadHistory(key);
+  h = [val, ...h.filter(x => x !== val)].slice(0, 20);
+  try { localStorage.setItem('crm_'+key, JSON.stringify(h)); } catch(e) {}
+}
+
+// Seed with common values
+let customQHistory = loadHistory('customQ').length ? loadHistory('customQ') : ['ไม่ได้รับเอกสารใน 30 วัน','ได้รับเอกสารเล่มเปล่า','เอกสารเปียกน้ำ','ได้รับเอกสารผิดชุด'];
+let nameHistory    = loadHistory('name');
+let sidHistory     = loadHistory('sid');
+let deptHistory    = loadHistory('dept').length ? loadHistory('dept') : ['สาขาศิลปศาสตร์','สาขาศึกษาศาสตร์','สาขาวิทยาการจัดการ','สาขานิติศาสตร์','สาขาวิทยาศาสตร์สุขภาพ','สาขาเศรษฐศาสตร์','สาขามนุษยนิเวศศาสตร์','สาขารัฐศาสตร์','สาขาเกษตรศาสตร์และสหกรณ์','สาขานิเทศศาสตร์','สาขาวิทยาศาสตร์และเทคโนโลยี','สาขาพยาบาลศาสตร์'];
+let courseHistory  = loadHistory('course').length ? loadHistory('course') : ['10101','20204','30301','40405','50102'];
+
+// ============================================================
+// YEARS — dynamic dropdown
+// ============================================================
+const BASE_YEARS = ['2569','2568','2567','2566','2565'];
+let extraYears = JSON.parse(localStorage.getItem('crm_years') || '[]');
+function buildYears() {
+  const all = [...new Set([...BASE_YEARS, ...extraYears])].sort((a,b)=>b-a);
+  const sel = document.getElementById('f_year');
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">— เลือก —</option>';
+  all.forEach(y => sel.innerHTML += `<option value="${y}">${y}</option>`);
+  if (cur) sel.value = cur;
+}
+function addYear() {
+  const y = prompt('เพิ่มปีการศึกษา (พ.ศ.) เช่น 2564');
+  if (!y || !/^\d{4}$/.test(y.trim())) { alert('กรุณาใส่ปี พ.ศ. 4 หลัก'); return; }
+  if (!extraYears.includes(y.trim())) {
+    extraYears.push(y.trim());
+    try { localStorage.setItem('crm_years', JSON.stringify(extraYears)); } catch(e) {}
+  }
+  buildYears();
+  document.getElementById('f_year').value = y.trim();
+}
+buildYears();
+
+// ============================================================
+// AUTOCOMPLETE ENGINE
+// ============================================================
+let acFocusIdx = {};
+function acSearch(input, ns, history) {
+  const q = input.value.trim().toLowerCase();
+  const drop = document.getElementById('ac_'+ns);
+  if (!drop) return;
+  const matches = history.filter(h => q === '' || h.toLowerCase().includes(q)).slice(0, 8);
+  let html = matches.map((h,i) => `<div class="ac-item" data-val="${h}" onmousedown="acPick('${ns}','${h}',${JSON.stringify(history)})">`+
+    `<span class="ac-icon">🕐</span><span>${h}</span></div>`).join('');
+  // "เพิ่มใหม่" ถ้าพิมพ์อะไรที่ไม่มีใน history
+  if (q && !history.some(h => h.toLowerCase() === q)) {
+    html += `<div class="ac-item" style="color:var(--sky)" onmousedown="acPick('${ns}','${input.value.trim()}',${JSON.stringify(history)},true)">
+      <span class="ac-icon">➕</span><span>เพิ่ม "${input.value.trim()}"</span><span class="ac-new">บันทึกใหม่</span></div>`;
+  }
+  drop.innerHTML = html;
+  drop.style.display = html ? 'block' : 'none';
+  acFocusIdx[ns] = -1;
+}
+function acPick(ns, val, history, isNew) {
+  const input = document.querySelector(`[oninput*="ac_${ns}"], #f_${ns}, #f_custom_q`);
+  // find actual input
+  const drop = document.getElementById('ac_'+ns);
+  const allInputs = document.querySelectorAll('.finput');
+  allInputs.forEach(inp => {
+    if (inp.getAttribute('oninput') && inp.getAttribute('oninput').includes(`'${ns}'`)) {
+      inp.value = val;
+    }
+  });
+  // Special cases
+  if (ns === 'custom_q') document.getElementById('f_custom_q').value = val;
+  if (ns === 'name') document.getElementById('f_name').value = val;
+  if (ns === 'sid') document.getElementById('f_sid').value = val;
+  if (ns === 'dept') document.getElementById('f_dept').value = val;
+  if (isNew) { history.push(val); saveHistory(ns === 'custom_q'?'customQ':ns === 'name'?'name':ns === 'sid'?'sid':ns === 'dept'?'dept':'course', val); }
+  drop.style.display = 'none';
+  updateProgress();
+}
+function closeAc(ns) {
+  const drop = document.getElementById('ac_'+ns);
+  if (drop) drop.style.display = 'none';
+}
+function acKeydown(e, ns) {
+  const drop = document.getElementById('ac_'+ns);
+  if (!drop || drop.style.display === 'none') return;
+  const items = drop.querySelectorAll('.ac-item');
+  let idx = acFocusIdx[ns] || -1;
+  if (e.key === 'ArrowDown') { idx = Math.min(idx+1, items.length-1); }
+  else if (e.key === 'ArrowUp') { idx = Math.max(idx-1, 0); }
+  else if (e.key === 'Enter' && idx >= 0) { e.preventDefault(); items[idx].dispatchEvent(new Event('mousedown')); return; }
+  else if (e.key === 'Escape') { drop.style.display = 'none'; return; }
+  else return;
+  e.preventDefault();
+  items.forEach((it,i) => it.classList.toggle('focused', i === idx));
+  acFocusIdx[ns] = idx;
+}
+
+// ============================================================
+// QUESTION TYPE
+// ============================================================
+function selQ(btn, val) {
+  document.querySelectorAll('.q-chip').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+  document.getElementById('f_qtype').value = val === 'อื่นๆ' ? '' : val;
+  document.getElementById('custom_q_wrap').style.display = val === 'อื่นๆ' ? 'block' : 'none';
+  updateProgress();
+}
+
+// ============================================================
+// CHANNEL
+// ============================================================
+function selCh(ch) {
+  document.querySelectorAll('.ch-card').forEach(c => c.classList.remove('selected'));
+  const el = document.getElementById('ch_'+ch);
+  if (el) el.classList.add('selected');
+  document.getElementById('f_channel').value = ch;
+}
+
+// ============================================================
+// PRIORITY
+// ============================================================
+function selPrio(p) {
+  document.getElementById('f_priority').value = p;
+  ['normal','high','urgent'].forEach(x => {
+    const el = document.getElementById('pr_'+x);
+    if (el) { el.classList.toggle('sel', x === p); }
+  });
+}
+
+// ============================================================
+// COURSES
+// ============================================================
+let courseCount = 1;
+function addCourse() {
+  if (courseCount >= 3) return;
+  courseCount++;
+  const n = courseCount;
+  const div = document.createElement('div');
+  div.className = 'course-block'; div.dataset.n = n;
+  div.innerHTML = `<div class="cb-num">ชุดวิชาที่ ${n}</div>
+    <button class="rm-course" onclick="removeCourse(this)" type="button">✕</button>
+    <div class="grid2">
+      <div class="fg">
+        <label class="flbl">รหัสชุดวิชา</label>
+        <div class="ac-wrap">
+          <input class="finput" placeholder="เช่น 20204" autocomplete="off"
+            oninput="acSearch(this,'course${n}',courseHistory)" onfocus="acSearch(this,'course${n}',courseHistory)"
+            onblur="setTimeout(()=>closeAc('course${n}'),200)"
+            onkeydown="acKeydown(event,'course${n}')">
+          <div class="ac-drop" id="ac_course${n}"></div>
+        </div>
+      </div>
+      <div class="fg"><label class="flbl">ชื่อชุดวิชา</label><input class="finput" placeholder="ชื่อวิชา (ถ้าทราบ)"></div>
+    </div>`;
+  document.getElementById('courseBlocks').appendChild(div);
+  updateCourseUI();
+}
+function removeCourse(btn) {
+  btn.closest('.course-block').remove();
+  courseCount = document.querySelectorAll('.course-block').length;
+  document.querySelectorAll('.course-block').forEach((b,i) => b.querySelector('.cb-num').textContent = `ชุดวิชาที่ ${i+1}`);
+  updateCourseUI();
+}
+function updateCourseUI() {
+  const left = 3 - courseCount;
+  const btn = document.getElementById('addCourseBtn');
+  const lbl = document.getElementById('courseLeft');
+  if (lbl) lbl.textContent = left;
+  if (btn) btn.style.display = courseCount >= 3 ? 'none' : 'flex';
+}
+
+// ============================================================
+// FILES
+// ============================================================
+function handleFileDrop(e) {
+  e.preventDefault();
+  document.getElementById('fileDropArea').classList.remove('dragover');
+  addFiles(Array.from(e.dataTransfer.files));
+}
+function handleFileSelect(input) { addFiles(Array.from(input.files)); }
+function addFiles(files) {
+  const list = document.getElementById('fileList');
+  files.forEach(f => {
+    if (f.size > 5*1024*1024) { alert(`ไฟล์ ${f.name} ใหญ่เกิน 5MB`); return; }
+    const d = document.createElement('div');
+    d.className = 'file-item';
+    d.innerHTML = `<span>${f.type.includes('image')?'🖼️':'📄'}</span><span>${f.name}</span><button class="rm" onclick="this.parentElement.remove()" type="button">✕</button>`;
+    list.appendChild(d);
+  });
+}
+
+// ============================================================
+// PROGRESS
+// ============================================================
+function updateProgress() {
+  const fields = [
+    document.getElementById('f_qtype').value || document.getElementById('f_custom_q')?.value,
+    document.getElementById('f_name')?.value.trim(),
+    document.getElementById('f_email')?.value.trim(),
+    document.getElementById('f_term')?.value,
+    document.getElementById('f_year')?.value,
+  ];
+  const filled = fields.filter(v => v && v !== '').length;
+  document.getElementById('progFill').style.width = Math.round(filled/fields.length*100)+'%';
+}
+document.addEventListener('input', updateProgress);
+document.addEventListener('change', updateProgress);
+
+// ============================================================
+// SUBMIT
+// ============================================================
+function checkIssueOther(val) {
+  var wrap = document.getElementById('f_issuetype_other_wrap');
+  if (wrap) wrap.style.display = val.includes('อื่นๆ') ? 'block' : 'none';
+}
+
+function submitForm() {
+  const name  = document.getElementById('f_name').value.trim();
+  const email = document.getElementById('f_email').value.trim();
+  // ใช้ f_issuetype ใหม่ก่อน fallback ไป f_qtype เดิม
+  const issueEl = document.getElementById('f_issuetype');
+  let qtype = issueEl ? issueEl.value : '';
+  if (qtype.includes('อื่นๆ')) {
+    const other = (document.getElementById('f_issuetype_other')?.value||'').trim();
+    if (other) qtype = 'อื่นๆ: '+other;
+  }
+  if (!qtype) qtype = document.getElementById('f_qtype')?.value || document.getElementById('f_custom_q')?.value.trim() || '';
+  const term  = document.getElementById('f_term').value;
+  const year  = document.getElementById('f_year').value;
+  let valid = true;
+  if (!name)  { document.getElementById('f_name').classList.add('err');  valid = false; }
+  else          document.getElementById('f_name').classList.remove('err');
+  if (!email || !/\S+@\S+\.\S+/.test(email)) { document.getElementById('f_email').classList.add('err'); valid = false; }
+  else          document.getElementById('f_email').classList.remove('err');
+  if (!qtype) { if(issueEl) issueEl.classList.add('err'); valid = false; }
+  else          if(issueEl) issueEl.classList.remove('err');
+  if (!term)  { document.getElementById('f_term').classList.add('err');  valid = false; }
+  else          document.getElementById('f_term').classList.remove('err');
+  if (!year)  { document.getElementById('f_year').classList.add('err');  valid = false; }
+  else          document.getElementById('f_year').classList.remove('err');
+  if (!valid) { window.scrollTo({top:0,behavior:'smooth'}); alert('กรุณากรอกข้อมูลที่จำเป็นให้ครบ'); return; }
+
+  // เก็บ courses
+  const courses = [];
+  document.querySelectorAll('.course-block').forEach(b=>{
+    const inputs = b.querySelectorAll('.finput');
+    const code = inputs[0]?inputs[0].value.trim():'';
+    if (code) courses.push(code);
+  });
+
+  // Save to history
+  saveHistory('name', name);
+  saveHistory('sid', document.getElementById('f_sid').value.trim());
+  if (qtype) saveHistory('customQ', qtype);
+  courses.forEach(c => saveHistory('course', c));
+
+  const btn = document.getElementById('submitBtn');
+  btn.disabled = true; btn.textContent = '⏳ กำลังส่ง...';
+
+  // รวมสาขา + แผน
+  const dept = document.getElementById('f_dept')?.value||'';
+  const plan = document.getElementById('f_plan')?.value||'';
+  const deptFull = dept + (plan?' / '+plan:'');
+
+  const ticketData = {
+    reporterName:    name,
+    studentId:       document.getElementById('f_sid').value.trim(),
+    reporterEmail:   email,
+    reporterPhone:   document.getElementById('f_phone').value.trim(),
+    department:      deptFull,
+    educationLevel:  document.getElementById('f_edu').value,
+    term:            term,
+    year:            year,
+    courses:         courses.join(','),
+    issueType:       qtype,
+    detail:          document.getElementById('f_detail').value.trim(),
+    channel:         document.getElementById('f_channel').value,
+    priority:        document.getElementById('f_priority').value,
+    tags:            '',
+    recorderName:    'ผู้แจ้งออนไลน์',
+  };
+
+  google.script.run
+    .withSuccessHandler(function(res) {
+      if (res.success) {
+        document.getElementById('ticketId').textContent = res.id;
+        document.getElementById('confirmEmail').textContent = email;
+        document.getElementById('mainForm').style.display = 'none';
+        document.getElementById('successScreen').style.display = 'block';
+        window.scrollTo({top:0,behavior:'smooth'});
+      } else {
+        btn.disabled = false; btn.textContent = '📨 ส่งแบบฟอร์ม';
+        alert('เกิดข้อผิดพลาด: ' + res.error);
+      }
+    })
+    .withFailureHandler(function(e) {
+      btn.disabled = false; btn.textContent = '📨 ส่งแบบฟอร์ม';
+      alert('เกิดข้อผิดพลาด: ' + (e.message||e));
+    })
+    .addCrmTicket(ticketData);
+}
+
+function resetForm() {
+  document.getElementById('mainForm').style.display = 'block';
+  document.getElementById('successScreen').style.display = 'none';
+  document.getElementById('submitBtn').disabled = false;
+  document.getElementById('submitBtn').textContent = '📨 ส่งแบบฟอร์ม';
+  ['f_name','f_sid','f_email','f_phone','f_dept','f_detail','f_custom_q'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.value = '';
+  });
+  ['f_edu','f_term','f_year'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.selectedIndex = 0;
+  });
+  document.querySelectorAll('.q-chip').forEach(b => b.classList.remove('selected'));
+  document.getElementById('f_qtype').value = '';
+  document.getElementById('custom_q_wrap').style.display = 'none';
+  document.getElementById('fileList').innerHTML = '';
+  document.getElementById('courseBlocks').innerHTML = `<div class="course-block" data-n="1">
+    <div class="cb-num">ชุดวิชาที่ 1</div>
+    <div class="grid2">
+      <div class="fg"><label class="flbl">รหัสชุดวิชา</label><div class="ac-wrap"><input class="finput" placeholder="เช่น 10101" autocomplete="off" oninput="acSearch(this,'course',courseHistory)" onfocus="acSearch(this,'course',courseHistory)" onblur="setTimeout(()=>closeAc('course'),200)" onkeydown="acKeydown(event,'course')"><div class="ac-drop" id="ac_course"></div></div></div>
+      <div class="fg"><label class="flbl">ชื่อชุดวิชา</label><input class="finput" placeholder="ชื่อวิชา (ถ้าทราบ)"></div>
+    </div>
+  </div>`;
+  courseCount = 1; updateCourseUI();
+  selCh('online'); selPrio('normal');
+  document.getElementById('progFill').style.width = '0%';
+}
+</script>
+</body>
+</html>
