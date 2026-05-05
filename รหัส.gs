@@ -2298,6 +2298,145 @@ function updateTask(taskId, updates) {
   } catch(e) { return { success:false, error:e.message }; }
 }
 
+function sendCrmResolutionEmail(id, emailData) {
+  if (!_autoRefreshSession()) return { success:false, error:'SESSION_EXPIRED' };
+  try {
+    const sess = _sess();
+    const reporterEmail = emailData.to;
+    const reporterName = emailData.reporterName || 'ผู้แจ้ง';
+    const issueType = emailData.issueType || 'แจ้งปัญหา';
+    const detail = emailData.detail || '';
+    const replies = emailData.replies || '<p>ปัญหาได้รับการแก้ไขแล้ว</p>';
+    const adminName = emailData.adminName || 'เจ้าหน้าที่';
+
+    if (!reporterEmail || !/\S+@\S+\.\S+/.test(reporterEmail)) {
+      return { success:false, error:'ไม่พบอีเมลผู้แจ้ง' };
+    }
+
+    const subject = '[มสธ.] ปัญหาของท่านได้รับการแก้ไข: ' + issueType + ' (' + id + ')';
+    const htmlBody = ''
+      + '<div style="font-family:Sarabun,Arial,sans-serif;max-width:600px;margin:0 auto;background:#f4f6fb;padding:20px">'
+      +   '<div style="background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 4px 16px rgba(0,0,0,0.08)">'
+      +     '<div style="background:linear-gradient(135deg,#0f8a4a,#16a34a);padding:24px;text-align:center;color:#fff">'
+      +       '<div style="font-size:32px;margin-bottom:6px">✅</div>'
+      +       '<h2 style="margin:0;font-size:18px">ปัญหาได้รับการแก้ไขแล้ว</h2>'
+      +       '<p style="margin:4px 0 0;font-size:13px;color:rgba(255,255,255,0.9)">มหาวิทยาลัยสุโขทัยธรรมาธิราช</p>'
+      +     '</div>'
+      +     '<div style="padding:24px">'
+      +       '<p style="font-size:15px;color:#1a2840">เรียน ' + _esc(reporterName) + '</p>'
+      +       '<p style="color:#1a2840">ปัญหาที่ท่านแจ้งหว่านได้รับการแก้ไขสำเร็จแล้ว</p>'
+      +       '<div style="background:#f0f4f8;border-left:4px solid #2d7dd2;padding:12px 16px;margin:16px 0;border-radius:4px">'
+      +         '<div style="font-size:12px;color:#8899b4;margin-bottom:4px">รหัสเรื่อง: <strong>' + _esc(id) + '</strong></div>'
+      +         '<div style="font-size:12px;color:#8899b4;margin-bottom:4px">ประเภท: <strong>' + _esc(issueType) + '</strong></div>'
+      +         '<div style="font-size:12px;color:#8899b4">สถานะ: <strong style="color:#16a34a">แก้ไขแล้ว ✅</strong></div>'
+      +       '</div>'
+      +       '<div style="background:#e8f8f0;border-left:4px solid #16a34a;padding:14px 18px;border-radius:4px;margin-bottom:16px">'
+      +         '<div style="font-size:13px;color:#0a5a3a;line-height:1.7">'
+      +           '<strong>รายละเอียดการแก้ไข:</strong><br>'
+      +           replies
+      +         '</div>'
+      +       '</div>'
+      +       '<p style="color:#1a2840;font-size:13px">หากต้องการสอบถามเพิ่มเติม กรุณาตอบกลับอีเมลฉบับนี้ หรือโทร 02-504-7788</p>'
+      +     '</div>'
+      +     '<div style="background:#f4f6fb;padding:16px 24px;text-align:center;border-top:1px solid #e0e8f0">'
+      +       '<p style="margin:0;font-size:11px;color:#8899b4">ขอแสดงความนับถือ<br>สำนักบริการการศึกษา มสธ.</p>'
+      +     '</div>'
+      +   '</div>'
+      + '</div>';
+
+    const textBody = 'เรียน ' + reporterName + '\n\n'
+      + 'ปัญหาที่ท่านแจ้งหว่านได้รับการแก้ไขสำเร็จแล้ว\n\n'
+      + 'รหัสเรื่อง: ' + id + '\n'
+      + 'ประเภท: ' + issueType + '\n'
+      + 'สถานะ: แก้ไขแล้ว ✅\n\n'
+      + '----------------------------------------\n'
+      + 'รายละเอียดการแก้ไข:\n'
+      + replies + '\n'
+      + '----------------------------------------\n\n'
+      + 'หากต้องการสอบถามเพิ่มเติม กรุณาตอบกลับอีเมลฉบับนี้ หรือโทร 02-504-7788\n\n'
+      + 'ขอแสดงความนับถือ\n'
+      + 'สำนักบริการการศึกษา มสธ.';
+
+    const opts = {
+      htmlBody: htmlBody,
+      name: adminName + ' — สำนักบริการการศึกษา มสธ.'
+    };
+
+    GmailApp.sendEmail(reporterEmail, subject, textBody, opts);
+    logAudit('ส่งอีเมล CRM', id + ' | ' + issueType + ' | ตรวจสอบปัญหา');
+    return { success:true };
+  } catch(e) { return { success:false, error:e.message }; }
+}
+
+function sendCrmEmail(id, emailData) {
+  if (!_autoRefreshSession()) return { success:false, error:'SESSION_EXPIRED' };
+  try {
+    const sess = _sess();
+    const reporterEmail = emailData.to;
+    const reporterName = emailData.reporterName || 'ผู้แจ้ง';
+    const issueType = emailData.issueType || 'แจ้งปัญหา';
+    const detail = emailData.detail || '';
+    const replies = emailData.replies || '<p>ข้อมูลได้รับการบันทึกแล้ว</p>';
+    const adminName = emailData.adminName || 'เจ้าหน้าที่';
+
+    if (!reporterEmail || !/\S+@\S+\.\S+/.test(reporterEmail)) {
+      return { success:false, error:'ไม่พบอีเมลผู้แจ้ง' };
+    }
+
+    const subject = '[มสธ.] ตอบกลับเรื่องที่ท่านแจ้ง: ' + issueType + ' (' + id + ')';
+    const htmlBody = ''
+      + '<div style="font-family:Sarabun,Arial,sans-serif;max-width:600px;margin:0 auto;background:#f4f6fb;padding:20px">'
+      +   '<div style="background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 4px 16px rgba(0,0,0,0.08)">'
+      +     '<div style="background:linear-gradient(135deg,#0f2744,#1a4a8a);padding:24px;text-align:center;color:#fff">'
+      +       '<div style="font-size:32px;margin-bottom:6px">📚</div>'
+      +       '<h2 style="margin:0;font-size:18px">มหาวิทยาลัยสุโขทัยธรรมาธิราช</h2>'
+      +       '<p style="margin:4px 0 0;font-size:13px;color:rgba(255,255,255,0.8)">สำนักบริการการศึกษา</p>'
+      +     '</div>'
+      +     '<div style="padding:24px">'
+      +       '<p style="font-size:15px;color:#1a2840">เรียน ' + _esc(reporterName) + '</p>'
+      +       '<p style="color:#1a2840">เจ้าหน้าที่ได้รับและบันทึกเรื่องที่ท่านแจ้งไว้ดังนี้</p>'
+      +       '<div style="background:#f0f4f8;border-left:4px solid #2d7dd2;padding:12px 16px;margin:16px 0;border-radius:4px">'
+      +         '<div style="font-size:12px;color:#8899b4;margin-bottom:4px">รหัสเรื่อง: <strong>' + _esc(id) + '</strong></div>'
+      +         '<div style="font-size:12px;color:#8899b4;margin-bottom:4px">ประเภท: <strong>' + _esc(issueType) + '</strong></div>'
+      +         '<div style="font-size:12px;color:#8899b4">ผู้ดำเนินการ: <strong>' + _esc(adminName) + '</strong></div>'
+      +       '</div>'
+      +       '<div style="background:#fff8e1;border-left:4px solid #f4a21e;padding:14px 18px;border-radius:4px;margin-bottom:16px">'
+      +         '<div style="font-size:13px;color:#5c4b00;line-height:1.7">'
+      +           '<strong>รายละเอียดการดำเนินการ:</strong><br>'
+      +           replies
+      +         '</div>'
+      +       '</div>'
+      +       '<p style="color:#1a2840;font-size:13px">หากต้องการสอบถามเพิ่มเติม กรุณาตอบกลับอีเมลฉบับนี้ หรือโทร 02-504-7788</p>'
+      +     '</div>'
+      +     '<div style="background:#f4f6fb;padding:16px 24px;text-align:center;border-top:1px solid #e0e8f0">'
+      +       '<p style="margin:0;font-size:11px;color:#8899b4">ขอแสดงความนับถือ<br>สำนักบริการการศึกษา มสธ.</p>'
+      +     '</div>'
+      +   '</div>'
+      + '</div>';
+
+    const textBody = 'เรียน ' + reporterName + '\n\n'
+      + 'เจ้าหน้าที่ได้รับและบันทึกเรื่องที่ท่านแจ้งไว้ (' + id + ') ดังนี้\n\n'
+      + 'ประเภท: ' + issueType + '\n'
+      + 'ผู้ดำเนินการ: ' + adminName + '\n\n'
+      + '----------------------------------------\n'
+      + 'รายละเอียดการดำเนินการ:\n'
+      + replies + '\n'
+      + '----------------------------------------\n\n'
+      + 'หากต้องการสอบถามเพิ่มเติม กรุณาตอบกลับอีเมลฉบับนี้ หรือโทร 02-504-7788\n\n'
+      + 'ขอแสดงความนับถือ\n'
+      + 'สำนักบริการการศึกษา มสธ.';
+
+    const opts = {
+      htmlBody: htmlBody,
+      name: adminName + ' — สำนักบริการการศึกษา มสธ.'
+    };
+
+    GmailApp.sendEmail(reporterEmail, subject, textBody, opts);
+    logAudit('ส่งอีเมล CRM', id + ' | ' + issueType + ' | ส่งอีเมลแจ้งผล');
+    return { success:true };
+  } catch(e) { return { success:false, error:e.message }; }
+}
+
 function getTaskBadgeCount() {
   // นับงานที่รอดำเนินการของ user ปัจจุบัน
   if (!_autoRefreshSession()) return 0;
