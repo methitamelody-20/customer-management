@@ -2033,7 +2033,27 @@ function logAudit(action, detail) {
       sh.setFrozenRows(1);
     }
     const sess = _sess();
-    sh.appendRow([new Date(), sess.name||'ระบบ', sess.email||'', action, detail||'']);
+    var recEmail = '';
+    var recName  = '';
+    try { recEmail = Session.getEffectiveUser().getEmail() || ''; } catch(ex) {}
+    // Look up name from users sheet by email
+    if (recEmail) {
+      try {
+        var uSh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SH_USERS);
+        if (uSh) {
+          var uData = uSh.getDataRange().getValues();
+          for (var ui = 1; ui < uData.length; ui++) {
+            if ((uData[ui][0]||'').toLowerCase().trim() === recEmail.toLowerCase().trim()) {
+              recName = uData[ui][3] || recEmail;
+              break;
+            }
+          }
+          if (!recName) recName = recEmail;
+        }
+      } catch(ex) { recName = recEmail; }
+    }
+    if (!recName) { recName = sess.name||'ระบบ'; recEmail = sess.email||''; }
+    sh.appendRow([new Date(), recName, recEmail, action, detail||'']);
     const lr = sh.getLastRow();
     if (lr%2===0) sh.getRange(lr,1,1,5).setBackground('#f8f9fa');
   } catch(e) {}
