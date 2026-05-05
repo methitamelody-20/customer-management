@@ -4743,9 +4743,19 @@ function loadAdminReport() {
         userSel.value = cur;
       }
 
-      renderAdminReport(_adminReportData.users);
+      try {
+        renderAdminReport(_adminReportData.users);
+      } catch(err) {
+        document.getElementById('adminReportContent').innerHTML =
+          '<div style="text-align:center;padding:40px;color:var(--red)">❌ เกิดข้อผิดพลาดในการแสดงผล: '+err.message+'</div>';
+        console.error('renderAdminReport error:', err);
+      }
     })
-    .withFailureHandler(showError)
+    .withFailureHandler(function(err) {
+      document.getElementById('adminReportContent').innerHTML =
+        '<div style="text-align:center;padding:40px;color:var(--red)">❌ ไม่สามารถโหลดข้อมูลได้: '+(err&&err.message||'unknown error')+'</div>';
+      showError(err);
+    })
     .getAuditLog(1000);
 }
 
@@ -4770,7 +4780,7 @@ function renderAdminReport(users) {
         +'<div style="width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,var(--sky),var(--blue));display:flex;align-items:center;justify-content:center;font-size:18px;color:#fff;flex-shrink:0">'+(u.name[0]||'?')+'</div>'
         +'<div style="flex:1">'
           +'<div style="font-weight:700;font-size:14px;color:var(--navy)">'+u.name+'</div>'
-          +(cleanCourseName(r.courseName) ? '<div style="font-size:11px;color:var(--gray3)">'+cleanCourseName(r.courseName)+'</div>' : '')
+          +(u.email ? '<div style="font-size:11px;color:var(--gray3)">'+u.email+'</div>' : '')
           +'<div style="font-size:11px;color:var(--sky);font-weight:600">📊 รวม '+total+' รายการ</div>'
         +'</div>'
         +'<button class="btn btn-outline btn-xs" onclick="exportSingleUserXlsx(\''+u.name.replace(/'/g,"\\'")+'\')">📊 Export</button>'
