@@ -4726,34 +4726,58 @@ ${tableRows}กรุณาดำเนินการสอบสวนแล�
 }
 
 function sendBatchEmail() {
-  const to      = encodeURIComponent(document.getElementById('batch_to').value);
-  const cc      = encodeURIComponent(document.getElementById('batch_cc').value);
-  const subject = encodeURIComponent(document.getElementById('batch_subject').value);
-  const body    = encodeURIComponent(document.getElementById('batch_body').value);
-  window.open('mailto:'+to+'?cc='+cc+'&subject='+subject+'&body='+body);
-  // badge + อัปเดต status → ส่งแล้ว
-  const badge = document.getElementById('batch_sent_badge');
-  const now = new Date().toLocaleDateString('th-TH',{year:'numeric',month:'short',day:'numeric'});
-  badge.textContent = '✅ ส่งแล้ว '+now;
-  badge.style.display = 'inline-block';
-  // อัปเดต status ของรายการที่เลือก
+  const to      = document.getElementById('batch_to').value;
+  const cc      = document.getElementById('batch_cc').value;
+  const subject = document.getElementById('batch_subject').value;
+  const body    = document.getElementById('batch_body').value;
+
+  if (!to) { showToast('กรุณากรอกอีเมลผู้รับ','error'); return; }
+  if (!subject) { showToast('กรุณากรอกหัวข้อ','error'); return; }
+  if (!body) { showToast('กรุณากรอกเนื้อหา','error'); return; }
+
+  showToast('⏳ กำลังส่งอีเมล...','');
   const ids = getCheckedInvestItems();
-  const email = document.getElementById('batch_to').value;
   const today = new Date().toISOString().split('T')[0];
-  ids.forEach(function(id) {
-    google.script.run.updateInvestigation(id, {
-      notifyDate: today,
-      notifyEmail: email,
-      notifyQty: ids.length,
-      status: 'ส่งแล้ว',
-      result: 'รอประสาน'  // 🆕 auto-set เป็น รอประสาน
+  const email = to;
+
+  google.script.run
+    .withSuccessHandler(function(res) {
+      if (res.success) {
+        showToast('✅ ส่งอีเมลแล้ว','success');
+        // badge + อัปเดต status → ส่งแล้ว
+        const badge = document.getElementById('batch_sent_badge');
+        const now = new Date().toLocaleDateString('th-TH',{year:'numeric',month:'short',day:'numeric'});
+        badge.textContent = '✅ ส่งแล้ว '+now;
+        badge.style.display = 'inline-block';
+        // อัปเดต status ของรายการที่เลือก
+        ids.forEach(function(id) {
+          google.script.run.updateInvestigation(id, {
+            notifyDate: today,
+            notifyEmail: email,
+            notifyQty: ids.length,
+            status: 'ส่งแล้ว',
+            result: 'รอประสาน'
+          });
+        });
+        setTimeout(function(){
+          document.getElementById('batchEmailModal').classList.add('hidden');
+          loadInvestigations();
+        }, 2500);
+      } else {
+        showToast('❌ ส่งอีเมลไม่ได้: '+(res.error||'Unknown error'),'error');
+      }
+    })
+    .withFailureHandler(function(e) {
+      showToast('❌ เกิดข้อผิดพลาด: '+e.message,'error');
+    })
+    .sendInvestEmail({
+      to: to,
+      cc: cc,
+      subject: subject,
+      body: body,
+      fromName: currentUser,
+      fromEmail: currentEmail
     });
-  });
-  showToast('📨 เปิดโปรแกรมอีเมลแล้ว — อย่าลืมกด Send ด้วย','success');
-  setTimeout(function(){
-    document.getElementById('batchEmailModal').classList.add('hidden');
-    loadInvestigations();
-  }, 2500);
 }
 
 function copyBatchEmail() {
@@ -4964,40 +4988,62 @@ function showEmailPreview() {
 }
 
 function sendEmailAction() {
-  const to      = encodeURIComponent(document.getElementById('pe_to').value);
-  const cc      = encodeURIComponent(document.getElementById('pe_cc').value);
-  const subject = encodeURIComponent(document.getElementById('pe_subject').value);
-  const body    = encodeURIComponent(document.getElementById('pe_body').value);
-  const mailto  = 'mailto:'+to+'?cc='+cc+'&subject='+subject+'&body='+body;
-  window.open(mailto);
+  const to      = document.getElementById('pe_to').value;
+  const cc      = document.getElementById('pe_cc').value;
+  const subject = document.getElementById('pe_subject').value;
+  const body    = document.getElementById('pe_body').value;
 
-  // แสดง badge "ส่งแล้ว" และบันทึกวันที่
-  const badge = document.getElementById('pe_sent_badge');
-  if (badge) {
-    const now = new Date().toLocaleDateString('th-TH',{year:'numeric',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
-    badge.textContent = '✅ ส่งแล้ว ' + now;
-    badge.style.display = 'inline-block';
-  }
-  // อัปเดตวันที่ในฟอร์ม ld_post_date ถ้ายังว่าง
-  const postDateEl = document.getElementById('ld_post_date');
-  if (postDateEl && !postDateEl.value) {
-    postDateEl.value = new Date().toISOString().split('T')[0];
-  }
-  // อัปเดตอีเมลในช่อง ld_post_email
-  const postEmailEl = document.getElementById('ld_post_email');
-  if (postEmailEl && !postEmailEl.value) {
-    postEmailEl.value = document.getElementById('pe_to').value;
-  }
+  if (!to) { showToast('กรุณากรอกอีเมลผู้รับ','error'); return; }
+  if (!subject) { showToast('กรุณากรอกหัวข้อ','error'); return; }
+  if (!body) { showToast('กรุณากรอกเนื้อหา','error'); return; }
 
-  showToast('📨 เปิดโปรแกรมอีเมลแล้ว — อย่าลืมกด Send ในโปรแกรมอีเมลด้วย', 'success');
+  showToast('⏳ กำลังส่งอีเมล...','');
 
-  // ปิด modal หลัง 2 วิ
-  setTimeout(function(){
-    document.getElementById('postEmailModal').classList.add('hidden');
-    // reset steps
-    document.getElementById('pe_step1').style.display = 'block';
-    document.getElementById('pe_step2').style.display = 'none';
-  }, 2000);
+  google.script.run
+    .withSuccessHandler(function(res) {
+      if (res.success) {
+        // แสดง badge "ส่งแล้ว" และบันทึกวันที่
+        const badge = document.getElementById('pe_sent_badge');
+        if (badge) {
+          const now = new Date().toLocaleDateString('th-TH',{year:'numeric',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
+          badge.textContent = '✅ ส่งแล้ว ' + now;
+          badge.style.display = 'inline-block';
+        }
+        // อัปเดตวันที่ในฟอร์ม ld_post_date ถ้ายังว่าง
+        const postDateEl = document.getElementById('ld_post_date');
+        if (postDateEl && !postDateEl.value) {
+          postDateEl.value = new Date().toISOString().split('T')[0];
+        }
+        // อัปเดตอีเมลในช่อง ld_post_email
+        const postEmailEl = document.getElementById('ld_post_email');
+        if (postEmailEl && !postEmailEl.value) {
+          postEmailEl.value = to;
+        }
+
+        showToast('✅ ส่งอีเมลแล้ว', 'success');
+
+        // ปิด modal หลัง 2 วิ
+        setTimeout(function(){
+          document.getElementById('postEmailModal').classList.add('hidden');
+          // reset steps
+          document.getElementById('pe_step1').style.display = 'block';
+          document.getElementById('pe_step2').style.display = 'none';
+        }, 2000);
+      } else {
+        showToast('❌ ส่งอีเมลไม่ได้: '+(res.error||'Unknown error'),'error');
+      }
+    })
+    .withFailureHandler(function(e) {
+      showToast('❌ เกิดข้อผิดพลาด: '+e.message,'error');
+    })
+    .sendPostEmail({
+      to: to,
+      cc: cc,
+      subject: subject,
+      body: body,
+      fromName: currentUser,
+      fromEmail: currentEmail
+    });
 }
 function copyPostEmail() {
   const body = document.getElementById('pe_body').value;

@@ -2666,13 +2666,93 @@ function uploadInvestAttachment(base64Data, filename, mimeType, investId) {
     const file   = folder.createFile(blob).setName(safeFn);
     file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
     
-    return { 
-      success: true, 
-      url:   file.getUrl(), 
+    return {
+      success: true,
+      url:   file.getUrl(),
       id:    file.getId(),
       name:  safeFn
     };
-  } catch(e) { 
-    return { success:false, error:e.message }; 
+  } catch(e) {
+    return { success:false, error:e.message };
+  }
+}
+
+// ============================================================
+// SEND INVESTIGATION EMAIL
+// ============================================================
+function sendInvestEmail(data) {
+  if (!_autoRefreshSession()) return { success:false, error:'SESSION_EXPIRED' };
+  try {
+    const sess = _sess();
+    const toEmail = (data.to||'').toString().trim();
+    const ccEmail = (data.cc||'').toString().trim();
+    const subject = data.subject || 'ขอสอบสวน';
+    const body = data.body || '';
+    const fromName = data.fromName || (sess && sess.name) || 'เจ้าหน้าที่';
+    const fromEmail = data.fromEmail || (sess && sess.email) || '';
+
+    if (!toEmail || !/\S+@\S+\.\S+/.test(toEmail)) {
+      return { success:false, error:'อีเมลผู้รับไม่ถูกต้อง' };
+    }
+
+    const opts = {
+      name: fromName + ' — สำนักบริการการศึกษา มสธ.'
+    };
+    if (ccEmail && /\S+@\S+\.\S+/.test(ccEmail)) {
+      opts.cc = ccEmail;
+    }
+    if (fromEmail && /\S+@\S+\.\S+/.test(fromEmail)) {
+      opts.replyTo = fromEmail;
+    }
+
+    // ส่งอีเมล
+    GmailApp.sendEmail(toEmail, subject, body, opts);
+
+    // บันทึก audit log
+    logAudit('ส่งอีเมลสอบสวน', 'ถึง: ' + toEmail + ' | ' + subject.substring(0,60));
+
+    return { success:true };
+  } catch(e) {
+    return { success:false, error:e.message };
+  }
+}
+
+// ============================================================
+// SEND POST EMAIL (LEND EMAIL)
+// ============================================================
+function sendPostEmail(data) {
+  if (!_autoRefreshSession()) return { success:false, error:'SESSION_EXPIRED' };
+  try {
+    const sess = _sess();
+    const toEmail = (data.to||'').toString().trim();
+    const ccEmail = (data.cc||'').toString().trim();
+    const subject = data.subject || '';
+    const body = data.body || '';
+    const fromName = data.fromName || (sess && sess.name) || 'เจ้าหน้าที่';
+    const fromEmail = data.fromEmail || (sess && sess.email) || '';
+
+    if (!toEmail || !/\S+@\S+\.\S+/.test(toEmail)) {
+      return { success:false, error:'อีเมลผู้รับไม่ถูกต้อง' };
+    }
+
+    const opts = {
+      name: fromName + ' — สำนักบริการการศึกษา มสธ.'
+    };
+    if (ccEmail && /\S+@\S+\.\S+/.test(ccEmail)) {
+      opts.cc = ccEmail;
+    }
+    if (fromEmail && /\S+@\S+\.\S+/.test(fromEmail)) {
+      opts.replyTo = fromEmail;
+    }
+
+    // ส่งอีเมล
+    GmailApp.sendEmail(toEmail, subject, body, opts);
+
+    // บันทึก audit log
+    logAudit('ส่งอีเมลไปรษณีย์', 'ถึง: ' + toEmail + ' | ' + subject.substring(0,60));
+
+    return { success:true };
+  } catch(e) {
+    return { success:false, error:e.message };
   }
 }
