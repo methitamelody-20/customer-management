@@ -303,10 +303,20 @@ tbody td{padding:9px 12px;vertical-align:middle}
 .modal-title{font-family:var(--font-h);font-size:16px;font-weight:700;color:var(--navy);margin-bottom:18px;display:flex;align-items:center;gap:8px}
 
 /* PRINT */
+@page{size:A4 landscape;margin:0}
 @media print{
   #loginScreen,.sidebar,.topbar,.filter-bar,.btn-row,.no-print{display:none!important}
-  .main{overflow:visible}.content{padding:0;overflow:visible}
-  body{background:#fff}
+  .main{overflow:visible}.content{padding:0!important;overflow:visible}
+  body{background:#fff;margin:0;padding:0}
+  /* ใบจ่าหน้า: 1 ใบต่อ 1 หน้า A4 แนวนอน, จัดกึ่งกลาง */
+  #labelGrid{display:block!important;gap:0!important;padding:0!important}
+  #labelGrid > div{page-break-after:always;page-break-inside:avoid;display:flex!important;align-items:center!important;justify-content:center!important;width:297mm!important;height:210mm!important;margin:0!important;padding:0!important;gap:0!important}
+  #labelGrid > div:last-child{page-break-after:auto}
+  #labelGrid input.lbl-chk{display:none!important}
+  /* ซ่อนใบที่ไม่ได้เลือกตอนพิมพ์ */
+  #labelGrid > div.lbl-skip{display:none!important}
+  /* การ์ดใบจ่าหน้า: ขยายเต็มกระดาษและเอา border ออก */
+  #labelGrid > div > div[id^="lcrd"]{border:none!important;box-shadow:none!important;border-radius:0!important;max-width:none!important;width:280mm!important;height:200mm!important;aspect-ratio:auto!important}
 }
 </style>
 
@@ -1125,9 +1135,31 @@ tbody td{padding:9px 12px;vertical-align:middle}
             <textarea class="ftextarea" id="batch_body" style="min-height:220px;font-size:12px;line-height:1.7;font-family:var(--font)"></textarea>
           </div>
           <div class="btn-row">
-            <button class="btn btn-primary" onclick="sendBatchEmail()">📨 ส่งอีเมล (เปิดโปรแกรมอีเมล)</button>
+            <button class="btn btn-primary" onclick="sendBatchEmailViaSystem()" id="batchSendBtn">📤 ส่งจากระบบ (อีเมล admin)</button>
+            <button class="btn btn-outline" onclick="previewBatchEmail()">👁️ ดูตัวอย่าง</button>
+            <button class="btn btn-outline" onclick="sendBatchEmail()">📨 เปิดโปรแกรมอีเมล</button>
             <button class="btn btn-outline" onclick="copyBatchEmail()">📋 คัดลอก</button>
             <button class="btn btn-outline" onclick="document.getElementById('batchEmailModal').classList.add('hidden')">ปิด</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- MODAL: Preview อีเมล -->
+      <div class="modal-overlay hidden" id="emailPreviewModal">
+        <div class="modal" style="max-width:680px">
+          <div class="modal-title">👁️ ตัวอย่างอีเมลที่จะส่ง</div>
+          <div style="background:#f0f4f8;border-radius:8px;padding:14px;margin-bottom:14px;font-size:13px">
+            <div style="margin-bottom:6px"><strong>จาก:</strong> <span id="prv_from">—</span></div>
+            <div style="margin-bottom:6px"><strong>ถึง:</strong> <span id="prv_to">—</span></div>
+            <div style="margin-bottom:6px"><strong>CC:</strong> <span id="prv_cc">—</span></div>
+            <div><strong>หัวข้อ:</strong> <span id="prv_subject">—</span></div>
+          </div>
+          <div style="border:1px solid var(--gray2);border-radius:8px;padding:16px;background:#fff;max-height:400px;overflow-y:auto">
+            <pre id="prv_body" style="white-space:pre-wrap;font-family:var(--font);font-size:13px;line-height:1.7;margin:0;color:var(--text)"></pre>
+          </div>
+          <div class="btn-row" style="margin-top:14px">
+            <button class="btn btn-primary" onclick="confirmSendBatchEmail()">✅ ยืนยันส่ง</button>
+            <button class="btn btn-outline" onclick="document.getElementById('emailPreviewModal').classList.add('hidden')">ยกเลิก</button>
           </div>
         </div>
       </div>
@@ -1991,7 +2023,7 @@ const firebaseAPI = {
       google.script.run
         .withSuccessHandler(resolve)
         .withFailureHandler((e) => resolve({success:false, error:e.message}))
-        .replyCrmTicket(id, text, adminName);
+        .replyCrmTicket(id, text, adminName, adminEmail);
     });
   },
 
@@ -2966,25 +2998,25 @@ function renderLabels(rows) {
       if (c.b1) parts.push('เล่ม 1: ' + c.b1);
       if (c.b2) parts.push('เล่ม 2: ' + c.b2);
       if (c.b3) parts.push('เพิ่มเติม: ' + c.b3);
-      bookInfo = '<div style="font-size:11pt;color:#8899b4;margin-top:2mm">' + parts.join(' · ') + '</div>';
+      bookInfo = '<div style="font-size:9pt;color:#8899b4;margin-top:1.5mm">' + parts.join(' · ') + '</div>';
     }
     var courseCounter = '';
-    var addr = (r.houseNo||'') + (r.street?' ถ.'+r.street:'') + 
-               '<br>ต.' + (r.subDistrict||'') + ' อ.' + (r.district||'') + 
-               '<br>จ.' + (r.province||'') + ' ' + (r.zipCode||'') + 
+    var addr = (r.houseNo||'') + (r.street?' ถ.'+r.street:'') +
+               '<br>ต.' + (r.subDistrict||'') + ' อ.' + (r.district||'') +
+               '<br>จ.' + (r.province||'') + ' ' + (r.zipCode||'') +
                (r.phone?'<br>โทร. '+r.phone:'');
-    
+
     return '<div style="display:flex;align-items:flex-start;gap:10px">'
       +'<input type="checkbox" class="lbl-chk" id="lc'+i+'" data-uid="'+lb.uid+'" checked onchange="updLblCount()" style="margin-top:8px;width:18px;height:18px;cursor:pointer;accent-color:var(--sky)">'
-      +'<div id="lcrd'+i+'" style="flex:1;max-width:800px;aspect-ratio:297/210;border:1.5px solid var(--sky);border-radius:8px;background:#fff;position:relative;display:flex;align-items:center;justify-content:center;padding:20mm 28mm;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.06)" onclick="var c=document.getElementById(\'lc'+i+'\');c.checked=!c.checked;this.style.borderColor=c.checked?\'var(--sky)\':\'var(--gray2)\';this.style.opacity=c.checked?\'1\':\'0.3\';updLblCount()">'
-        +'<div style="text-align:center;line-height:1.9;width:100%">'
-          +'<div style="font-size:22pt;font-weight:700;color:#0f2744;margin-bottom:3mm">'+(r.prefix||'')+(r.firstName||'')+' '+(r.lastName||'')+'</div>'
-          +'<div style="font-size:10pt;color:#8899b4;margin-bottom:4mm">รหัสนักศึกษา '+(r.studentId||'')+'</div>'
-          +'<div style="font-size:16pt;font-weight:700;color:#1a4a8a;background:#e8f4ff;padding:2mm 10mm;border-radius:6px;display:inline-block;margin-bottom:3mm">ชุดวิชา '+c.code+courseCounter+'</div>'
+      +'<div id="lcrd'+i+'" style="flex:1;max-width:800px;aspect-ratio:297/210;border:1.5px solid var(--sky);border-radius:8px;background:#fff;position:relative;display:flex;align-items:center;justify-content:center;padding:18mm 30mm;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.06)" onclick="var c=document.getElementById(\'lc'+i+'\');c.checked=!c.checked;this.style.borderColor=c.checked?\'var(--sky)\':\'var(--gray2)\';this.style.opacity=c.checked?\'1\':\'0.3\';updLblCount()">'
+        +'<div style="text-align:center;line-height:1.7;width:100%">'
+          +'<div style="font-size:16pt;font-weight:700;color:#0f2744;margin-bottom:2.5mm">'+(r.prefix||'')+(r.firstName||'')+' '+(r.lastName||'')+'</div>'
+          +'<div style="font-size:9pt;color:#8899b4;margin-bottom:3mm">รหัสนักศึกษา '+(r.studentId||'')+'</div>'
+          +'<div style="font-size:13pt;font-weight:700;color:#1a4a8a;background:#e8f4ff;padding:1.5mm 8mm;border-radius:6px;display:inline-block;margin-bottom:2.5mm">ชุดวิชา '+c.code+courseCounter+'</div>'
           +bookInfo
-          +'<div style="font-size:14pt;margin-top:4mm">'+addr+'</div>'
+          +'<div style="font-size:11pt;margin-top:3mm;line-height:1.6">'+addr+'</div>'
         +'</div>'
-        +'<div style="position:absolute;bottom:8px;left:14px;font-size:10px;color:var(--gray3);font-family:monospace">'+(r.id||'')+' · '+c.code+'</div>'
+        +'<div style="position:absolute;bottom:8px;left:14px;font-size:9px;color:var(--gray3);font-family:monospace" class="no-print">'+(r.id||'')+' · '+c.code+'</div>'
       +'</div>'
     +'</div>';
   }).join('');
@@ -3007,7 +3039,15 @@ function toggleAllLbls(checked) {
   updLblCount();
 }
 function printSelected() {
-  if(!document.querySelectorAll('.lbl-chk:checked').length){showToast('กรุณาเลือกอย่างน้อย 1 ใบ','error');return;}
+  var checked = document.querySelectorAll('.lbl-chk:checked');
+  if(!checked.length){showToast('กรุณาเลือกอย่างน้อย 1 ใบ','error');return;}
+  // Mark unchecked labels for CSS hiding during print
+  document.querySelectorAll('.lbl-chk').forEach(function(chk){
+    var wrapper = chk.parentElement;  // outer flex div
+    if(!wrapper) return;
+    if(chk.checked) wrapper.classList.remove('lbl-skip');
+    else wrapper.classList.add('lbl-skip');
+  });
   window.print();
 }
 
@@ -3210,10 +3250,25 @@ function assignCrm(id) {
 function sendReply(id) {
   const text=document.getElementById('ri_'+id).value.trim();
   if(!text)return;
+  showToast('⏳ กำลังส่ง...','');
   google.script.run
-    .withSuccessHandler(res=>{if(res.success){showToast('ส่งแล้ว','success');document.getElementById('ri_'+id).value='';loadCrm();}else showToast('❌ '+res.error,'error');})
+    .withSuccessHandler(res=>{
+      if(res.success){
+        if(res.emailSent){
+          showToast('✅ ส่งแล้ว + อีเมลถึง '+res.sentTo,'success');
+        } else if(res.emailError){
+          showToast('⚠️ บันทึกแล้ว แต่ส่งอีเมลไม่ได้: '+res.emailError,'error');
+        } else {
+          showToast('✅ บันทึกแล้ว','success');
+        }
+        document.getElementById('ri_'+id).value='';
+        loadCrm();
+      } else {
+        showToast('❌ '+res.error,'error');
+      }
+    })
     .withFailureHandler(showError)
-    .replyCrmTicket(id, text, currentUser);
+    .replyCrmTicket(id, text, currentUser, currentEmail);
 }
 
 function updateCrmStatus(id, status) {
@@ -3983,6 +4038,25 @@ function cleanCourseName(v) {
   s = s.replace(/\s*(Mon|Tue|Wed|Thu|Fri|Sat|Sun)\s+\w+\s+\d{2}\s+\d{4}.*/i, '').trim();
   return s;
 }
+
+// 🆕 แสดงวันที่แบบสั้น dd/MM/yyyy (ไม่มี timezone)
+function cleanDateShort(v) {
+  if (!v) return '—';
+  var s = String(v).trim();
+  // ถ้ามีรูป "dd/MM/yyyy HH:mm" เอาแค่ dd/MM/yyyy
+  if (/^\d{1,2}\/\d{1,2}\/\d{4}/.test(s)) return s.split(' ')[0];
+  // ถ้าเป็น Date object string แบบ "Sat Aug 01 2026 00:00:00 GMT+0700..."
+  try {
+    var d = new Date(s);
+    if (!isNaN(d.getTime())) {
+      var dd = String(d.getDate()).padStart(2,'0');
+      var mm = String(d.getMonth()+1).padStart(2,'0');
+      var yy = d.getFullYear();
+      return dd + '/' + mm + '/' + yy;
+    }
+  } catch(e) {}
+  return s.substring(0,10);
+}
 function renderInvestTable() {
   const q = (document.getElementById('investSearchQ')?.value||'').toLowerCase();
   let rows = investData;
@@ -4028,7 +4102,7 @@ function renderInvestTable() {
       +'<td style="padding:8px;font-size:11px">'+fmtDateShort(r.sentDate)+'</td>'
       +'<td style="padding:8px">'
         +'<div style="font-weight:600;font-size:12px;color:var(--blue)">'+(r.courseCode||'—')+'</div>'
-        +(r.courseName ? '<div style="font-size:11px;color:var(--gray3)">'+r.courseName+'</div>' : '')
+        +(cleanCourseName(r.courseName) ? '<div style="font-size:11px;color:var(--gray3)">'+cleanCourseName(r.courseName)+'</div>' : '')
       +'</td>'
       +'<td style="padding:8px;text-align:right;font-size:11px">'+(r.weight||'—')+'</td>'
       +'<td style="padding:8px;text-align:right;font-size:11px">'+(r.fee||'—')+'</td>'
@@ -4294,8 +4368,8 @@ function openBatchEmailModal() {
     <tr style="${i%2===0?'background:var(--light)':''}">
       <td style="padding:6px 8px">${i+1}</td>
       <td style="padding:6px 8px;font-family:monospace">${r.barcode||'—'}</td>
-      <td style="padding:6px 8px">${r.sentDate||'—'}</td>
-      <td style="padding:6px 8px">${r.courseCode||''} ${r.courseName||''}</td>
+      <td style="padding:6px 8px">${cleanDateShort(r.sentDate)}</td>
+      <td style="padding:6px 8px">${r.courseCode||''} ${cleanCourseName(r.courseName)}</td>
       <td style="padding:6px 8px;text-align:right">${r.weight||'—'}</td>
       <td style="padding:6px 8px;text-align:right">${r.fee||'—'}</td>
       <td style="padding:6px 8px">${r.recipientName||'—'}</td>
@@ -4315,8 +4389,8 @@ function generateBatchEmail(items) {
   const today = new Date().toLocaleDateString('th-TH',{year:'numeric',month:'long',day:'numeric'});
   let tableRows = '';
   items.forEach(function(r,i) {
-    tableRows += `  ${i+1}. เลขที่สิ่งของ: ${r.itemNo||'—'} | Barcode: ${r.barcode||'—'} | วันที่ส่ง: ${r.sentDate||'—'}\n`;
-    tableRows += `     ชุดวิชา: ${r.courseCode||'—'} ${r.courseName||''}\n`;
+    tableRows += `  ${i+1}. เลขที่สิ่งของ: ${r.itemNo||'—'} | Barcode: ${r.barcode||'—'} | วันที่ส่ง: ${cleanDateShort(r.sentDate)}\n`;
+    tableRows += `     ชุดวิชา: ${r.courseCode||'—'} ${cleanCourseName(r.courseName)}\n`;
     tableRows += `     น้ำหนัก: ${r.weight||'—'} | ค่าบริการ: ${r.fee||'—'}\n`;
     tableRows += `     ผู้รับ: ${r.recipientName||'—'} | ที่อยู่: ${r.recipientAddr||'—'}\n\n`;
   });
@@ -4379,6 +4453,66 @@ function copyBatchEmail() {
   navigator.clipboard.writeText(txt).then(function(){
     showToast('✅ คัดลอกแล้ว','success');
   });
+}
+
+function previewBatchEmail() {
+  document.getElementById('prv_from').textContent = (currentUser||'') + ' <' + (currentEmail||'') + '>';
+  document.getElementById('prv_to').textContent = document.getElementById('batch_to').value || '—';
+  document.getElementById('prv_cc').textContent = document.getElementById('batch_cc').value || '—';
+  document.getElementById('prv_subject').textContent = document.getElementById('batch_subject').value || '—';
+  document.getElementById('prv_body').textContent = document.getElementById('batch_body').value || '—';
+  document.getElementById('emailPreviewModal').classList.remove('hidden');
+}
+
+function confirmSendBatchEmail() {
+  document.getElementById('emailPreviewModal').classList.add('hidden');
+  sendBatchEmailViaSystem();
+}
+
+function sendBatchEmailViaSystem() {
+  const to      = document.getElementById('batch_to').value.trim();
+  const cc      = document.getElementById('batch_cc').value.trim();
+  const subject = document.getElementById('batch_subject').value.trim();
+  const body    = document.getElementById('batch_body').value;
+  const ids     = getCheckedInvestItems();
+
+  if (!to) { showToast('กรุณากรอกอีเมลผู้รับ','error'); return; }
+  if (!body) { showToast('ไม่มีเนื้อหาอีเมล','error'); return; }
+
+  const btn = document.getElementById('batchSendBtn');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ กำลังส่ง...'; }
+  showToast('⏳ กำลังส่งอีเมลผ่านระบบ...','');
+
+  google.script.run
+    .withSuccessHandler(function(res) {
+      if (btn) { btn.disabled = false; btn.textContent = '📤 ส่งจากระบบ (อีเมล admin)'; }
+      if (res && res.success) {
+        showToast('✅ ส่งอีเมลสำเร็จ จาก '+(res.sentFrom||'admin')+' ถึง '+res.sentTo,'success');
+        const badge = document.getElementById('batch_sent_badge');
+        if (badge) {
+          const now = new Date().toLocaleDateString('th-TH',{year:'numeric',month:'short',day:'numeric'});
+          badge.textContent = '✅ ส่งแล้ว '+now;
+          badge.style.display = 'inline-block';
+        }
+        setTimeout(function() {
+          document.getElementById('batchEmailModal').classList.add('hidden');
+          loadInvestigations();
+        }, 1500);
+      } else {
+        showToast('❌ '+(res&&res.error||'ส่งไม่สำเร็จ'),'error');
+      }
+    })
+    .withFailureHandler(function(err) {
+      if (btn) { btn.disabled = false; btn.textContent = '📤 ส่งจากระบบ (อีเมล admin)'; }
+      showToast('❌ '+(err&&err.message||'ส่งไม่สำเร็จ'),'error');
+    })
+    .sendInvestigationBatchEmail({
+      to: to,
+      cc: cc,
+      subject: subject,
+      body: body,
+      ids: ids
+    });
 }
 
 function exportInvestExcel() {
@@ -4699,28 +4833,44 @@ function loadAdminReport() {
         } catch(e) { return true; }
       });
 
-      // จัดกลุ่มตาม user
+      // จัดกลุ่มตาม user — ใช้การจับคู่แบบเฉพาะเจาะจง (specificity-first)
       var byUser = {};
       filtered.forEach(function(l) {
         var user = l.name || l.email || 'ไม่ระบุ';
         if (!byUser[user]) byUser[user] = {
           name: user, email: l.email||'',
-          actions: [], 
+          actions: [],
           counts: {return:0, lend:0, special:0, crm:0, email:0, invest:0, task:0, other:0}
         };
         var a = l.action || '';
         var d = l.detail || '';
-        if (a.includes('บันทึกพัสดุ')) {
-          if (d.includes('return')) byUser[user].counts.return++;
-          else if (d.includes('lend')) byUser[user].counts.lend++;
-          else if (d.includes('special')) byUser[user].counts.special++;
+
+        // 1) บันทึกพัสดุ — แยกตามประเภท return/lend/special
+        if (a.indexOf('บันทึกพัสดุ') !== -1) {
+          if (d.indexOf('return') !== -1) byUser[user].counts.return++;
+          else if (d.indexOf('lend') !== -1) byUser[user].counts.lend++;
+          else if (d.indexOf('special') !== -1) byUser[user].counts.special++;
           else byUser[user].counts.other++;
         }
-        else if (a.includes('CRM') || a.includes('รับเรื่อง')) byUser[user].counts.crm++;
-        else if (a.includes('อีเมล')) byUser[user].counts.email++;
-        else if (a.includes('สอบสวน')) byUser[user].counts.invest++;
-        else if (a.includes('งาน') || a.includes('task') || a.includes('สั่งงาน')) byUser[user].counts.task++;
-        else byUser[user].counts.other++;
+        // 2) อีเมล — รวมการส่งอีเมลทุกประเภท (ตรวจก่อน 'สอบสวน' เพราะ 'ส่งอีเมลสอบสวน' มีทั้งสองคำ)
+        else if (a.indexOf('อีเมล') !== -1) {
+          byUser[user].counts.email++;
+        }
+        // 3) สอบสวน — เฉพาะการอัปเดต/แก้ไข
+        else if (a.indexOf('สอบสวน') !== -1) {
+          byUser[user].counts.invest++;
+        }
+        // 4) CRM — รับเรื่อง/ตอบกลับ/อัปเดตสถานะ
+        else if (a.indexOf('CRM') !== -1 || a.indexOf('รับเรื่อง') !== -1 || a.indexOf('ตอบกลับ') !== -1) {
+          byUser[user].counts.crm++;
+        }
+        // 5) งาน — สั่งงาน/อัปเดตงาน
+        else if (a.indexOf('งาน') !== -1 || a.indexOf('task') !== -1) {
+          byUser[user].counts.task++;
+        }
+        else {
+          byUser[user].counts.other++;
+        }
         byUser[user].actions.push(l);
       });
 
