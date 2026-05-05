@@ -1226,6 +1226,16 @@ tbody td{padding:9px 12px;vertical-align:middle}
                     </div>
                   </div>
                 </div>
+                <!-- ที่อยู่ (auto-fill ได้) -->
+                <div class="card-sec" style="margin:12px 0 8px">📍 ที่อยู่ (พิมพ์ตำบล/อำเภอ → auto-fill)</div>
+                <div class="form-grid g2">
+                  <div class="fg"><label class="flbl">บ้านเลขที่</label><input class="finput" id="cm_hno" placeholder="123/45"></div>
+                  <div class="fg"><label class="flbl">ถนน</label><input class="finput" id="cm_street" placeholder="ถนน"></div>
+                  <div class="fg"><label class="flbl">ตำบล/แขวง</label><input class="finput" id="cm_sub" placeholder="พิมพ์ตำบล..." autocomplete="off"></div>
+                  <div class="fg"><label class="flbl">อำเภอ/เขต</label><input class="finput" id="cm_dist" placeholder="พิมพ์อำเภอ..." autocomplete="off"></div>
+                  <div class="fg"><label class="flbl">จังหวัด</label><input class="finput" id="cm_prov" placeholder="จังหวัด" autocomplete="off"></div>
+                  <div class="fg"><label class="flbl">รหัสไปรษณีย์</label><input class="finput" id="cm_zip" placeholder="10120" maxlength="5" autocomplete="off"></div>
+                </div>
                 <!-- ชุดวิชา -->
                 <div class="card-sec" style="margin:12px 0 8px">📚 ชุดวิชา</div>
                 <div class="course-rows" id="crmCourseRows">
@@ -2083,6 +2093,9 @@ window.onload = function() {
       document.getElementById('lgRemember').checked = true;
     }
   } catch(e) {}
+
+  // เริ่มโหลดข้อมูลที่อยู่ไทย + attach autocomplete
+  try { initThaiAddressAutocomplete(); } catch(e) { console.warn('ThaiAddress init:', e); }
 
   // ลอง checkSession — ถ้า timeout 5 วิ ให้แสดง login เลย
   let sessionChecked = false;
@@ -3395,7 +3408,8 @@ function toggleCrmForm() {
   if (btn) btn.textContent = isOpen ? '➕ รับแจ้งด้วยตนเอง' : '✖ ปิดฟอร์ม';
   if (!isOpen) {
     // reset form เมื่อเปิด
-    ['cm_name','cm_sid','cm_email','cm_phone','cm_detail','cm_year','cm_ptype_other'].forEach(function(id){
+    ['cm_name','cm_sid','cm_email','cm_phone','cm_detail','cm_year','cm_ptype_other',
+     'cm_hno','cm_street','cm_sub','cm_dist','cm_prov','cm_zip'].forEach(function(id){
       var el=document.getElementById(id); if(el) el.value='';
     });
     ['cm_branch','cm_plan','cm_ptype','cm_assignee'].forEach(function(id){
@@ -3407,6 +3421,8 @@ function toggleCrmForm() {
     if (radio) radio.checked=true;
     var crmRows=document.getElementById('crmCourseRows');
     if(crmRows) crmRows.innerHTML='<div class="course-row"><span class="course-num">1</span><div class="fg"><input class="finput" placeholder="รหัสชุดวิชา"></div><div class="fg"><input class="finput" placeholder="ชื่อชุดวิชา (ถ้าทราบ)"></div></div>';
+    // re-attach Thai address autocomplete (in case fields were hidden at page load)
+    try { ThaiAddress.attach('cm_'); } catch(e) {}
     // scroll ไปฟอร์ม
     form.scrollIntoView({behavior:'smooth',block:'start'});
   }
@@ -3484,13 +3500,20 @@ function submitCrmTicket() {
                 var c1 = document.getElementById(pfx+'c1_code');
                 if(c1) c1.value = courses[0];
               }
+              // ส่งต่อที่อยู่จาก CRM ไปหน้าถัดไป
+              [['hno','hno'],['street','street'],['sub','sub'],['dist','dist'],['prov','prov'],['zip','zip']].forEach(function(p){
+                var src = document.getElementById('cm_'+p[0]);
+                var dst = document.getElementById(pfx+p[1]);
+                if(src && dst && src.value) dst.value = src.value;
+              });
               showToast('✅ กรอกข้อมูลจาก CRM แล้ว — กรุณาตรวจสอบและกรอกข้อมูลเพิ่มเติม','success');
             }, 600);
           }
         }
 
         // reset form
-        ['cm_name','cm_sid','cm_email','cm_phone','cm_detail','cm_year','cm_ptype_other'].forEach(function(id){
+        ['cm_name','cm_sid','cm_email','cm_phone','cm_detail','cm_year','cm_ptype_other',
+         'cm_hno','cm_street','cm_sub','cm_dist','cm_prov','cm_zip'].forEach(function(id){
           var el=document.getElementById(id);if(el)el.value='';
         });
         ['cm_branch','cm_plan','cm_ptype','cm_assignee'].forEach(function(id){
@@ -5179,6 +5202,140 @@ function initBarcodeFields() {
       }
     });
   });
+}
+
+// ============================================================
+// THAI ADDRESS AUTOCOMPLETE — โหลด data จาก CDN และ attach กับฟอร์ม
+// ============================================================
+const ThaiAddress = {
+  data: null,
+  loading: false,
+  loadError: null,
+
+  async load() {
+    if (this.data) return this.data;
+    if (this.loading) {
+      while (this.loading) await new Promise(r => setTimeout(r, 100));
+      return this.data;
+    }
+    this.loading = true;
+    const sources = [
+      'https://cdn.jsdelivr.net/gh/earthchie/jquery.Thailand.js@master/jquery.Thailand.js/database/raw_database/raw_database.json',
+      'https://raw.githubusercontent.com/earthchie/jquery.Thailand.js/master/jquery.Thailand.js/database/raw_database/raw_database.json'
+    ];
+    for (const url of sources) {
+      try {
+        const res = await fetch(url);
+        if (!res.ok) continue;
+        const json = await res.json();
+        if (Array.isArray(json) && json.length > 0) {
+          this.data = json;
+          this.loadError = null;
+          break;
+        }
+      } catch(e) {
+        this.loadError = e.message;
+      }
+    }
+    this.loading = false;
+    if (!this.data) console.warn('⚠️ ไม่สามารถโหลดข้อมูลที่อยู่ไทยได้:', this.loadError);
+    return this.data;
+  },
+
+  search(field, query, limit) {
+    limit = limit || 12;
+    if (!this.data || !query) return [];
+    const q = String(query).toLowerCase().trim();
+    if (!q) return [];
+    const seen = new Set();
+    const results = [];
+    for (const row of this.data) {
+      if (results.length >= limit) break;
+      const val = String(row[field] || '').toLowerCase();
+      if (val.indexOf(q) === -1) continue;
+      const key = row.district + '|' + row.amphoe + '|' + row.province + '|' + row.zipcode;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      results.push(row);
+    }
+    return results;
+  },
+
+  closeAllDropdowns() {
+    document.querySelectorAll('.thai-addr-drop').forEach(el => el.remove());
+  },
+
+  attach(prefix) {
+    const fieldsMap = [
+      {id: prefix + 'sub',  field: 'district'},   // ตำบล
+      {id: prefix + 'dist', field: 'amphoe'},     // อำเภอ
+      {id: prefix + 'prov', field: 'province'},   // จังหวัด
+      {id: prefix + 'zip',  field: 'zipcode'}     // รหัสไปรษณีย์
+    ];
+    const me = this;
+
+    fieldsMap.forEach(({id, field}) => {
+      const input = document.getElementById(id);
+      if (!input || input.dataset.thaiAddrAttached) return;
+      input.dataset.thaiAddrAttached = '1';
+      input.setAttribute('autocomplete', 'off');
+
+      input.addEventListener('input', async function() {
+        me.closeAllDropdowns();
+        const q = this.value.trim();
+        if (q.length < 1) return;
+        if (!me.data) {
+          await me.load();
+          if (!me.data) return;
+        }
+        const matches = me.search(field, q, 10);
+        if (!matches.length) return;
+        me.showDropdown(input, matches, prefix);
+      });
+
+      input.addEventListener('blur', function() {
+        setTimeout(() => me.closeAllDropdowns(), 200);
+      });
+    });
+  },
+
+  showDropdown(input, matches, prefix) {
+    const drop = document.createElement('div');
+    drop.className = 'thai-addr-drop';
+    const rect = input.getBoundingClientRect();
+    drop.style.cssText = 'position:fixed;background:#fff;border:1.5px solid var(--sky);border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,0.12);z-index:9999;max-height:280px;overflow-y:auto;font-size:13px;min-width:' + Math.max(rect.width, 280) + 'px;left:' + rect.left + 'px;top:' + (rect.bottom + 4) + 'px';
+
+    matches.forEach(row => {
+      const item = document.createElement('div');
+      item.style.cssText = 'padding:8px 12px;cursor:pointer;border-bottom:1px solid #f0f4f8;transition:background .15s';
+      item.innerHTML = '<div style="font-weight:600;color:#0f2744">ต.' + row.district + ' / อ.' + row.amphoe + '</div>'
+                     + '<div style="font-size:11px;color:#8899b4;margin-top:2px">จ.' + row.province + ' · ' + row.zipcode + '</div>';
+      item.addEventListener('mouseenter', () => item.style.background = '#f0f9ff');
+      item.addEventListener('mouseleave', () => item.style.background = '');
+      item.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        ThaiAddress.fillFields(prefix, row);
+        ThaiAddress.closeAllDropdowns();
+      });
+      drop.appendChild(item);
+    });
+
+    document.body.appendChild(drop);
+  },
+
+  fillFields(prefix, row) {
+    const map = {sub: 'district', dist: 'amphoe', prov: 'province', zip: 'zipcode'};
+    Object.keys(map).forEach(suffix => {
+      const el = document.getElementById(prefix + suffix);
+      if (el) el.value = row[map[suffix]] || '';
+    });
+  }
+};
+
+// preload data + attach autocomplete on all forms
+function initThaiAddressAutocomplete() {
+  ThaiAddress.load();  // เริ่มโหลด background
+  ['rt_', 'ld_', 'sp_', 'cm_'].forEach(prefix => ThaiAddress.attach(prefix));
 }
 
 // ============================================================
