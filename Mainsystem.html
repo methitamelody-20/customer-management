@@ -303,10 +303,20 @@ tbody td{padding:9px 12px;vertical-align:middle}
 .modal-title{font-family:var(--font-h);font-size:16px;font-weight:700;color:var(--navy);margin-bottom:18px;display:flex;align-items:center;gap:8px}
 
 /* PRINT */
+@page{size:A4 landscape;margin:0}
 @media print{
   #loginScreen,.sidebar,.topbar,.filter-bar,.btn-row,.no-print{display:none!important}
-  .main{overflow:visible}.content{padding:0;overflow:visible}
-  body{background:#fff}
+  .main{overflow:visible}.content{padding:0!important;overflow:visible}
+  body{background:#fff;margin:0;padding:0}
+  /* ใบจ่าหน้า: 1 ใบต่อ 1 หน้า A4 แนวนอน, จัดกึ่งกลาง */
+  #labelGrid{display:block!important;gap:0!important;padding:0!important}
+  #labelGrid > div{page-break-after:always;page-break-inside:avoid;display:flex!important;align-items:center!important;justify-content:center!important;width:297mm!important;height:210mm!important;margin:0!important;padding:0!important;gap:0!important}
+  #labelGrid > div:last-child{page-break-after:auto}
+  #labelGrid input.lbl-chk{display:none!important}
+  /* ซ่อนใบที่ไม่ได้เลือกตอนพิมพ์ */
+  #labelGrid > div.lbl-skip{display:none!important}
+  /* การ์ดใบจ่าหน้า: ขยายเต็มกระดาษและเอา border ออก */
+  #labelGrid > div > div[id^="lcrd"]{border:none!important;box-shadow:none!important;border-radius:0!important;max-width:none!important;width:280mm!important;height:200mm!important;aspect-ratio:auto!important}
 }
 </style>
 
@@ -2988,25 +2998,25 @@ function renderLabels(rows) {
       if (c.b1) parts.push('เล่ม 1: ' + c.b1);
       if (c.b2) parts.push('เล่ม 2: ' + c.b2);
       if (c.b3) parts.push('เพิ่มเติม: ' + c.b3);
-      bookInfo = '<div style="font-size:11pt;color:#8899b4;margin-top:2mm">' + parts.join(' · ') + '</div>';
+      bookInfo = '<div style="font-size:9pt;color:#8899b4;margin-top:1.5mm">' + parts.join(' · ') + '</div>';
     }
     var courseCounter = '';
-    var addr = (r.houseNo||'') + (r.street?' ถ.'+r.street:'') + 
-               '<br>ต.' + (r.subDistrict||'') + ' อ.' + (r.district||'') + 
-               '<br>จ.' + (r.province||'') + ' ' + (r.zipCode||'') + 
+    var addr = (r.houseNo||'') + (r.street?' ถ.'+r.street:'') +
+               '<br>ต.' + (r.subDistrict||'') + ' อ.' + (r.district||'') +
+               '<br>จ.' + (r.province||'') + ' ' + (r.zipCode||'') +
                (r.phone?'<br>โทร. '+r.phone:'');
-    
+
     return '<div style="display:flex;align-items:flex-start;gap:10px">'
       +'<input type="checkbox" class="lbl-chk" id="lc'+i+'" data-uid="'+lb.uid+'" checked onchange="updLblCount()" style="margin-top:8px;width:18px;height:18px;cursor:pointer;accent-color:var(--sky)">'
-      +'<div id="lcrd'+i+'" style="flex:1;max-width:800px;aspect-ratio:297/210;border:1.5px solid var(--sky);border-radius:8px;background:#fff;position:relative;display:flex;align-items:center;justify-content:center;padding:20mm 28mm;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.06)" onclick="var c=document.getElementById(\'lc'+i+'\');c.checked=!c.checked;this.style.borderColor=c.checked?\'var(--sky)\':\'var(--gray2)\';this.style.opacity=c.checked?\'1\':\'0.3\';updLblCount()">'
-        +'<div style="text-align:center;line-height:1.9;width:100%">'
-          +'<div style="font-size:22pt;font-weight:700;color:#0f2744;margin-bottom:3mm">'+(r.prefix||'')+(r.firstName||'')+' '+(r.lastName||'')+'</div>'
-          +'<div style="font-size:10pt;color:#8899b4;margin-bottom:4mm">รหัสนักศึกษา '+(r.studentId||'')+'</div>'
-          +'<div style="font-size:16pt;font-weight:700;color:#1a4a8a;background:#e8f4ff;padding:2mm 10mm;border-radius:6px;display:inline-block;margin-bottom:3mm">ชุดวิชา '+c.code+courseCounter+'</div>'
+      +'<div id="lcrd'+i+'" style="flex:1;max-width:800px;aspect-ratio:297/210;border:1.5px solid var(--sky);border-radius:8px;background:#fff;position:relative;display:flex;align-items:center;justify-content:center;padding:18mm 30mm;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.06)" onclick="var c=document.getElementById(\'lc'+i+'\');c.checked=!c.checked;this.style.borderColor=c.checked?\'var(--sky)\':\'var(--gray2)\';this.style.opacity=c.checked?\'1\':\'0.3\';updLblCount()">'
+        +'<div style="text-align:center;line-height:1.7;width:100%">'
+          +'<div style="font-size:16pt;font-weight:700;color:#0f2744;margin-bottom:2.5mm">'+(r.prefix||'')+(r.firstName||'')+' '+(r.lastName||'')+'</div>'
+          +'<div style="font-size:9pt;color:#8899b4;margin-bottom:3mm">รหัสนักศึกษา '+(r.studentId||'')+'</div>'
+          +'<div style="font-size:13pt;font-weight:700;color:#1a4a8a;background:#e8f4ff;padding:1.5mm 8mm;border-radius:6px;display:inline-block;margin-bottom:2.5mm">ชุดวิชา '+c.code+courseCounter+'</div>'
           +bookInfo
-          +'<div style="font-size:14pt;margin-top:4mm">'+addr+'</div>'
+          +'<div style="font-size:11pt;margin-top:3mm;line-height:1.6">'+addr+'</div>'
         +'</div>'
-        +'<div style="position:absolute;bottom:8px;left:14px;font-size:10px;color:var(--gray3);font-family:monospace">'+(r.id||'')+' · '+c.code+'</div>'
+        +'<div style="position:absolute;bottom:8px;left:14px;font-size:9px;color:var(--gray3);font-family:monospace" class="no-print">'+(r.id||'')+' · '+c.code+'</div>'
       +'</div>'
     +'</div>';
   }).join('');
@@ -3029,7 +3039,15 @@ function toggleAllLbls(checked) {
   updLblCount();
 }
 function printSelected() {
-  if(!document.querySelectorAll('.lbl-chk:checked').length){showToast('กรุณาเลือกอย่างน้อย 1 ใบ','error');return;}
+  var checked = document.querySelectorAll('.lbl-chk:checked');
+  if(!checked.length){showToast('กรุณาเลือกอย่างน้อย 1 ใบ','error');return;}
+  // Mark unchecked labels for CSS hiding during print
+  document.querySelectorAll('.lbl-chk').forEach(function(chk){
+    var wrapper = chk.parentElement;  // outer flex div
+    if(!wrapper) return;
+    if(chk.checked) wrapper.classList.remove('lbl-skip');
+    else wrapper.classList.add('lbl-skip');
+  });
   window.print();
 }
 
