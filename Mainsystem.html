@@ -356,7 +356,9 @@ tbody td{padding:9px 12px;vertical-align:middle}
     </div>
     <button class="login-btn" id="lgBtn" onclick="doLogin()">เข้าสู่ระบบ</button>
     <button style="width:100%;margin-top:8px;padding:8px;background:none;border:1px solid #ccc;border-radius:6px;cursor:pointer;font-size:12px;color:#888" onclick="testScriptRun()">🔍 ทดสอบ connection</button>
+    <button style="width:100%;margin-top:6px;padding:8px;background:#fff3e0;border:1px solid #ffa726;border-radius:6px;cursor:pointer;font-size:12px;color:#e65100;font-weight:600" onclick="testFirebaseUI()">🔥 ทดสอบ Firebase</button>
     <div class="login-err" id="lgErr"></div>
+    <div id="firebaseTestResult" style="margin-top:10px;padding:10px;border-radius:6px;font-size:11px;display:none;max-height:300px;overflow-y:auto;white-space:pre-wrap;font-family:monospace"></div>
   </div>
 </div>
 
@@ -2092,6 +2094,76 @@ function testScriptRun() {
       alert('❌ FAIL: ' + (e&&e.message||JSON.stringify(e)));
     })
     .getRecords({});
+}
+
+async function testFirebaseUI() {
+  const resultDiv = document.getElementById('firebaseTestResult');
+  resultDiv.style.display = 'block';
+  resultDiv.style.background = '#f0f9ff';
+  resultDiv.style.border = '1px solid #2d7dd2';
+  resultDiv.style.color = '#0f2744';
+  resultDiv.textContent = '⏳ กำลังทดสอบ Firebase...\n';
+
+  let log = '🔍 ทดสอบ Firebase API\n';
+  log += '━━━━━━━━━━━━━━━━━━━━━━━━\n';
+  log += 'useFirebase: ' + useFirebase + '\n';
+
+  // รอ Firebase โหลด
+  const firebaseReady = await waitForFirebase(5000);
+  log += 'Firebase SDK: ' + (firebaseReady ? '✅ โหลดสำเร็จ' : '❌ โหลดไม่สำเร็จ') + '\n\n';
+
+  if (!firebaseReady) {
+    log += '❌ ไม่สามารถทดสอบได้ - Firebase SDK ไม่ทำงาน\n';
+    log += '\nสาเหตุที่เป็นไปได้:\n';
+    log += '- ไม่มี Internet\n';
+    log += '- Firebase SDK ถูก block (CSP)\n';
+    log += '- Firebase config ผิดพลาด\n';
+    resultDiv.style.background = '#fff5f5';
+    resultDiv.style.border = '1px solid #c0392b';
+    resultDiv.style.color = '#c0392b';
+    resultDiv.textContent = log;
+    return;
+  }
+
+  // ทดสอบ getCrmTickets
+  log += '1️⃣ ทดสอบ getCrmTickets()...\n';
+  try {
+    const tickets = await firebaseAPI.getCrmTickets({});
+    if (Array.isArray(tickets)) {
+      log += '✅ สำเร็จ! พบ ' + tickets.length + ' รายการ\n';
+      log += '   Backend: ' + (useFirebase ? 'Firebase' : 'Apps Script') + '\n';
+      if (tickets[0]) {
+        log += '   ตัวอย่างข้อมูลแรก:\n';
+        log += '   - ID: ' + (tickets[0].id || 'N/A') + '\n';
+        log += '   - ผู้แจ้ง: ' + (tickets[0].reporterName || 'N/A') + '\n';
+        log += '   - สถานะ: ' + (tickets[0].status || 'N/A') + '\n';
+      }
+    } else {
+      log += '⚠️ ผลลัพธ์ไม่ใช่ array: ' + JSON.stringify(tickets) + '\n';
+    }
+  } catch(error) {
+    log += '❌ ผิดพลาด: ' + error.message + '\n';
+  }
+
+  log += '\n2️⃣ ทดสอบ checkSession()...\n';
+  try {
+    const session = await firebaseAPI.checkSession();
+    log += '✅ สำเร็จ!\n';
+    log += '   valid: ' + (session.valid || false) + '\n';
+    if (session.email) log += '   email: ' + session.email + '\n';
+    if (session.name) log += '   name: ' + session.name + '\n';
+    if (session.role) log += '   role: ' + session.role + '\n';
+  } catch(error) {
+    log += '❌ ผิดพลาด: ' + error.message + '\n';
+  }
+
+  log += '\n━━━━━━━━━━━━━━━━━━━━━━━━\n';
+  log += '✅ ทดสอบเสร็จสิ้น';
+
+  resultDiv.style.background = '#f0fff4';
+  resultDiv.style.border = '1px solid #1e8a4a';
+  resultDiv.style.color = '#0f2744';
+  resultDiv.textContent = log;
 }
 
 async function testFirebaseAPI() {
