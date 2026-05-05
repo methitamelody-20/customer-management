@@ -3434,6 +3434,43 @@ function onCrmStatusSel(sel) {
   var cid = sel.dataset.cid;
   if (sel.value && cid) updateCrmStatus(cid, sel.value);
 }
+function sendCrmEmail(id) {
+  var ticket = allCrm.find(function(c){return c.id === id;});
+  if(!ticket || !ticket.reporterEmail){
+    showToast('❌ ไม่พบอีเมลผู้รายงาน','error');
+    return;
+  }
+
+  var replies = [];
+  try{replies=JSON.parse(ticket.replies||'[]');}catch(e){}
+
+  var replyText = replies.length ? replies.map(function(r){
+    return '<p><strong>'+r.name+':</strong> '+r.text+'</p>';
+  }).join('') : '<p>ได้ทำการแก้ไขปัญหาแล้ว</p>';
+
+  var emailData = {
+    to: ticket.reporterEmail,
+    reporterName: ticket.reporterName,
+    issueType: ticket.issueType,
+    detail: ticket.detail,
+    replies: replyText,
+    adminName: currentUser
+  };
+
+  showToast('⏳ กำลังส่งอีเมล...','');
+  google.script.run
+    .withSuccessHandler(res=>{
+      if(res.success){
+        showToast('✅ ส่งอีเมลแล้ว','success');
+      } else {
+        showToast('❌ ส่งอีเมลไม่ได้: '+res.error,'error');
+      }
+      loadCrm();
+    })
+    .withFailureHandler(showError)
+    .sendCrmEmail(id, emailData);
+}
+
 function assignCrm(id) {
   google.script.run
     .withSuccessHandler(res=>{if(res.success){showToast('รับเรื่องแล้ว','success');loadCrm();}else showToast('❌ '+res.error,'error');})
@@ -3467,9 +3504,60 @@ function sendReply(id) {
 
 function updateCrmStatus(id, status) {
   google.script.run
-    .withSuccessHandler(res=>{if(res.success){showToast('อัปเดตสถานะแล้ว','success');loadCrm();}else showToast('❌ '+res.error,'error');})
+    .withSuccessHandler(res=>{
+      if(res.success){
+        showToast('อัปเดตสถานะแล้ว','success');
+        if(status === 'resolved') {
+          sendCrmResolutionEmail(id);
+        } else {
+          loadCrm();
+        }
+      } else {
+        showToast('❌ '+res.error,'error');
+      }
+    })
     .withFailureHandler(showError)
     .updateCrmStatus(id, status);
+}
+
+function sendCrmResolutionEmail(id) {
+  var ticket = allCrm.find(function(c){return c.id === id;});
+  if(!ticket || !ticket.reporterEmail){
+    loadCrm();
+    return;
+  }
+
+  var replies = [];
+  try{replies=JSON.parse(ticket.replies||'[]');}catch(e){}
+
+  var replyText = replies.length ? replies.map(function(r){
+    return '<p><strong>'+r.name+':</strong> '+r.text+'</p>';
+  }).join('') : '<p>ได้ทำการแก้ไขปัญหาแล้ว</p>';
+
+  var emailData = {
+    to: ticket.reporterEmail,
+    reporterName: ticket.reporterName,
+    issueType: ticket.issueType,
+    detail: ticket.detail,
+    replies: replyText,
+    adminName: currentUser
+  };
+
+  showToast('⏳ กำลังส่งอีเมลแจ้งผล...','');
+  google.script.run
+    .withSuccessHandler(res=>{
+      if(res.success){
+        showToast('✅ อัปเดตสถานะและส่งอีเมลแล้ว','success');
+      } else {
+        showToast('⚠️ อัปเดตแล้ว แต่ส่งอีเมลไม่ได้: '+res.error,'error');
+      }
+      loadCrm();
+    })
+    .withFailureHandler(function(e){
+      showToast('⚠️ อัปเดตแล้ว แต่ส่งอีเมลไม่ได้','error');
+      loadCrm();
+    })
+    .sendCrmResolutionEmail(id, emailData);
 }
 
 function showCrmPublicLink() {
