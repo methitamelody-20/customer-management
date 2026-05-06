@@ -1308,7 +1308,7 @@ function addCrmTicket(data) {
       data.courses||'', data.issueType||'', data.detail||'',
       data.channel||'online', data.priority||'normal',
       data.tags||'', 'open', assigneeName, '', '[]',
-      recorderName, source, data.org||'',
+      recorderName, source, data.plan||'', data.org||'',
     ];
     sheet.appendRow(row);
     const lr = sheet.getLastRow();
@@ -1409,14 +1409,14 @@ function getCrmTickets(filters) {
       } catch(e) { return String(v); }
     };
     
-    const ncols = Math.min(sheet.getLastColumn(), 23);
+    const ncols = Math.min(sheet.getLastColumn(), 24);
     const rawRows = sheet.getRange(2,1,lr-1,ncols).getValues();
     const rows = [];
     for (let i = 0; i < rawRows.length; i++) {
       const r = rawRows[i];
       if (!r[0]) continue;
       const recorderName = S(r[20]);
-      // infer source for older rows that don't have col 21
+      // col 22 (r[21]) = source (admin/external), col 23 (r[22]) = plan, col 24 (r[23]) = org
       const storedSource = ncols >= 22 ? S(r[21]) : '';
       const source = storedSource || (recorderName === 'ผู้แจ้งออนไลน์' || recorderName === '' ? 'external' : 'admin');
       rows.push({
@@ -1427,7 +1427,7 @@ function getCrmTickets(filters) {
         channel: S(r[13]), priority: S(r[14]), tags: S(r[15]),
         status: S(r[16]), assigneeName: S(r[17]), assigneeEmail: S(r[18]),
         replies: S(r[19]) || '[]', recorderName: recorderName,
-        source: source, plan: ncols >= 22 ? S(r[21]) : '', org: ncols >= 23 ? S(r[22]) : '',
+        source: source, plan: ncols >= 23 ? S(r[22]) : '', org: ncols >= 24 ? S(r[23]) : '',
       });
     }
 
@@ -1793,15 +1793,25 @@ function setupSystem() {
   let cm = ss.getSheetByName(SH_CRM);
   if (!cm) {
     cm = ss.insertSheet(SH_CRM);
-    cm.appendRow(['รหัส','วันที่','ชื่อผู้แจ้ง','รหัสนักศึกษา','อีเมล','เบอร์โทร','หน่วยงาน/สาขา','ระดับการศึกษา','ภาค','ปี','ชุดวิชา','ประเภทปัญหา','รายละเอียด','ช่องทาง','ความเร่งด่วน','Tags','สถานะ','ผู้รับเรื่อง','อีเมลผู้รับเรื่อง','ประวัติการตอบ','ผู้บันทึก','แผนการศึกษา']);
-    const ch=cm.getRange(1,1,1,22);ch.setBackground('#1a3a5c');ch.setFontColor('#fff');ch.setFontWeight('bold');
+    // col: 1-21=ข้อมูล, 22=แหล่งที่มา(source), 23=แผนการศึกษา(plan), 24=หน่วยงาน(org)
+    cm.appendRow(['รหัส','วันที่','ชื่อผู้แจ้ง','รหัสนักศึกษา','อีเมล','เบอร์โทร','หน่วยงาน/สาขา','ระดับการศึกษา','ภาค','ปี','ชุดวิชา','ประเภทปัญหา','รายละเอียด','ช่องทาง','ความเร่งด่วน','Tags','สถานะ','ผู้รับเรื่อง','อีเมลผู้รับเรื่อง','ประวัติการตอบ','ผู้บันทึก','แหล่งที่มา','แผนการศึกษา','หน่วยงานภายนอก']);
+    const ch=cm.getRange(1,1,1,24);ch.setBackground('#1a3a5c');ch.setFontColor('#fff');ch.setFontWeight('bold');
     cm.setFrozenRows(1);
   } else {
-    // Migrate existing sheet to add plan column if missing
+    // Migrate existing sheet: ensure correct column layout
     const headers = cm.getRange(1,1,1,cm.getLastColumn()).getValues()[0];
-    if (!headers.includes('แผนการศึกษา')) {
-      cm.getRange(1, 22).setValue('แผนการศึกษา');
+    // Col 22 (idx 21) = แหล่งที่มา (source), Col 23 (idx 22) = แผนการศึกษา, Col 24 (idx 23) = หน่วยงานภายนอก
+    if (!headers[21] || headers[21] === 'แผนการศึกษา') {
+      cm.getRange(1, 22).setValue('แหล่งที่มา');
       cm.getRange(1, 22).setBackground('#1a3a5c').setFontColor('#fff').setFontWeight('bold');
+    }
+    if (!headers[22] || headers[22] !== 'แผนการศึกษา') {
+      cm.getRange(1, 23).setValue('แผนการศึกษา');
+      cm.getRange(1, 23).setBackground('#1a3a5c').setFontColor('#fff').setFontWeight('bold');
+    }
+    if (!headers[23]) {
+      cm.getRange(1, 24).setValue('หน่วยงานภายนอก');
+      cm.getRange(1, 24).setBackground('#1a3a5c').setFontColor('#fff').setFontWeight('bold');
     }
   }
 

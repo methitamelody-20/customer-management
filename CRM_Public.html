@@ -657,17 +657,16 @@ function submitForm() {
   const btn = document.getElementById('submitBtn');
   btn.disabled = true; btn.textContent = '⏳ กำลังส่ง...';
 
-  // รวมสาขา + แผน
   const dept = document.getElementById('f_dept')?.value||'';
   const plan = document.getElementById('f_plan')?.value||'';
-  const deptFull = dept + (plan?' / '+plan:'');
 
   const ticketData = {
     reporterName:    name,
     studentId:       document.getElementById('f_sid').value.trim(),
     reporterEmail:   email,
     reporterPhone:   document.getElementById('f_phone').value.trim(),
-    department:      deptFull,
+    department:      dept,
+    plan:            plan,
     educationLevel:  document.getElementById('f_edu').value,
     term:            term,
     year:            year,

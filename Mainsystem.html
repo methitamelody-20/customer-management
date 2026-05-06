@@ -4505,11 +4505,11 @@ function submitCrmTicket(btnEl) {
     .withFailureHandler(function(e){clearTimeout(_crmTimeout);_crmReset();showError(e);})
     .addCrmTicket({
       reporterName:name, studentId:sid, reporterEmail:email, reporterPhone:phone,
-      department:branch+(plan?' / '+plan:''),
+      department:branch,
       educationLevel:document.getElementById('cm_edu')?.value||'',
       issueType:ptype, detail:detail, channel:ch, term:term, year:year, priority:priority,
       courses:courses.join(','), tags:tags, recorderName:currentUser,
-      assigneeName:assignee,
+      assigneeName:assignee, plan:plan,
     });
 }
 
