@@ -467,22 +467,22 @@ tbody td{padding:12px;vertical-align:middle}
       <button class="nav-btn" onclick="go('search',this)" data-page="search"><span class="ic">🔍</span>ค้นหาข้อมูล นศ.</button>
 
       <div class="nav-sec" style="margin-top:6px">บันทึกรายการ</div>
+      <button class="nav-btn" onclick="go('crm',this)" data-page="crm">
+        <span class="ic">📝</span>บันทึกรับแจ้งปัญหา CRM
+        <span class="cnt red" id="crmBadge" style="display:none">0</span>
+      </button>
       <button class="nav-btn" onclick="go('rec-return',this)" data-page="rec-return"><span class="ic">↩️</span>บันทึกพัสดุตีคืน</button>
       <button class="nav-btn" onclick="go('rec-lend',this)" data-page="rec-lend"><span class="ic">📤</span>บันทึกให้ยืม</button>
       <button class="nav-btn" onclick="go('rec-special',this)" data-page="rec-special"><span class="ic">⭐</span>ส่งใหม่กรณีพิเศษ</button>
 
       <div class="nav-sec" style="margin-top:6px">ติดตาม</div>
+      <button class="nav-btn" onclick="go('crm-list',this)" data-page="crm-list">
+        <span class="ic">💬</span>รายการรวมแจ้งปัญหา CRM
+        <span class="cnt red" id="crmBadge2" style="display:none">0</span>
+      </button>
       <button class="nav-btn" onclick="go('list',this)" data-page="list"><span class="ic">📋</span>รายการทั้งหมด</button>
       <button class="nav-btn" onclick="go('labels',this)" data-page="labels"><span class="ic">🖨️</span>พิมพ์ใบจ่าหน้า</button>
       <button class="nav-btn" onclick="go('invest',this)" data-page="invest"><span class="ic">🔎</span>สอบสวนไปรษณีย์</button>
-      <button class="nav-btn" onclick="go('crm',this)" data-page="crm">
-        <span class="ic">📝</span>บันทึกข้อมูลรับแจ้งปัญหา CRM
-        <span class="cnt red" id="crmBadge" style="display:none">0</span>
-      </button>
-      <button class="nav-btn" onclick="go('crm-list',this)" data-page="crm-list">
-        <span class="ic">💬</span>รายการรวมแจ้งปัญหา CRM
-        <span class="cnt red" id="crmBadge2">3</span>
-      </button>
 
       <div class="nav-sec nav-superadmin" style="margin-top:6px">จัดการระบบ</div>
       <button class="nav-btn nav-superadmin" onclick="go('tags',this)" data-page="tags"><span class="ic">🏷️</span>จัดการ Tag</button>
@@ -2925,6 +2925,7 @@ function renderSearchResults(res) {
                         : r.recType==='return'?'<span style="color:#185FA5;font-size:11px">↩️ ตีคืน</span>'
                         : '<span style="color:#3B6D11;font-size:11px">⭐ พิเศษ</span>';
             var remarkShort=(r.remark||'').slice(0,40)+(r.remark&&r.remark.length>40?'…':'');
+            _recordMap[r.id] = r;
             return '<tr>'
               +'<td>'+typeTxt+'</td>'
               +'<td style="font-size:11px;white-space:nowrap">'+(r.date||'')+'</td>'
@@ -2934,7 +2935,7 @@ function renderSearchResults(res) {
               +'<td>'+renderTagChips(r.tags?r.tags.split(',').filter(Boolean):[])+'</td>'
               +'<td style="font-size:11px">'+(r.status||'')+'</td>'
               +'<td style="font-size:11px;color:var(--gray3)" title="'+(r.remark||'')+'">'+remarkShort+'</td>'
-              +'<td><button class="btn btn-outline btn-xs" onclick="openRecordDetail('+JSON.stringify(r)+')" title="ดูรายละเอียด/แก้ไข" style="font-size:11px;padding:3px 8px">✏️ ดูรายละเอียด</button></td>'
+              +'<td><button class="btn btn-outline btn-xs" onclick="openRecordDetail(\''+r.id+'\')" title="ดูรายละเอียด/แก้ไข" style="font-size:11px;padding:3px 8px">✏️ ดูรายละเอียด</button></td>'
               +'</tr>';
           }).join('')}</tbody></table></div>`:''}
       </div>`;
@@ -3091,6 +3092,7 @@ function clearRecord(type) {
 // LIST — ดึงจาก Sheets จริง
 // ============================================================
 var listPageState = { currentPage: 1, pageSize: 20, totalRecords: 0, allRecords: [] };
+var _recordMap = {};
 
 function loadList() {
   const filters={
@@ -3187,7 +3189,8 @@ function renderListRows(rows, startIdx) {
       +'</select>';
     var remarkTxt=(r.remark||'').slice(0,40)+(r.remark&&r.remark.length>40?'…':'');
     var remarkCell='<span style="font-size:11px;color:var(--gray3)" title="'+(r.remark||'')+'">'+remarkTxt+'</span>';
-    var editBtn='<button class="btn btn-outline btn-sm" title="ดูรายละเอียด/แก้ไข" onclick="openRecordDetail('+JSON.stringify(r)+')" style="font-size:11px;padding:4px 8px">✏️</button>';
+    _recordMap[r.id] = r;
+    var editBtn='<button class="btn btn-outline btn-sm" title="ดูรายละเอียด/แก้ไข" onclick="openRecordDetail(\''+r.id+'\')" style="font-size:11px;padding:4px 8px">✏️</button>';
     return '<tr'+(isNew?' style="background:#fffbf0"':'')+'>'
       +'<td style="color:var(--gray3)">'+(startIdx+i+1)+nb+'</td>'
       +'<td>'+typeBadge(r.recType)+'</td>'
@@ -3243,7 +3246,8 @@ function quickUpdateStatus(id, status) {
     .updateRecordField(id, 'status', status);
 }
 
-function openRecordDetail(r) {
+function openRecordDetail(idOrObj) {
+  var r = (typeof idOrObj === 'string') ? (_recordMap[idOrObj] || {id:idOrObj}) : idOrObj;
   var coursesTxt = r.courseCode||'-';
   try { var cs=JSON.parse(r.courses||'[]'); if(cs.length) coursesTxt=cs.map(function(c){return c.code+(c.name?' ('+c.name+')':'');}).join(', '); } catch(e){}
   var html = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px 20px;font-size:13px">'
@@ -4970,7 +4974,7 @@ ${tableRows}กรุณาดำเนินการสอบสวนแล�
 งานนวัตกรรมเพื่อบริการการศึกษา ศูนย์บริการการสอนทางไปรษณีย์
 สำนักบริการการศึกษา มหาวิทยาลัยสุโขทัยธรรมาธิราช
 วันที่: ${today}
-โทร: 02-504-7788`;
+โทร: 02 504 7623, 7626`;
 
   document.getElementById('batch_body').value = body;
 }
@@ -5216,7 +5220,7 @@ ${itemRows}
 สำนักบริการการศึกษา
 มหาวิทยาลัยสุโขทัยธรรมาธิราช
 วันที่: ${today}
-โทร: 02-504-7788`;
+โทร: 02 504 7623, 7626`;
 
   document.getElementById('pe_body').value = body;
 }

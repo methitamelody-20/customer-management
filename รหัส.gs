@@ -1356,7 +1356,7 @@ function replyCrmTicket(id, text, adminName, adminEmail, sendEmail) {
               +       '<div style="background:#fff8e1;border-left:4px solid #f4a21e;padding:14px 18px;border-radius:4px;margin-bottom:16px">'
               +         '<div style="font-size:13px;color:#5c4b00;line-height:1.7;white-space:pre-wrap">' + _esc(text) + '</div>'
               +       '</div>'
-              +       '<p style="color:#1a2840;font-size:13px">หากต้องการสอบถามเพิ่มเติม กรุณาตอบกลับอีเมลฉบับนี้ หรือโทร 02-504-7788</p>'
+              +       '<p style="color:#1a2840;font-size:13px">หากต้องการสอบถามเพิ่มเติม กรุณาตอบกลับอีเมลฉบับนี้ หรือโทร 02 504 7623, 7626</p>'
               +     '</div>'
               +     '<div style="background:#f4f6fb;padding:16px 24px;text-align:center;border-top:1px solid #e0e8f0">'
               +       '<p style="margin:0;font-size:11px;color:#8899b4">ขอแสดงความนับถือ<br>สำนักบริการการศึกษา มสธ.</p>'
@@ -1371,7 +1371,7 @@ function replyCrmTicket(id, text, adminName, adminEmail, sendEmail) {
               + '----------------------------------------\n'
               + text + '\n'
               + '----------------------------------------\n\n'
-              + 'หากต้องการสอบถามเพิ่มเติม กรุณาตอบกลับอีเมลฉบับนี้ หรือโทร 02-504-7788\n\n'
+              + 'หากต้องการสอบถามเพิ่มเติม กรุณาตอบกลับอีเมลฉบับนี้ หรือโทร 02 504 7623, 7626\n\n'
               + 'ขอแสดงความนับถือ\n'
               + 'สำนักบริการการศึกษา มสธ.';
 
@@ -1924,7 +1924,7 @@ function sendCrmClosedEmail(crmId) {
           +'รายละเอียด: '+detail+'\n'
           +'ผู้ดำเนินการ: '+assignee+'\n\n'
           +'หากมีข้อสงสัยเพิ่มเติม กรุณาติดต่อสำนักบริการการศึกษา\n'
-          +'โทร. 02-504-7788\n\n'
+          +'โทร. 02 504 7623, 7626\n\n'
           +'ขอแสดงความนับถือ\n'
           +'สำนักบริการการศึกษา มหาวิทยาลัยสุโขทัยธรรมาธิราช';
         GmailApp.sendEmail(reporterEmail, subject, body);
@@ -2143,7 +2143,7 @@ function sendStudentNotification(data) {
   </div>
   <div class="footer">
     <p><strong>สำนักบริการการศึกษา มสธ.</strong></p>
-    <p>โทร. 02-504-7788 | อีเมล: oes@stou.ac.th</p>
+    <p>โทร. 02 504 7623, 7626 | อีเมล: oes@stou.ac.th</p>
     <p>9/9 หมู่ 9 ต.บางพูด อ.ปากเกร็ด จ.นนทบุรี 11120</p>
     <p style="color:#c5cfe0;margin-top:8px">อีเมลนี้ส่งโดยอัตโนมัติจากระบบจัดการเอกสารการสอน มสธ. — กรุณาอย่าตอบกลับอีเมลนี้โดยตรง</p>
   </div>
@@ -2364,7 +2364,7 @@ function sendCrmResolutionEmail(id, emailData) {
       +           replies
       +         '</div>'
       +       '</div>'
-      +       '<p style="color:#1a2840;font-size:13px">หากต้องการสอบถามเพิ่มเติม กรุณาตอบกลับอีเมลฉบับนี้ หรือโทร 02-504-7788</p>'
+      +       '<p style="color:#1a2840;font-size:13px">หากต้องการสอบถามเพิ่มเติม กรุณาตอบกลับอีเมลฉบับนี้ หรือโทร 02 504 7623, 7626</p>'
       +     '</div>'
       +     '<div style="background:#f4f6fb;padding:16px 24px;text-align:center;border-top:1px solid #e0e8f0">'
       +       '<p style="margin:0;font-size:11px;color:#8899b4">ขอแสดงความนับถือ<br>สำนักบริการการศึกษา มสธ.</p>'
@@ -2381,7 +2381,7 @@ function sendCrmResolutionEmail(id, emailData) {
       + 'รายละเอียดการแก้ไข:\n'
       + replies + '\n'
       + '----------------------------------------\n\n'
-      + 'หากต้องการสอบถามเพิ่มเติม กรุณาตอบกลับอีเมลฉบับนี้ หรือโทร 02-504-7788\n\n'
+      + 'หากต้องการสอบถามเพิ่มเติม กรุณาตอบกลับอีเมลฉบับนี้ หรือโทร 02 504 7623, 7626\n\n'
       + 'ขอแสดงความนับถือ\n'
       + 'สำนักบริการการศึกษา มสธ.';
 
@@ -2434,7 +2434,7 @@ function sendCrmEmail(id, emailData) {
       +           replies
       +         '</div>'
       +       '</div>'
-      +       '<p style="color:#1a2840;font-size:13px">หากต้องการสอบถามเพิ่มเติม กรุณาตอบกลับอีเมลฉบับนี้ หรือโทร 02-504-7788</p>'
+      +       '<p style="color:#1a2840;font-size:13px">หากต้องการสอบถามเพิ่มเติม กรุณาตอบกลับอีเมลฉบับนี้ หรือโทร 02 504 7623, 7626</p>'
       +     '</div>'
       +     '<div style="background:#f4f6fb;padding:16px 24px;text-align:center;border-top:1px solid #e0e8f0">'
       +       '<p style="margin:0;font-size:11px;color:#8899b4">ขอแสดงความนับถือ<br>สำนักบริการการศึกษา มสธ.</p>'
@@ -2450,7 +2450,7 @@ function sendCrmEmail(id, emailData) {
       + 'รายละเอียดการดำเนินการ:\n'
       + replies + '\n'
       + '----------------------------------------\n\n'
-      + 'หากต้องการสอบถามเพิ่มเติม กรุณาตอบกลับอีเมลฉบับนี้ หรือโทร 02-504-7788\n\n'
+      + 'หากต้องการสอบถามเพิ่มเติม กรุณาตอบกลับอีเมลฉบับนี้ หรือโทร 02 504 7623, 7626\n\n'
       + 'ขอแสดงความนับถือ\n'
       + 'สำนักบริการการศึกษา มสธ.';
 
