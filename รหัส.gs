@@ -1312,6 +1312,7 @@ function getCrmDashboardData(filters) {
     if (filters.issueType) filtered = filtered.filter(t => t.issueType === filters.issueType);
     if (filters.term) filtered = filtered.filter(t => t.term === filters.term);
     if (filters.priority) filtered = filtered.filter(t => t.priority === filters.priority);
+    if (filters.plan) filtered = filtered.filter(t => t.plan === filters.plan);
     if (filters.course) {
       filtered = filtered.filter(t =>
         t.courses && t.courses.split(',').some(c => c.trim().toLowerCase().includes(filters.course.toLowerCase()))
@@ -1366,7 +1367,7 @@ function getCrmTickets(filters) {
         channel: S(r[13]), priority: S(r[14]), tags: S(r[15]),
         status: S(r[16]), assigneeName: S(r[17]), assigneeEmail: S(r[18]),
         replies: S(r[19]) || '[]', recorderName: recorderName,
-        source: source, org: ncols >= 23 ? S(r[22]) : '',
+        source: source, plan: ncols >= 22 ? S(r[21]) : '', org: ncols >= 23 ? S(r[22]) : '',
       });
     }
 
@@ -1728,13 +1729,20 @@ function setupSystem() {
     [['ปัญหาซ้ำ',3],['ด่วน',4],['วิชาบังคับ',1],['ติดตามแล้ว',5],['สำคัญ',2]].forEach(row=>tg.appendRow(row));
   }
 
-  // Sheet: CRM (21 คอลัมน์)
+  // Sheet: CRM (22 คอลัมน์)
   let cm = ss.getSheetByName(SH_CRM);
   if (!cm) {
     cm = ss.insertSheet(SH_CRM);
-    cm.appendRow(['รหัส','วันที่','ชื่อผู้แจ้ง','รหัสนักศึกษา','อีเมล','เบอร์โทร','หน่วยงาน/สาขา','ระดับการศึกษา','ภาค','ปี','ชุดวิชา','ประเภทปัญหา','รายละเอียด','ช่องทาง','ความเร่งด่วน','Tags','สถานะ','ผู้รับเรื่อง','อีเมลผู้รับเรื่อง','ประวัติการตอบ','ผู้บันทึก']);
-    const ch=cm.getRange(1,1,1,21);ch.setBackground('#1a3a5c');ch.setFontColor('#fff');ch.setFontWeight('bold');
+    cm.appendRow(['รหัส','วันที่','ชื่อผู้แจ้ง','รหัสนักศึกษา','อีเมล','เบอร์โทร','หน่วยงาน/สาขา','ระดับการศึกษา','ภาค','ปี','ชุดวิชา','ประเภทปัญหา','รายละเอียด','ช่องทาง','ความเร่งด่วน','Tags','สถานะ','ผู้รับเรื่อง','อีเมลผู้รับเรื่อง','ประวัติการตอบ','ผู้บันทึก','แผนการศึกษา']);
+    const ch=cm.getRange(1,1,1,22);ch.setBackground('#1a3a5c');ch.setFontColor('#fff');ch.setFontWeight('bold');
     cm.setFrozenRows(1);
+  } else {
+    // Migrate existing sheet to add plan column if missing
+    const headers = cm.getRange(1,1,1,cm.getLastColumn()).getValues()[0];
+    if (!headers.includes('แผนการศึกษา')) {
+      cm.getRange(1, 22).setValue('แผนการศึกษา');
+      cm.getRange(1, 22).setBackground('#1a3a5c').setFontColor('#fff').setFontWeight('bold');
+    }
   }
 
   Logger.log('ALERT: '+
