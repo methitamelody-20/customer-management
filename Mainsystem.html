@@ -4894,9 +4894,26 @@ function toggleActive(email, active) {
 }
 
 function editUserModal(email, name, role, perms) {
+  const ALL_PAGES=[
+    {id:'dash',label:'📊 Dashboard'},{id:'search',label:'🔍 ค้นหาข้อมูล นศ.'},
+    {id:'rec-return',label:'↩️ บันทึกพัสดุตีคืน'},{id:'rec-lend',label:'📤 บันทึกให้ยืม'},
+    {id:'rec-special',label:'⭐ ส่งใหม่กรณีพิเศษ'},{id:'list',label:'📋 รายการทั้งหมด'},
+    {id:'labels',label:'🖨️ พิมพ์ใบจ่าหน้า'},{id:'invest',label:'🔎 สอบสวนไปรษณีย์'},{id:'crm',label:'💬 CRM แจ้งปัญหา'},
+    {id:'admin-report',label:'📊 สรุปงานเจ้าหน้าที่'},{id:'audit',label:'📋 Audit Log'},{id:'settings',label:'⚙️ ตั้งค่าระบบ'},{id:'stats',label:'📈 สถิติของฉัน'},{id:'tasks',label:'✅ จัดการงาน'},
+    {id:'tags',label:'🏷️ จัดการ Tag'},{id:'users',label:'👥 จัดการผู้ใช้งาน'},
+  ];
+  const currentPerms = (perms||'').split(',').map(p=>p.trim()).filter(Boolean);
+  const defaults={viewer:['dash','search','list','crm'],staff:['dash','search','rec-return','rec-lend','rec-special','list','labels','crm'],superadmin:ALL_PAGES.map(p=>p.id)};
+
+  const checkboxHtml = ALL_PAGES.map(p=>`
+    <label style="display:flex;align-items:center;gap:8px;padding:8px 12px;border:1.5px solid var(--gray1);border-radius:var(--rsm);cursor:pointer;font-size:13px;background:#fff">
+      <input type="checkbox" class="edit-perm-chk" data-page="${p.id}" ${currentPerms.includes(p.id)?'checked':''} style="accent-color:var(--sky);width:15px;height:15px">
+      ${p.label}
+    </label>`).join('');
+
   const modal = document.createElement('div');
   modal.className = 'modal-overlay';
-  modal.innerHTML = `<div class="modal" style="max-width:500px">
+  modal.innerHTML = `<div class="modal" style="max-width:640px">
     <div class="modal-title" style="margin-bottom:20px">✏️ แก้ไขผู้ใช้ <button onclick="this.closest('.modal-overlay').remove()" style="float:right;border:none;background:none;font-size:20px;cursor:pointer">✕</button></div>
     <div style="margin-bottom:16px">
       <div style="font-size:13px;color:var(--gray3);margin-bottom:4px">ชื่อ</div>
@@ -4908,15 +4925,18 @@ function editUserModal(email, name, role, perms) {
     </div>
     <div style="margin-bottom:16px">
       <label style="font-size:13px;color:var(--navy);font-weight:600;display:block;margin-bottom:6px">บทบาท</label>
-      <select id="editRole" style="padding:10px;border:1.5px solid var(--gray2);border-radius:8px;width:100%;font-family:inherit">
+      <select id="editRole" onchange="editRoleAutoFill(this.value)" style="padding:10px;border:1.5px solid var(--gray2);border-radius:8px;width:100%;font-family:inherit">
         <option value="superadmin" ${role==='superadmin'?'selected':''}>Super Admin</option>
         <option value="staff" ${role==='staff'?'selected':''}>Staff</option>
         <option value="viewer" ${role==='viewer'?'selected':''}>Viewer</option>
       </select>
     </div>
     <div style="margin-bottom:20px">
-      <label style="font-size:13px;color:var(--navy);font-weight:600;display:block;margin-bottom:6px">Permissions (comma-separated)</label>
-      <textarea id="editPerms" style="padding:10px;border:1.5px solid var(--gray2);border-radius:8px;width:100%;font-family:monospace;font-size:12px;min-height:60px">${perms}</textarea>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <label style="font-size:13px;color:var(--navy);font-weight:600">🔒 กำหนดสิทธิ์การเข้าถึงหน้าต่างๆ</label>
+        <button type="button" onclick="editRoleAutoFill(document.getElementById('editRole').value)" style="font-size:11px;color:var(--sky);background:none;border:none;cursor:pointer">↺ รีเซตตามบทบาท</button>
+      </div>
+      <div id="editPermGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px">${checkboxHtml}</div>
     </div>
     <div style="display:flex;gap:8px">
       <button class="btn btn-primary btn-sm" onclick="saveUserEdit('${email}')">💾 บันทึก</button>
@@ -4926,9 +4946,18 @@ function editUserModal(email, name, role, perms) {
   document.body.appendChild(modal);
 }
 
+function editRoleAutoFill(role) {
+  const ALL_PAGES=['dash','search','rec-return','rec-lend','rec-special','list','labels','invest','crm','admin-report','audit','settings','stats','tasks','tags','users'];
+  const defaults={viewer:['dash','search','list','crm'],staff:['dash','search','rec-return','rec-lend','rec-special','list','labels','crm'],superadmin:ALL_PAGES};
+  const def = defaults[role] || [];
+  document.querySelectorAll('.edit-perm-chk').forEach(function(chk){
+    chk.checked = def.includes(chk.dataset.page);
+  });
+}
+
 function saveUserEdit(email) {
   const role = document.getElementById('editRole').value;
-  const perms = document.getElementById('editPerms').value.split(',').map(p=>p.trim()).filter(Boolean).join(',');
+  const perms = Array.from(document.querySelectorAll('.edit-perm-chk:checked')).map(c=>c.dataset.page).join(',');
   google.script.run
     .withSuccessHandler(res=>{
       if(res.success){
