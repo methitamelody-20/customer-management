@@ -1527,6 +1527,12 @@ tbody td{padding:12px;vertical-align:middle}
               </select>
             </div>
             <div>
+              <label class="flbl" style="display:block;margin-bottom:4px;font-size:12px">แผนการศึกษา</label>
+              <select class="fsel" id="crmd_plan" style="font-size:13px" onchange="loadCrmDashboard()">
+                <option value="">ทั้งหมด</option>
+              </select>
+            </div>
+            <div>
               <label class="flbl" style="display:block;margin-bottom:4px;font-size:12px">ชุดวิชา</label>
               <input class="finput" id="crmd_course" placeholder="รหัสชุดวิชา" style="font-size:13px" onchange="loadCrmDashboard()">
             </div>
@@ -4604,6 +4610,7 @@ function loadCrmDashboard() {
     channel: document.getElementById('crmd_channel').value,
     issueType: document.getElementById('crmd_issuetype').value,
     term: document.getElementById('crmd_term').value,
+    plan: document.getElementById('crmd_plan').value,
     course: document.getElementById('crmd_course').value.trim(),
     priority: document.getElementById('crmd_priority').value,
   };
@@ -4627,9 +4634,10 @@ function renderCrmDashboard(tickets, stats) {
   document.getElementById('crmd_inprogress').textContent = stats.inprogress;
   document.getElementById('crmd_resolved').textContent = stats.resolved;
 
-  // Update filter options (issue types, terms)
+  // Update filter options (issue types, terms, plans)
   const issueTypes = [...new Set(tickets.map(t => t.issueType).filter(Boolean))].sort();
   const terms = [...new Set(tickets.map(t => t.term).filter(Boolean))].sort();
+  const plans = [...new Set(tickets.map(t => t.plan).filter(Boolean))].sort();
 
   const issueSelect = document.getElementById('crmd_issuetype');
   const currentIssue = issueSelect.value;
@@ -4642,6 +4650,12 @@ function renderCrmDashboard(tickets, stats) {
   termSelect.innerHTML = '<option value="">ทั้งหมด</option>' +
     terms.map(t => `<option value="${t}">${t}</option>`).join('');
   termSelect.value = currentTerm;
+
+  const planSelect = document.getElementById('crmd_plan');
+  const currentPlan = planSelect.value;
+  planSelect.innerHTML = '<option value="">ทั้งหมด</option>' +
+    plans.map(p => `<option value="${p}">${p}</option>`).join('');
+  planSelect.value = currentPlan;
 
   // Prepare chart data
   const statusCount = {open:0, inprogress:0, resolved:0, closed:0};
