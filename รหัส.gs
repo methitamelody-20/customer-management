@@ -16,8 +16,9 @@ const R_VIEWER = 'viewer';
 // ENTRY POINTS
 // ============================================================
 function doGet(e) {
+  const params = (e && e.parameter) ? e.parameter : {};
   // ถ้ามี ?page=crm → ให้หน้าสำหรับ นศ. แจ้งปัญหา
-  if (e && e.parameter && e.parameter.page === 'crm') {
+  if (params.page === 'crm') {
     const tpl = HtmlService.createTemplateFromFile('CRM_Public');
     return tpl.evaluate()
       .setTitle('แจ้งปัญหาเอกสารการสอน — มสธ.')
@@ -25,15 +26,17 @@ function doGet(e) {
       .addMetaTag('viewport','width=device-width,initial-scale=1');
   }
   // ถ้ามี ?page=ext_staff → Dashboard เจ้าหน้าที่ภายนอก
-  if (e && e.parameter && e.parameter.page === 'ext_staff') {
+  if (params.page === 'ext_staff') {
     const tpl = HtmlService.createTemplateFromFile('ExternalStaffDashboard');
     return tpl.evaluate()
       .setTitle('Dashboard เจ้าหน้าที่ภายนอก — มสธ.')
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
       .addMetaTag('viewport','width=device-width,initial-scale=1');
   }
-  // ถ้ามี ?page=setpw → ให้ Mainsystem จัดการ (window.onload detect URL params)
+  // ส่ง setpw params ผ่าน template variables เพื่อให้ Mainsystem.html ใช้งานได้
   const tpl = HtmlService.createTemplateFromFile('Mainsystem');
+  tpl.setpwToken = (params.page === 'setpw' && params.token) ? params.token : '';
+  tpl.setpwEmail = (params.page === 'setpw' && params.email) ? params.email : '';
   return tpl.evaluate()
     .setTitle('ระบบจัดการและติดตามเอกสารการสอน มสธ.')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)

@@ -1735,7 +1735,7 @@ tbody td{padding:12px;vertical-align:middle}
         <div class="sec-head">
           <div>
             <h2>📋 งานที่ได้รับมอบหมาย
-              <span id="taskBadge" style="display:none;background:var(--red);color:#fff;font-size:11px;padding:2px 8px;border-radius:12px;margin-left:8px">0</span>
+              <span id="taskPageBadge" style="display:none;background:var(--red);color:#fff;font-size:11px;padding:2px 8px;border-radius:12px;margin-left:8px">0</span>
             </h2>
             <div class="sub">ติดตามงานที่ได้รับ และอนุมัติก่อนโพส/ส่ง</div>
           </div>
@@ -2326,6 +2326,12 @@ tbody td{padding:12px;vertical-align:middle}
 
 <script>
 // ============================================================
+// SETPW PARAMS — injected from server via doGet template variables
+// ============================================================
+var _SETPW_TOKEN = '<?= setpwToken ?>';
+var _SETPW_EMAIL = '<?= setpwEmail ?>';
+
+// ============================================================
 // STATE
 // ============================================================
 let currentRole='', currentUser='', currentEmail='';
@@ -2495,17 +2501,11 @@ async function waitForFirebase(maxWait = 5000) {
 // INIT — ตรวจ session จาก Apps Script / Firebase
 // ============================================================
 window.onload = function() {
-  // ตรวจสอบ URL params สำหรับ set-password flow
-  try {
-    var urlParams = new URLSearchParams(window.location.search);
-    var spPage  = urlParams.get('page');
-    var spToken = urlParams.get('token');
-    var spEmail = urlParams.get('email');
-    if (spPage === 'setpw' && spToken && spEmail) {
-      showSetPasswordScreen(decodeURIComponent(spEmail), spToken);
-      return;
-    }
-  } catch(e) {}
+  // ตรวจสอบ setpw params — injected via template variables จาก doGet
+  if (_SETPW_TOKEN && _SETPW_EMAIL) {
+    showSetPasswordScreen(decodeURIComponent(_SETPW_EMAIL), _SETPW_TOKEN);
+    return;
+  }
 
   // โหลด saved credentials ถ้าเคยติ๊ก "จดจำรหัสผ่าน"
   try {
@@ -2807,6 +2807,7 @@ function loadSettings() {
       loadYears();
       loadTagsFromSheet();
       loadDash();
+      loadTaskBadge();
       // เริ่มโหลด Thailand DB เบื้องหลัง
       setTimeout(function(){ loadThailandDB(); }, 1000);
       // init barcode scanner support
@@ -4913,11 +4914,11 @@ function editUserModal(email, name, role, perms) {
     {id:'rec-return',label:'↩️ บันทึกพัสดุตีคืน'},{id:'rec-lend',label:'📤 บันทึกให้ยืม'},
     {id:'rec-special',label:'⭐ ส่งใหม่กรณีพิเศษ'},{id:'list',label:'📋 รายการทั้งหมด'},
     {id:'labels',label:'🖨️ พิมพ์ใบจ่าหน้า'},{id:'invest',label:'🔎 สอบสวนไปรษณีย์'},{id:'crm',label:'💬 CRM แจ้งปัญหา'},
-    {id:'admin-report',label:'📊 สรุปงานเจ้าหน้าที่'},{id:'audit',label:'📋 Audit Log'},{id:'settings',label:'⚙️ ตั้งค่าระบบ'},{id:'stats',label:'📈 สถิติของฉัน'},{id:'tasks',label:'✅ จัดการงาน'},
+    {id:'admin-report',label:'📊 สรุปงานเจ้าหน้าที่'},{id:'audit',label:'📋 Audit Log'},{id:'settings',label:'⚙️ ตั้งค่าระบบ'},{id:'stats',label:'📈 สถิติของฉัน'},{id:'tasks',label:'✅ งานที่ได้รับมอบหมาย'},
     {id:'tags',label:'🏷️ จัดการ Tag'},{id:'users',label:'👥 จัดการผู้ใช้งาน'},
   ];
   const currentPerms = (perms||'').split(',').map(p=>p.trim()).filter(Boolean);
-  const defaults={viewer:['dash','search','list','crm'],staff:['dash','search','rec-return','rec-lend','rec-special','list','labels','crm'],superadmin:ALL_PAGES.map(p=>p.id)};
+  const defaults={viewer:['dash','search','list','crm'],staff:['dash','search','rec-return','rec-lend','rec-special','list','labels','crm','tasks'],superadmin:ALL_PAGES.map(p=>p.id)};
 
   const checkboxHtml = ALL_PAGES.map(p=>`
     <label style="display:flex;align-items:center;gap:8px;padding:8px 12px;border:1.5px solid var(--gray1);border-radius:var(--rsm);cursor:pointer;font-size:13px;background:#fff">
@@ -4962,7 +4963,7 @@ function editUserModal(email, name, role, perms) {
 
 function editRoleAutoFill(role) {
   const ALL_PAGES=['dash','search','rec-return','rec-lend','rec-special','list','labels','invest','crm','admin-report','audit','settings','stats','tasks','tags','users'];
-  const defaults={viewer:['dash','search','list','crm'],staff:['dash','search','rec-return','rec-lend','rec-special','list','labels','crm'],superadmin:ALL_PAGES};
+  const defaults={viewer:['dash','search','list','crm'],staff:['dash','search','rec-return','rec-lend','rec-special','list','labels','crm','tasks'],superadmin:ALL_PAGES};
   const def = defaults[role] || [];
   document.querySelectorAll('.edit-perm-chk').forEach(function(chk){
     chk.checked = def.includes(chk.dataset.page);
@@ -6920,8 +6921,8 @@ function loadTasks() {
       var pending = rows.filter(function(r){return r.status==='รอดำเนินการ'||r.status==='รออนุมัติ';}).length;
       var badge = document.getElementById('taskBadge');
       if(badge){badge.textContent=pending;badge.style.display=pending?'inline':'none';}
-      var navBadge = document.getElementById('taskNavBadge');
-      if(navBadge){navBadge.textContent=pending;navBadge.style.display=pending?'inline':'none';}
+      var pageBadge = document.getElementById('taskPageBadge');
+      if(pageBadge){pageBadge.textContent=pending;pageBadge.style.display=pending?'inline':'none';}
       // เติม assignee filter
       var assignees=[...new Set(rows.map(function(r){return r.assignee;}).filter(Boolean))];
       var asel=document.getElementById('task_filter_assignee');
