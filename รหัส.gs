@@ -2176,6 +2176,90 @@ function exportCrmData() {
   return getCrmTickets({});
 }
 
+function getCrmTemplateOptions() {
+  const DEFAULT_ISSUES = ['พิมพ์เพิ่ม','ชุดปรับปรุง','ชุดผลิตใหม่','ปัญหาทวงถามหนังสือ (ไม่ได้สั่งซื้อ/แผน ก2-ก3)','สอบถามทะเบียนและวัดผล (ลงทะเบียน/สอบ)','สอบถามกิจกรรมประจำชุดวิชา','สอบถามเลือกแผนการศึกษา','สอบถามอบรมเข้มเสริมประสบการณ์วิชาชีพ','สอบถามสอนเสริมออนไลน์','สอบถามโครงการสัมฤทธิบัตร','ไม่ได้รับเอกสาร','เอกสารชำรุด','ส่งผิดวิชา','อื่นๆ (ระบุเอง)'];
+  const issues = (settings && settings.issueTypes && settings.issueTypes.length) ? settings.issueTypes : DEFAULT_ISSUES;
+  return {
+    issueTypes: issues,
+    educationLevels: ['ปริญญาตรี','ปริญญาโท','ปริญญาเอก','หนังสือหมายเหตุ','อื่นๆ'],
+    channels: ['อีเมล','โทรศัพท์','Line','Facebook','อื่นๆ'],
+    priorities: ['normal','high','urgent'],
+  };
+}
+
+function createCrmImportTemplate() {
+  if (!_autoRefreshSession()) return { success:false, error:'SESSION_EXPIRED' };
+  try {
+    const options = getCrmTemplateOptions();
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    let templateSheet = ss.getSheetByName('CRM_Import_Template');
+    if (!templateSheet) {
+      templateSheet = ss.insertSheet('CRM_Import_Template');
+    } else {
+      templateSheet.clear();
+    }
+
+    const headers = ['ชื่อ','อีเมล','เบอร์โทร','รหัสนักศึกษา','ประเภทปัญหา','รายละเอียด','ชุดวิชา','หน่วยงาน/สาขา','ระดับการศึกษา','ภาค','ปี','แผนการศึกษา','ช่องทาง','ลำดับความสำคัญ','หมายเหตุ'];
+    templateSheet.appendRow(headers);
+    const headerRange = templateSheet.getRange(1, 1, 1, headers.length);
+    headerRange.setBackground('#1a3a5c').setFontColor('#fff').setFontWeight('bold');
+    templateSheet.setFrozenRows(1);
+
+    // ตั้ง column width
+    templateSheet.setColumnWidth(1, 150);
+    templateSheet.setColumnWidth(2, 180);
+    templateSheet.setColumnWidth(3, 130);
+    templateSheet.setColumnWidth(4, 110);
+    templateSheet.setColumnWidth(5, 200);
+    templateSheet.setColumnWidth(6, 250);
+    templateSheet.setColumnWidth(7, 130);
+    templateSheet.setColumnWidth(8, 150);
+    templateSheet.setColumnWidth(9, 140);
+    templateSheet.setColumnWidth(10, 70);
+    templateSheet.setColumnWidth(11, 70);
+    templateSheet.setColumnWidth(12, 150);
+    templateSheet.setColumnWidth(13, 130);
+    templateSheet.setColumnWidth(14, 110);
+    templateSheet.setColumnWidth(15, 200);
+
+    // เพิ่ม data validation สำหรับแถว 2-500
+    const issueRange = templateSheet.getRange('E2:E500');
+    const issueRule = SpreadsheetApp.newDataValidation()
+      .requireValueInList(options.issueTypes)
+      .setAllowInvalid(false)
+      .setHelpText('เลือกประเภทปัญหา')
+      .build();
+    issueRange.setDataValidation(issueRule);
+
+    const educationRange = templateSheet.getRange('I2:I500');
+    const educationRule = SpreadsheetApp.newDataValidation()
+      .requireValueInList(options.educationLevels)
+      .setAllowInvalid(false)
+      .setHelpText('เลือกระดับการศึกษา')
+      .build();
+    educationRange.setDataValidation(educationRule);
+
+    const channelRange = templateSheet.getRange('M2:M500');
+    const channelRule = SpreadsheetApp.newDataValidation()
+      .requireValueInList(options.channels)
+      .setAllowInvalid(false)
+      .setHelpText('เลือกช่องทาง')
+      .build();
+    channelRange.setDataValidation(channelRule);
+
+    const priorityRange = templateSheet.getRange('N2:N500');
+    const priorityRule = SpreadsheetApp.newDataValidation()
+      .requireValueInList(options.priorities)
+      .setAllowInvalid(false)
+      .setHelpText('เลือกลำดับความสำคัญ')
+      .build();
+    priorityRange.setDataValidation(priorityRule);
+
+    const url = ss.getUrl();
+    return { success:true, message:'สร้างเทมเพลตสำเร็จ', url:url };
+  } catch(e) { return { success:false, error:e.message }; }
+}
+
 // ============================================================
 // MONTHLY REPORT — ส่งรายงานประจำเดือน
 // ============================================================

@@ -1312,7 +1312,8 @@ tbody td{padding:12px;vertical-align:middle}
           <div><h2>บันทึกข้อมูลรับแจ้งปัญหา CRM</h2><div class="sub">กรอกข้อมูลจาก นศ./หน่วยงาน</div></div>
           <div style="display:flex;gap:8px;flex-wrap:wrap">
             <button class="btn btn-outline btn-sm" onclick="showCrmPublicLink()">🔗 ลิ้งค์แจ้งปัญหาสำหรับภายนอก</button>
-            <button class="btn btn-outline btn-sm" onclick="downloadCrmTemplate()">📥 ดาวน์โหลดเทมเพลต</button>
+            <button class="btn btn-outline btn-sm" onclick="createCrmTemplate()">📋 สร้างเทมเพลตใน Sheet</button>
+            <button class="btn btn-outline btn-sm" onclick="downloadCrmTemplate()">📥 ดาวน์โหลดเทมเพลต Excel</button>
             <button class="btn btn-primary btn-sm" onclick="openCrmImportModal()">📥 นำเข้า Excel</button>
           </div>
         </div>
@@ -4582,23 +4583,56 @@ function importCrmExcel() {
     .bulkImportCrmTickets(importData);
 }
 
+function createCrmTemplate() {
+  document.body.style.pointerEvents = 'none';
+  google.script.run
+    .withSuccessHandler(function(res) {
+      document.body.style.pointerEvents = 'auto';
+      if (res.success) {
+        showToast('✅ สร้างเทมเพลตสำเร็จ มีช่องสำหรับเลือก (dropdown) พร้อมใช้งาน','success');
+        setTimeout(() => window.open(res.url, '_blank'), 500);
+      } else {
+        showToast('❌ ' + (res.error || 'เกิดข้อผิดพลาด'), 'error');
+      }
+    })
+    .withFailureHandler(function(e) {
+      document.body.style.pointerEvents = 'auto';
+      showError(e);
+    })
+    .createCrmImportTemplate();
+}
+
 function downloadCrmTemplate() {
-  const headers = ['ชื่อ', 'อีเมล', 'เบอร์โทร', 'รหัสนักศึกษา', 'ประเภทปัญหา', 'รายละเอียด', 'ชุดวิชา', 'ภาค', 'ปี', 'ลำดับความสำคัญ'];
+  const DEFAULT_ISSUES = ['พิมพ์เพิ่ม','ชุดปรับปรุง','ชุดผลิตใหม่','ปัญหาทวงถามหนังสือ (ไม่ได้สั่งซื้อ/แผน ก2-ก3)','สอบถามทะเบียนและวัดผล (ลงทะเบียน/สอบ)','สอบถามกิจกรรมประจำชุดวิชา','สอบถามเลือกแผนการศึกษา','สอบถามอบรมเข้มเสริมประสบการณ์วิชาชีพ','สอบถามสอนเสริมออนไลน์','สอบถามโครงการสัมฤทธิบัตร','ไม่ได้รับเอกสาร','เอกสารชำรุด','ส่งผิดวิชา','อื่นๆ (ระบุเอง)'];
+  const issues = (settings.issueTypes && settings.issueTypes.length) ? settings.issueTypes : DEFAULT_ISSUES;
+
+  const headers = ['ชื่อ', 'อีเมล', 'เบอร์โทร', 'รหัสนักศึกษา', 'ประเภทปัญหา', 'รายละเอียด', 'ชุดวิชา', 'หน่วยงาน/สาขา', 'ระดับการศึกษา', 'ภาค', 'ปี', 'แผนการศึกษา', 'ช่องทาง', 'ลำดับความสำคัญ', 'หมายเหตุ'];
   const example = [
-    ['สมชาย สมสีวงค์', 'somchai@mail.com', '0812345678', '123456', 'ไม่ได้รับเอกสาร', 'ไม่ได้รับหนังสือการศึกษา', '1100101', '1', '2567', 'normal'],
-    ['อนันท์ อนันต์สกุล', 'anan@mail.com', '0898765432', '654321', 'ชำรุด', 'เอกสารชำรุดจากการขนส่ง', '1100102,1100103', '2', '2567', 'high'],
+    ['สมชาย สมสีวงค์', 'somchai@mail.com', '0812345678', '123456', 'ไม่ได้รับเอกสาร', 'ไม่ได้รับหนังสือการศึกษา', '1100101', 'หน่วยงาน A', 'ปริญญาตรี', '1', '2567', 'หลักสูตร A', 'อีเมล', 'normal', 'หมายเหตุตัวอย่าง'],
+    ['อนันท์ อนันต์สกุล', 'anan@mail.com', '0898765432', '654321', 'ชำรุด', 'เอกสารชำรุดจากการขนส่ง', '1100102,1100103', 'หน่วยงาน B', 'ปริญญาตรี', '2', '2567', 'หลักสูตร B', 'โทรศัพท์', 'high', ''],
   ];
 
   const ws = XLSX.utils.aoa_to_sheet([headers, ...example]);
   ws['!cols'] = [
-    {wch: 20}, {wch: 20}, {wch: 15}, {wch: 15},
-    {wch: 20}, {wch: 30}, {wch: 15}, {wch: 8}, {wch: 8}, {wch: 12}
+    {wch: 18}, {wch: 20}, {wch: 15}, {wch: 12},
+    {wch: 25}, {wch: 30}, {wch: 15}, {wch: 18}, {wch: 16}, {wch: 8}, {wch: 8}, {wch: 18}, {wch: 15}, {wch: 12}, {wch: 25}
   ];
 
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'CRM Template');
+
+  // สร้าง sheet สำหรับ reference data (ซ่อนไว้)
+  const refData = [
+    ['ประเภทปัญหา', ...issues],
+    ['ระดับการศึกษา', 'ปริญญาตรี', 'ปริญญาโท', 'ปริญญาเอก', 'หนังสือหมายเหตุ', 'อื่นๆ'],
+    ['ช่องทาง', 'อีเมล', 'โทรศัพท์', 'Line', 'Facebook', 'อื่นๆ'],
+    ['ลำดับความสำคัญ', 'normal', 'high', 'urgent'],
+  ];
+  const refWs = XLSX.utils.aoa_to_sheet(refData);
+  XLSX.utils.book_append_sheet(wb, refWs, '_Reference');
+
   XLSX.writeFile(wb, 'CRM_Import_Template_' + new Date().toLocaleDateString('th-TH') + '.xlsx');
-  showToast('✅ ดาวน์โหลดเทมเพลตเสร็จสิ้น','success');
+  showToast('✅ ดาวน์โหลดเทมเพลตเสร็จสิ้น (รวมข้อมูล reference ในแท็บ _Reference)','success');
 }
 
 // ============================================================
