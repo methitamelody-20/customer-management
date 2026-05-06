@@ -703,7 +703,7 @@ tbody td{padding:12px;vertical-align:middle}
           </div>
 
           <div class="btn-row">
-            <button class="btn btn-primary" onclick="submitRecord('return')">💾 บันทึกพัสดุตีคืน</button>
+            <button class="btn btn-primary" onclick="submitRecord('return',this)">💾 บันทึกพัสดุตีคืน</button>
             <button class="btn btn-outline" onclick="clearRecord('return')">🗑️ ล้างฟอร์ม</button>
             <button class="btn btn-outline" onclick="showToast('กำลังพัฒนา — เดี๋ยวมีตัวอย่างจดหมาย','info')" title="ออกจดหมายภายนอก (กำลังพัฒนา)" style="opacity:.7">🖨️ ออกจดหมายภายนอก</button>
           </div>
@@ -836,7 +836,7 @@ tbody td{padding:12px;vertical-align:middle}
             <div class="fg full"><label class="flbl">หมายเหตุ</label><textarea class="ftextarea" id="ld_remark" placeholder="หมายเหตุเพิ่มเติม"></textarea></div>
           </div>
           <div class="btn-row">
-            <button class="btn btn-primary" onclick="submitRecord('lend')">💾 บันทึกให้ยืม</button>
+            <button class="btn btn-primary" onclick="submitRecord('lend',this)">💾 บันทึกให้ยืม</button>
             <button class="btn btn-outline" onclick="clearRecord('lend')">🗑️ ล้างฟอร์ม</button>
             <button class="btn btn-outline" onclick="showToast('กำลังพัฒนา — เดี๋ยวมีตัวอย่างจดหมาย','info')" title="ออกจดหมายภายนอก (กำลังพัฒนา)" style="opacity:.7">🖨️ ออกจดหมายภายนอก</button>
           </div>
@@ -961,7 +961,7 @@ tbody td{padding:12px;vertical-align:middle}
             <div class="fg full"><label class="flbl">หมายเหตุ</label><textarea class="ftextarea" id="sp_remark" placeholder="หมายเหตุ"></textarea></div>
           </div>
           <div class="btn-row">
-            <button class="btn btn-primary" onclick="submitRecord('special')">💾 บันทึกส่งใหม่กรณีพิเศษ</button>
+            <button class="btn btn-primary" onclick="submitRecord('special',this)">💾 บันทึกส่งใหม่กรณีพิเศษ</button>
             <button class="btn btn-outline" onclick="clearRecord('special')">🗑️ ล้างฟอร์ม</button>
             <button class="btn btn-outline" onclick="showToast('กำลังพัฒนา — เดี๋ยวมีตัวอย่างจดหมาย','info')" title="ออกจดหมายภายนอก (กำลังพัฒนา)" style="opacity:.7">🖨️ ออกจดหมายภายนอก</button>
           </div>
@@ -1213,7 +1213,7 @@ tbody td{padding:12px;vertical-align:middle}
     </div>
     
     <div class="btn-row">
-      <button class="btn btn-primary" onclick="submitInvestUpdate()">💾 บันทึก</button>
+      <button class="btn btn-primary" id="investSaveBtn" onclick="submitInvestUpdate(this)">💾 บันทึก</button>
       <button class="btn btn-outline" onclick="document.getElementById('investUpdateModal').classList.add('hidden')">ยกเลิก</button>
     </div>
   </div>
@@ -1434,7 +1434,7 @@ tbody td{padding:12px;vertical-align:middle}
                   </div>
                 </div>
                 <div class="btn-row" style="margin-top:14px">
-                  <button class="btn btn-primary" onclick="submitCrmTicket()">💾 รับเรื่องและบันทึก</button>
+                  <button class="btn btn-primary" onclick="submitCrmTicket(this)">💾 รับเรื่องและบันทึก</button>
                   <button class="btn btn-outline" onclick="toggleCrmForm()">ยกเลิก</button>
                 </div>
               </div>
@@ -1969,7 +1969,7 @@ tbody td{padding:12px;vertical-align:middle}
     </div><!-- /grid -->
 
     <div class="btn-row" style="margin-top:14px">
-      <button class="btn btn-primary" onclick="submitCrmTicket()">💾 รับเรื่องและบันทึก</button>
+      <button class="btn btn-primary" onclick="submitCrmTicket(this)">💾 รับเรื่องและบันทึก</button>
       <button class="btn btn-outline" onclick="document.getElementById('crmModal').classList.add('hidden')">ยกเลิก</button>
     </div>
   </div>
@@ -3071,7 +3071,7 @@ function collectForm(prefix) {
   };
 }
 
-function submitRecord(type) {
+function submitRecord(type, btnEl) {
   const prefix={return:'rt_',lend:'ld_',special:'sp_'}[type];
   const data=collectForm(prefix);
   data.recType=type;
@@ -3086,10 +3086,16 @@ function submitRecord(type) {
   if(!data.courseCode){showToast('กรุณากรอกรหัสชุดวิชาอย่างน้อย 1 ชุด','error');return;}
 
   const typeLabel={return:'พัสดุตีคืน',lend:'ให้ยืม',special:'ส่งใหม่กรณีพิเศษ'}[type];
+  const origLabel = btnEl ? btnEl.textContent : '';
+  if(btnEl){btnEl.disabled=true;btnEl.textContent='⏳ กำลังบันทึก...';}
   showToast('⏳ กำลังบันทึก...','');
+  // auto-reset ถ้า 60 วิยังไม่ตอบ
+  const _resetBtn=function(){if(btnEl){btnEl.disabled=false;btnEl.textContent=origLabel||'💾 บันทึก';}};
+  const _timeout=setTimeout(_resetBtn, 60000);
 
   google.script.run
     .withSuccessHandler(function(res) {
+      clearTimeout(_timeout); _resetBtn();
       if(res.success){
         showToast(`✅ บันทึก${typeLabel}สำเร็จ! รหัส: ${res.id}`,'success');
         // บันทึก cache ข้อมูล นศ.
@@ -3131,7 +3137,7 @@ function submitRecord(type) {
         showToast('❌ '+res.error,'error');
       }
     })
-    .withFailureHandler(showError)
+    .withFailureHandler(function(e){clearTimeout(_timeout);_resetBtn();showError(e);})
     .addRecord(data);
 }
 
@@ -4048,7 +4054,7 @@ function toggleCrmForm() {
 
 function openCrmModal() { toggleCrmForm(); }
 
-function submitCrmTicket() {
+function submitCrmTicket(btnEl) {
   var name     = document.getElementById('cm_name').value.trim();
   var sid      = document.getElementById('cm_sid').value.trim();
   var ptypeEl  = document.getElementById('cm_ptype');
@@ -4080,9 +4086,14 @@ function submitCrmTicket() {
   }).filter(Boolean);
   var tags = document.getElementById('cm_tags_val')?document.getElementById('cm_tags_val').value:'';
 
+  const _crmOrigLabel = btnEl ? btnEl.textContent : '';
+  if(btnEl){btnEl.disabled=true;btnEl.textContent='⏳ กำลังบันทึก...';}
+  const _crmReset=function(){if(btnEl){btnEl.disabled=false;btnEl.textContent=_crmOrigLabel||'💾 รับเรื่องและบันทึก';}};
+  const _crmTimeout=setTimeout(_crmReset, 60000);
   showToast('⏳ กำลังบันทึก...','');
   google.script.run
     .withSuccessHandler(function(res){
+      clearTimeout(_crmTimeout); _crmReset();
       if(res.success){
         showToast('✅ รับเรื่องสำเร็จ! '+res.id,'success');
         // ปิด inline form
@@ -4143,7 +4154,7 @@ function submitCrmTicket() {
         if(tagState['cmtags']){tagState['cmtags'].tags=[];renderTagInput('cmtags');syncTagHidden('cmtags');}
       } else showToast('❌ '+res.error,'error');
     })
-    .withFailureHandler(showError)
+    .withFailureHandler(function(e){clearTimeout(_crmTimeout);_crmReset();showError(e);})
     .addCrmTicket({
       reporterName:name, studentId:sid, reporterEmail:email, reporterPhone:phone,
       department:branch+(plan?' / '+plan:''),
@@ -4979,7 +4990,7 @@ function calcInvestDays() {
   }
 }
 
-function submitInvestUpdate() {
+function submitInvestUpdate(btnEl) {
   const id = document.getElementById('iup_invest_id').value;
   if (!id) return;
   
@@ -5006,27 +5017,31 @@ function submitInvestUpdate() {
   if (updates.result === 'ชดเชยแล้ว') updates.status = 'ปิดแล้ว';
   else if (updates.replyDate && updates.status === 'ส่งแล้ว') updates.status = 'มีผลตอบ';
   
+  const _invOrigLabel = btnEl ? btnEl.textContent : '';
+  if(btnEl){btnEl.disabled=true;btnEl.textContent='⏳ กำลังบันทึก...';}
+  const _invReset=function(){if(btnEl){btnEl.disabled=false;btnEl.textContent=_invOrigLabel||'💾 บันทึก';}};
   showToast('⏳ กำลังบันทึก...','');
-  
+
   // ถ้ามีไฟล์รออัปโหลด → อัปก่อน แล้วค่อย save updates
   if (_investPendingUploads.length > 0) {
     uploadInvestFilesSerial(id, function(urls) {
       if (urls.length) {
-        // รวม URLs เข้า resultDetail
         urls.forEach(function(u) {
           updates.resultDetail += '\n[ไฟล์แนบ: ' + u + ']';
         });
       }
-      saveInvestUpdate(id, updates);
+      saveInvestUpdate(id, updates, _invReset);
     });
   } else {
-    saveInvestUpdate(id, updates);
+    saveInvestUpdate(id, updates, _invReset);
   }
 }
 
-function saveInvestUpdate(id, updates) {
+function saveInvestUpdate(id, updates, onDone) {
+  const _done = onDone || function(){};
   google.script.run
     .withSuccessHandler(function(res) {
+      _done();
       if (res.success) {
         showToast('✅ บันทึกสำเร็จ','success');
         document.getElementById('investUpdateModal').classList.add('hidden');
@@ -5035,7 +5050,7 @@ function saveInvestUpdate(id, updates) {
         showToast('❌ '+res.error,'error');
       }
     })
-    .withFailureHandler(showError)
+    .withFailureHandler(function(e){_done();showError(e);})
     .updateInvestigation(id, updates);
 }
 
@@ -5139,13 +5154,16 @@ function sendBatchEmail() {
         badge.style.display = 'inline-block';
         // อัปเดต status ของรายการที่เลือก
         ids.forEach(function(id) {
-          google.script.run.updateInvestigation(id, {
-            notifyDate: today,
-            notifyEmail: email,
-            notifyQty: ids.length,
-            status: 'ส่งแล้ว',
-            result: 'กำลังติดตาม'
-          });
+          google.script.run
+            .withSuccessHandler(function(){})
+            .withFailureHandler(function(){})
+            .updateInvestigation(id, {
+              notifyDate: today,
+              notifyEmail: email,
+              notifyQty: ids.length,
+              status: 'ส่งแล้ว',
+              result: 'กำลังติดตาม'
+            });
         });
         setTimeout(function(){
           document.getElementById('batchEmailModal').classList.add('hidden');
@@ -5853,6 +5871,7 @@ function loadSettings_page() {
     .withSuccessHandler(function(url){
       if(url){ document.getElementById('logo_url_input').value=url; updateLogoPreview(url); }
     })
+    .withFailureHandler(function(){})
     .getOrgLogoUrlPublic();
 }
 
