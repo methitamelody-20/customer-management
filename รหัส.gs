@@ -1578,6 +1578,23 @@ function toggleUserActive(email, active) {
   } catch(e) { return { success:false, error:e.message }; }
 }
 
+function updateUserRole(email, role, perms) {
+  if (!_autoRefreshSession()) return { success:false, error:'ไม่มีสิทธิ์' };
+  try {
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SH_USERS);
+    const data  = sheet.getDataRange().getValues();
+    for (let i=1;i<data.length;i++) {
+      if ((data[i][0]||'').toLowerCase()===email.toLowerCase()) {
+        sheet.getRange(i+1,3).setValue(role);
+        sheet.getRange(i+1,7).setValue(perms);
+        logAudit('อัปเดต role/permissions', email + ' | ' + role);
+        return { success:true };
+      }
+    }
+    return { success:false, error:'ไม่พบ Email' };
+  } catch(e) { return { success:false, error:e.message }; }
+}
+
 // ============================================================
 // SETUP
 // ============================================================
