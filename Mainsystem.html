@@ -3541,57 +3541,132 @@ function quickUpdateStatus(id, status) {
 
 function openRecordDetail(idOrObj) {
   var r = (typeof idOrObj === 'string') ? (_recordMap[idOrObj] || {id:idOrObj}) : idOrObj;
+  _currentEditingRecord = r; // Store globally for saving
   var coursesTxt = r.courseCode||'-';
   try { var cs=JSON.parse(r.courses||'[]'); if(cs.length) coursesTxt=cs.map(function(c){return c.code+(c.name?' ('+c.name+')':'');}).join(', '); } catch(e){}
-  var html = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px 20px;font-size:13px">'
+
+  var html = '<div style="max-height:75vh;overflow-y:auto">'
+    // ===== Section 1: Read-only info =====
+    +'<div style="background:var(--light);padding:14px;border-radius:8px;margin-bottom:14px;font-size:13px">'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px 20px">'
     +'<div><span style="color:var(--gray3)">รหัส:</span> <strong>'+esc(r.id||'')+'</strong></div>'
     +'<div><span style="color:var(--gray3)">ประเภท:</span> '+typeBadge(r.recType||'')+'</div>'
-    +'<div><span style="color:var(--gray3)">วันที่:</span> '+esc(r.date||'')+'</div>'
-    +'<div><span style="color:var(--gray3)">ภาค/ปี:</span> '+(r.term||'')+' / '+(r.year||'')+'</div>'
-    +'<div><span style="color:var(--gray3)">รหัสนักศึกษา:</span> '+esc(r.studentId||'')+'</div>'
-    +'<div><span style="color:var(--gray3)">ชื่อ-สกุล:</span> '+esc((r.prefix||'')+(r.firstName||'')+' '+(r.lastName||''))+'</div>'
-    +'<div class="full" style="grid-column:1/-1"><span style="color:var(--gray3)">ชุดวิชา:</span> '+esc(coursesTxt)+'</div>'
-    +'<div><span style="color:var(--gray3)">จังหวัด:</span> '+esc(r.province||'')+'</div>'
-    +'<div><span style="color:var(--gray3)">อำเภอ:</span> '+esc(r.district||'')+'</div>'
-    +'<div><span style="color:var(--gray3)">สาเหตุ:</span> <span style="color:var(--red)">'+esc(r.cause||'')+'</span></div>'
-    +'<div><span style="color:var(--gray3)">ติดต่อ:</span> '+contactIcon(r.contactStatus)+'</div>'
     +'<div><span style="color:var(--gray3)">ผู้บันทึก:</span> '+esc(r.recorder||'')+'</div>'
-    +'<div><span style="color:var(--gray3)">วันที่อัปเดต:</span> '+esc(r.updatedAt||'')+'</div>'
+    +'<div><span style="color:var(--gray3)">อัปเดตล่าสุด:</span> '+esc(r.updatedAt||'')+'</div>'
     +'</div>'
-    +'<hr style="margin:14px 0;border-color:var(--gray1)">'
-    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:13px">'
-    +'<div class="fg"><label class="flbl">สถานะ</label>'
-    +'<select class="fsel" id="rd_status"><option>ส่งใหม่แล้ว</option><option>รอดำเนินการ</option><option>อื่นๆ</option></select></div>'
-    +'<div class="fg"><label class="flbl">หมายเหตุ</label>'
-    +'<input class="finput" id="rd_remark" value="'+esc(r.remark||'')+'" placeholder="หมายเหตุ..."></div>'
     +'</div>'
-    +'<div style="margin-top:14px;display:flex;gap:8px">'
-    +'<button class="btn btn-primary btn-sm" onclick="saveRecordDetail(\''+esc(r.id||'')+'\')">💾 บันทึก</button>'
-    +'<button class="btn btn-outline btn-sm" onclick="document.getElementById(\'recordDetailModal\').classList.add(\'hidden\')">ปิด</button>'
+
+    // ===== Section 2: Editable fields =====
+    +'<div class="card">'
+    +'<div class="card-title">✏️ แก้ไขข้อมูล</div>'
+    +'<div class="form-grid g2">'
+    // Row 1: Date, Term, Year
+    +'<div class="fg"><label class="flbl">วันที่</label><input class="finput" id="rd_date" value="'+esc(r.date||'')+'" placeholder="dd/mm/yyyy HH:mm"></div>'
+    +'<div class="fg"><label class="flbl">ภาคการศึกษา</label><input class="finput" id="rd_term" value="'+esc(r.term||'')+'" placeholder="เช่น 1 หรือ 2"></div>'
+    +'<div class="fg"><label class="flbl">ปีการศึกษา</label><input class="finput" id="rd_year" value="'+esc(r.year||'')+'" placeholder="เช่น 2568"></div>'
+
+    // Row 2: Student ID, Prefix, First name, Last name
+    +'<div class="fg"><label class="flbl">รหัสนักศึกษา</label><input class="finput" id="rd_studentId" value="'+esc(r.studentId||'')+'" placeholder="เลขประจำตัว"></div>'
+    +'<div class="fg"><label class="flbl">คำนำหน้า</label><input class="finput" id="rd_prefix" value="'+esc(r.prefix||'')+'" placeholder="นาย/นางสาว/etc."></div>'
+    +'<div class="fg"><label class="flbl">ชื่อ</label><input class="finput" id="rd_firstName" value="'+esc(r.firstName||'')+'" placeholder="ชื่อจริง"></div>'
+    +'<div class="fg"><label class="flbl">นามสกุล</label><input class="finput" id="rd_lastName" value="'+esc(r.lastName||'')+'" placeholder="นามสกุล"></div>'
+
+    // Row 3: Course code, Phone
+    +'<div class="fg full"><label class="flbl">ชุดวิชา</label><input class="finput" id="rd_courseCode" value="'+esc(r.courseCode||'')+'" placeholder="เช่น 10101"></div>'
+    +'<div class="fg"><label class="flbl">เบอร์โทร</label><input class="finput" id="rd_phone" value="'+esc(r.phone||'')+'" placeholder="0x-xxx-xxxx"></div>'
+
+    // Row 4: Address
+    +'<div class="fg"><label class="flbl">เลขที่</label><input class="finput" id="rd_houseNo" value="'+esc(r.houseNo||'')+'" placeholder="123"></div>'
+    +'<div class="fg"><label class="flbl">ถนน</label><input class="finput" id="rd_street" value="'+esc(r.street||'')+'" placeholder="ถ.อนุสรณ์"></div>'
+    +'<div class="fg"><label class="flbl">ตำบล</label><input class="finput" id="rd_subDistrict" value="'+esc(r.subDistrict||'')+'" placeholder="ต.ประตูน้อย"></div>'
+    +'<div class="fg"><label class="flbl">อำเภอ</label><input class="finput" id="rd_district" value="'+esc(r.district||'')+'" placeholder="อ.ป้อมปราณ"></div>'
+    +'<div class="fg"><label class="flbl">จังหวัด</label><input class="finput" id="rd_province" value="'+esc(r.province||'')+'" placeholder="กรุงเทพ"></div>'
+    +'<div class="fg"><label class="flbl">รหัสไปรษณีย์</label><input class="finput" id="rd_zipCode" value="'+esc(r.zipCode||'')+'" placeholder="10100"></div>'
+
+    // Row 5: Status, Remark, Contact
+    +'<div class="fg"><label class="flbl">สถานะ</label><select class="fsel" id="rd_status"><option value="">-- เลือก --</option><option value="ส่งใหม่แล้ว">ส่งใหม่แล้ว</option><option value="รอดำเนินการ">รอดำเนินการ</option><option value="อื่นๆ">อื่นๆ</option></select></div>'
+    +'<div class="fg"><label class="flbl">สาเหตุ</label><input class="finput" id="rd_cause" value="'+esc(r.cause||'')+'" placeholder="สาเหตุการส่ง"></div>'
+    +'<div class="fg"><label class="flbl">ติดต่อสำเร็จ</label><select class="fsel" id="rd_contactStatus"><option value="">-- เลือก --</option><option value="สำเร็จ">✅ สำเร็จ</option><option value="ไม่สำเร็จ">❌ ไม่สำเร็จ</option><option value="อื่นๆ">อื่นๆ</option></select></div>'
+
+    +'<div class="fg full"><label class="flbl">หมายเหตุ</label><textarea class="ftextarea" id="rd_remark" placeholder="หมายเหตุเพิ่มเติม..." style="min-height:60px">'+esc(r.remark||'')+'</textarea></div>'
+    +'</div>'
+    +'</div>'
+
+    // ===== Section 3: Attached images/files =====
+    +'<div class="card" style="margin-top:14px">'
+    +'<div class="card-title">📸 รูปภาพและเอกสารแนบ</div>'
+    +'<div id="recordImages" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;min-height:80px;padding:10px;background:var(--light);border-radius:8px;align-content:start">'
+    +'<div style="padding:20px;text-align:center;color:var(--gray3);grid-column:1/-1">ไม่มีรูปภาพแนบ</div>'
+    +'</div>'
+    +'</div>'
+
+    // ===== Section 4: History/Timeline =====
+    +'<div class="card" style="margin-top:14px">'
+    +'<div class="card-title">📅 ประวัติการติดตามและส่ง</div>'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">'
+    +'<div><label class="flbl" style="display:block;margin-bottom:6px">ส่งครั้งที่ 1</label><div style="padding:10px;background:var(--light);border-radius:6px;font-size:13px"><div>หมายเลข: <strong>'+esc(r.send1Track||'—')+'</strong></div><div style="color:var(--gray3);margin-top:4px">'+esc(r.send1Date||'—')+'</div></div></div>'
+    +'<div><label class="flbl" style="display:block;margin-bottom:6px">ส่งครั้งที่ 2</label><div style="padding:10px;background:var(--light);border-radius:6px;font-size:13px"><div>หมายเลข: <strong>'+esc(r.send2Track||'—')+'</strong></div><div style="color:var(--gray3);margin-top:4px">'+esc(r.send2Date||'—')+'</div></div></div>'
+    +'</div>'
+    +'</div>'
     +'</div>';
+
   var modal = document.getElementById('recordDetailModal');
   if (!modal) {
     modal = document.createElement('div');
     modal.id = 'recordDetailModal';
     modal.className = 'modal-overlay hidden';
-    modal.innerHTML = '<div class="modal" style="max-width:680px;width:100%"><div class="modal-title" style="font-size:18px;margin-bottom:16px">📋 รายละเอียดรายการ <button onclick="this.closest(\'.modal-overlay\').classList.add(\'hidden\')" style="float:right;border:none;background:none;font-size:20px;cursor:pointer;line-height:1">✕</button></div><div id="recordDetailBody"></div></div>';
+    modal.innerHTML = '<div class="modal" style="max-width:800px;width:100%"><div class="modal-title" style="font-size:18px;margin-bottom:16px">📋 รายละเอียดรายการ <button onclick="this.closest(\'.modal-overlay\').classList.add(\'hidden\')" style="float:right;border:none;background:none;font-size:20px;cursor:pointer;line-height:1">✕</button></div><div id="recordDetailBody"></div><div style="margin-top:20px;display:flex;gap:8px;border-top:1px solid var(--gray1);padding-top:16px"><button class="btn btn-primary btn-sm" onclick="saveRecordDetail(\''+esc(r.id||'')+'\')">💾 บันทึกการเปลี่ยนแปลง</button><button class="btn btn-outline btn-sm" onclick="document.getElementById(\'recordDetailModal\').classList.add(\'hidden\')">ปิด</button></div></div>';
     document.body.appendChild(modal);
   }
   document.getElementById('recordDetailBody').innerHTML = html;
   modal.classList.remove('hidden');
-  setTimeout(function(){ var s=document.getElementById('rd_status'); if(s && r.status) s.value=r.status; },50);
+
+  // Set select values
+  setTimeout(function(){
+    if(document.getElementById('rd_status') && r.status) document.getElementById('rd_status').value=r.status;
+    if(document.getElementById('rd_contactStatus') && r.contactStatus) document.getElementById('rd_contactStatus').value=r.contactStatus;
+  },50);
 }
 
 function saveRecordDetail(id) {
-  var status = document.getElementById('rd_status')?.value || '';
-  var remark = document.getElementById('rd_remark')?.value || '';
+  var updates = {
+    date: document.getElementById('rd_date')?.value || '',
+    term: document.getElementById('rd_term')?.value || '',
+    year: document.getElementById('rd_year')?.value || '',
+    studentId: document.getElementById('rd_studentId')?.value || '',
+    prefix: document.getElementById('rd_prefix')?.value || '',
+    firstName: document.getElementById('rd_firstName')?.value || '',
+    lastName: document.getElementById('rd_lastName')?.value || '',
+    courseCode: document.getElementById('rd_courseCode')?.value || '',
+    phone: document.getElementById('rd_phone')?.value || '',
+    houseNo: document.getElementById('rd_houseNo')?.value || '',
+    street: document.getElementById('rd_street')?.value || '',
+    subDistrict: document.getElementById('rd_subDistrict')?.value || '',
+    district: document.getElementById('rd_district')?.value || '',
+    province: document.getElementById('rd_province')?.value || '',
+    zipCode: document.getElementById('rd_zipCode')?.value || '',
+    status: document.getElementById('rd_status')?.value || '',
+    cause: document.getElementById('rd_cause')?.value || '',
+    contactStatus: document.getElementById('rd_contactStatus')?.value || '',
+    remark: document.getElementById('rd_remark')?.value || ''
+  };
+
+  // Validate required fields
+  if(!updates.studentId){showToast('กรุณากรอกรหัสนักศึกษา','error');return;}
+  if(!updates.firstName && !updates.lastName){showToast('กรุณากรอกชื่อจริง','error');return;}
+
+  showToast('⏳ กำลังบันทึก...','');
   google.script.run
     .withSuccessHandler(function(res){
-      if(res.success){ showToast('บันทึกแล้ว','success'); loadList(); document.getElementById('recordDetailModal').classList.add('hidden'); }
+      if(res.success){
+        showToast('✅ บันทึกการเปลี่ยนแปลงแล้ว','success');
+        loadList();
+        document.getElementById('recordDetailModal').classList.add('hidden');
+      }
       else showToast('❌ '+res.error,'error');
     })
     .withFailureHandler(showError)
-    .updateRecordFields(id, {status:status, remark:remark});
+    .updateRecordFields(id, updates);
 }
 
 // ============================================================

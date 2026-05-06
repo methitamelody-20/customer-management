@@ -3019,17 +3019,51 @@ function updateRecordFields(id, updates) {
     for (let i = 0; i < ids.length; i++) {
       if (String(ids[i][0]).trim() === String(id).trim()) {
         const row = i + 2;
-        // column mapping (1-based): status=col26, remark=col27 (adjust to actual sheet)
-        // Read the header row to find column positions dynamically
-        const headers = sheet.getRange(1,1,1,sheet.getLastColumn()).getValues()[0];
-        const statusCol = headers.indexOf('status') + 1 || headers.indexOf('สถานะ') + 1;
-        const remarkCol = headers.indexOf('remark') + 1 || headers.indexOf('หมายเหตุ') + 1;
-        if (updates.status && statusCol > 0) sheet.getRange(row, statusCol).setValue(updates.status);
-        if (updates.remark !== undefined && remarkCol > 0) sheet.getRange(row, remarkCol).setValue(updates.remark);
-        // fallback: write to known columns if headers not found
-        if (statusCol === 0) { sheet.getRange(row, 26).setValue(updates.status || ''); }
-        if (remarkCol === 0) { sheet.getRange(row, 27).setValue(updates.remark || ''); }
-        logAudit('แก้ไขรายการ', id + ' | สถานะ: ' + (updates.status||'-') + ' | หมายเหตุ: ' + (updates.remark||'-').substring(0,50));
+        // Column mapping based on field names (0-indexed in getRecords, 1-indexed in Sheets)
+        const fieldColMap = {
+          'date': 2,           // col 1 in sheets
+          'term': 3,           // col 2
+          'year': 4,           // col 3
+          'recType': 5,        // col 4
+          'parcelType': 6,     // col 5
+          'courseCode': 7,     // col 6
+          'studentId': 8,      // col 7
+          'prefix': 9,         // col 8
+          'firstName': 10,     // col 9
+          'lastName': 11,      // col 10
+          'houseNo': 12,       // col 11
+          'street': 13,        // col 12
+          'subDistrict': 14,   // col 13
+          'district': 15,      // col 14
+          'province': 16,      // col 15
+          'zipCode': 17,       // col 16
+          'phone': 18,         // col 17
+          'cause': 19,         // col 18
+          'contactStatus': 20, // col 19
+          'send1Track': 21,    // col 20
+          'send1Date': 22,     // col 21
+          'send2Track': 23,    // col 22
+          'send2Date': 24,     // col 23
+          'tags': 25,          // col 24
+          'remark': 26,        // col 25
+          'courses': 27,       // col 26
+          'status': 28         // col 27
+        };
+
+        // Update each field provided in updates
+        for (const [field, value] of Object.entries(updates)) {
+          const col = fieldColMap[field];
+          if (col) {
+            sheet.getRange(row, col).setValue(value || '');
+          }
+        }
+
+        // Update timestamp
+        sheet.getRange(row, 29).setValue(new Date());
+
+        // Log audit
+        const auditMsg = Object.entries(updates).map(([k,v]) => k + ': ' + (String(v)||'-').substring(0,30)).join(' | ');
+        logAudit('แก้ไขรายการ', id + ' | ' + auditMsg);
         return { success:true };
       }
     }
