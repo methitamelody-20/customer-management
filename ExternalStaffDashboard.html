@@ -258,9 +258,57 @@ html,body{min-height:100%;font-family:var(--font);color:var(--text);background:v
       <div class="stat-card green"><div class="stat-num" id="statClosed">—</div><div class="stat-lbl">Admin ตอบแล้ว / ปิด</div></div>
     </div>
 
+    <!-- Create new issue form -->
+    <div class="card" id="createIssueCard" style="display:none;background:linear-gradient(135deg,rgba(45,125,210,0.05),rgba(242,162,30,0.05));border:1.5px dashed var(--sky)">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px">
+        <div class="card-title" style="margin-bottom:0">➕ แจ้งปัญหา/เรื่องร้องเรียนใหม่</div>
+        <button class="btn-outline" style="padding:6px 12px;font-size:12px" onclick="toggleCreateIssue()">ปิด</button>
+      </div>
+      <div class="grid2">
+        <div class="fg">
+          <label class="flbl">ประเภทปัญหา <span class="req">*</span></label>
+          <select class="fsel" id="issueType">
+            <option value="">เลือก...</option>
+            <option value="พิมพ์เพิ่ม">พิมพ์เพิ่ม</option>
+            <option value="ชุดปรับปรุง">ชุดปรับปรุง</option>
+            <option value="ชุดผลิตใหม่">ชุดผลิตใหม่</option>
+            <option value="สอบถามทะเบียนและวัดผล">สอบถามทะเบียนและวัดผล</option>
+            <option value="ไม่ได้รับเอกสาร">ไม่ได้รับเอกสาร</option>
+            <option value="เอกสารชำรุด">เอกสารชำรุด</option>
+            <option value="อื่นๆ">อื่นๆ</option>
+          </select>
+        </div>
+        <div class="fg">
+          <label class="flbl">ช่องทาง <span class="req">*</span></label>
+          <select class="fsel" id="issueChannel">
+            <option value="">เลือก...</option>
+            <option value="อีเมล">อีเมล</option>
+            <option value="โทรศัพท์">โทรศัพท์</option>
+            <option value="ระบบ">ระบบ</option>
+          </select>
+        </div>
+      </div>
+      <div class="fg">
+        <label class="flbl">รายละเอียดปัญหา <span class="req">*</span></label>
+        <textarea class="finput" id="issueDetail" placeholder="อธิบายปัญหาหรือความสำเร็จที่ต้องการ..."
+          style="min-height:100px;font-family:var(--font);resize:vertical"></textarea>
+      </div>
+      <div class="fg">
+        <label class="flbl">รหัสชุดวิชา (ถ้าเกี่ยวข้อง)</label>
+        <input class="finput" id="issueCourse" placeholder="เช่น 1100101">
+      </div>
+      <div style="display:flex;gap:10px">
+        <button class="btn-primary" style="flex:1" onclick="submitExtIssue()">📤 ส่งแจ้งปัญหา</button>
+        <button class="btn-outline" style="flex:1" onclick="toggleCreateIssue()">ยกเลิก</button>
+      </div>
+    </div>
+
     <!-- Ticket list -->
     <div class="card">
-      <div class="card-title">📋 รายการเรื่องร้องเรียน</div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px">
+        <div class="card-title" style="margin-bottom:0">📋 รายการเรื่องร้องเรียน</div>
+        <button class="btn-primary" style="padding:8px 14px;font-size:12px;width:auto" onclick="toggleCreateIssue()">➕ เรื่องใหม่</button>
+      </div>
       <div class="ticket-filter">
         <button class="filter-chip active" onclick="filterTickets('all',this)">ทั้งหมด</button>
         <button class="filter-chip" onclick="filterTickets('open',this)">รอดำเนินการ</button>
@@ -546,6 +594,89 @@ function parseReplies(raw) {
 
 function esc(s) {
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function toggleCreateIssue() {
+  const card = document.getElementById('createIssueCard');
+  if (card.style.display === 'none') {
+    card.style.display = 'block';
+    document.getElementById('issueType').focus();
+  } else {
+    card.style.display = 'none';
+    // Clear form
+    document.getElementById('issueType').value = '';
+    document.getElementById('issueChannel').value = '';
+    document.getElementById('issueDetail').value = '';
+    document.getElementById('issueCourse').value = '';
+  }
+}
+
+function submitExtIssue() {
+  const type = document.getElementById('issueType').value.trim();
+  const channel = document.getElementById('issueChannel').value.trim();
+  const detail = document.getElementById('issueDetail').value.trim();
+  const course = document.getElementById('issueCourse').value.trim();
+
+  if (!type) { alert('กรุณาเลือกประเภทปัญหา'); return; }
+  if (!channel) { alert('กรุณาเลือกช่องทาง'); return; }
+  if (!detail) { alert('กรุณากรอกรายละเอียดปัญหา'); return; }
+
+  const btn = event.target;
+  btn.disabled = true;
+  btn.textContent = '⏳ กำลังส่ง...';
+
+  // ส่งผ่าน iframe to CRM_Public
+  const reportData = {
+    name: currentUser.name,
+    email: currentUser.email,
+    studentId: '',
+    phone: currentUser.phone || '',
+    branch: currentUser.org || '',
+    plan: '',
+    edu: '',
+    term: '',
+    year: '',
+    channels: channel,
+    priority: 'normal',
+    issueType: type,
+    detail: detail,
+    courses: course ? [course] : [],
+    tags: ''
+  };
+
+  google.script.run
+    .withSuccessHandler(function(res) {
+      btn.disabled = false;
+      btn.textContent = '📤 ส่งแจ้งปัญหา';
+      if (res.success) {
+        alert('✅ ส่งแจ้งปัญหาสำเร็จ! รหัสเรื่อง: ' + res.id);
+        toggleCreateIssue();
+        loadTickets();
+      } else {
+        alert('❌ เกิดข้อผิดพลาด: ' + (res.error||'ไม่ทราบสาเหตุ'));
+      }
+    })
+    .withFailureHandler(function(e) {
+      btn.disabled = false;
+      btn.textContent = '📤 ส่งแจ้งปัญหา';
+      alert('❌ ข้อผิดพลาด: ' + (e.message||'ไม่สามารถส่งได้'));
+    })
+    .addCrmTicket({
+      reporterName: currentUser.name,
+      studentId: '',
+      reporterEmail: currentUser.email,
+      reporterPhone: currentUser.phone || '',
+      department: currentUser.org || '',
+      educationLevel: '',
+      term: '',
+      year: '',
+      courses: course ? course : '',
+      issueType: type,
+      detail: detail,
+      channel: channel,
+      priority: 'normal',
+      recorderName: currentUser.name
+    });
 }
 </script>
 </body>
