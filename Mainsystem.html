@@ -4467,6 +4467,7 @@ function removeCourseRow(btn){
 // ============================================================
 // HELPERS
 // ============================================================
+function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 function typeBadge(t){const m={return:'<span class="badge b-return">↩️ ตีคืน</span>',lend:'<span class="badge b-lend">📤 ให้ยืม</span>',special:'<span class="badge b-special">⭐ พิเศษ</span>'};return m[t]||t||'—';}
 function contactIcon(c){
   if(c==='yes')return'<span class="status-dot"><span class="dot green"></span><span style="color:var(--green);font-size:11px">ติดต่อได้</span></span>';
