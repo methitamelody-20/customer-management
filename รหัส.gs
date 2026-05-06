@@ -1258,6 +1258,48 @@ function addCrmTicket(data) {
   } catch(e) { return { success:false, error:e.message }; }
 }
 
+function bulkImportCrmTickets(dataList) {
+  if (!_autoRefreshSession()) return { success:false, error:'ไม่มีสิทธิ์' };
+  try {
+    if (!Array.isArray(dataList) || dataList.length === 0) {
+      return { success:false, error:'ข้อมูลว่างเปล่า' };
+    }
+
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SH_CRM);
+    const sess = _sess();
+    const recorderName = sess.valid ? sess.name||sess.email : 'ผู้แจ้งออนไลน์';
+    let successCount = 0;
+
+    for (let i = 0; i < dataList.length; i++) {
+      try {
+        const data = dataList[i];
+        if (!data.reporterName || !data.detail) continue;
+
+        const now = new Date();
+        const id = 'CRM-' + Utilities.formatDate(now,'Asia/Bangkok','yyyyMMdd') + '-' + (sheet.getLastRow() + i);
+        const assigneeName = data.assigneeName || '';
+        const row = [
+          id, fmtDate(now), data.reporterName||'', data.studentId||'',
+          data.reporterEmail||'', data.reporterPhone||'', data.department||'',
+          data.educationLevel||'', data.term||'', data.year||'',
+          data.courses||'', data.issueType||'', data.detail||'',
+          data.channel||'online', data.priority||'normal',
+          data.tags||'', 'open', assigneeName, '', '[]',
+          recorderName, 'admin', data.org||'',
+        ];
+        sheet.appendRow(row);
+        successCount++;
+      } catch(rowErr) {
+        // skip ถ้ารายการนี้ผิดพลาด
+        Logger.log('Bulk import row error: ' + rowErr.message);
+      }
+    }
+
+    logAudit('นำเข้า CRM จำนวนมาก', successCount + ' รายการ');
+    return { success:true, count:successCount };
+  } catch(e) { return { success:false, error:e.message }; }
+}
+
 function getCrmTickets(filters) {
   // session check ผ่าน _autoRefreshSession อัตโนมัติ
   try {

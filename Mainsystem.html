@@ -1304,8 +1304,9 @@ tbody td{padding:12px;vertical-align:middle}
       <div id="page-crm" class="page">
         <div class="sec-head">
           <div><h2>บันทึกข้อมูลรับแจ้งปัญหา CRM</h2><div class="sub">กรอกข้อมูลจาก นศ./หน่วยงาน</div></div>
-          <div style="display:flex;gap:8px">
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
             <button class="btn btn-outline btn-sm" onclick="showCrmPublicLink()">🔗 ลิ้งค์แจ้งปัญหาสำหรับภายนอก</button>
+            <button class="btn btn-primary btn-sm" onclick="openCrmImportModal()">📥 นำเข้า Excel</button>
           </div>
         </div>
 
@@ -2120,6 +2121,26 @@ tbody td{padding:12px;vertical-align:middle}
       </div>
     </div>
 
+  </div>
+</div>
+
+<div class="modal-overlay hidden" id="crmImportModal">
+  <div class="modal" style="max-width:600px">
+    <div class="modal-title">📥 นำเข้าข้อมูล CRM จาก Excel
+      <button onclick="this.closest('.modal-overlay').classList.add('hidden')" style="float:right;border:none;background:none;font-size:20px;cursor:pointer">✕</button>
+    </div>
+    <div style="margin-bottom:16px">
+      <div style="background:#e8f4ff;border-radius:var(--rsm);padding:10px 14px;margin-bottom:14px;font-size:12px;color:#1a4a8a">
+        💡 อัปโหลดไฟล์ Excel ที่มีคอลัมน์: ชื่อ, อีเมล, เบอร์โทร, ประเภทปัญหา, รายละเอียด, ชุดวิชา (ค่าเหล่านี้เป็นไป (อันดับที่นี้)
+      </div>
+      <label class="flbl" style="display:block;margin-bottom:8px">📄 เลือกไฟล์ Excel</label>
+      <input type="file" id="crmExcelFile" accept=".xlsx,.xls,.csv" style="padding:8px;border:1.5px solid var(--gray2);border-radius:var(--rsm);width:100%;cursor:pointer">
+      <div id="crmImportPreview" style="margin-top:14px"></div>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:20px">
+      <button class="btn btn-primary btn-sm" id="crmImportBtn" onclick="parseAndImportCrmExcel()">✅ นำเข้า</button>
+      <button class="btn btn-outline btn-sm" onclick="document.getElementById('crmImportModal').classList.add('hidden')">ยกเลิก</button>
+    </div>
   </div>
 </div>
 
@@ -4140,15 +4161,15 @@ function submitCrmTicket(btnEl) {
       clearTimeout(_crmTimeout); _crmReset();
       if(res.success){
         showToast('✅ รับเรื่องสำเร็จ! '+res.id,'success');
-        // ปิด inline form
-        var form = document.getElementById('crmInlineForm');
-        var btn  = document.getElementById('btnToggleCrmForm');
-        if(form) form.style.display='none';
-        if(btn)  btn.textContent='➕ รับแจ้งด้วยตนเอง';
         loadCrm();
 
         // prefill ข้อมูลไปหน้าที่เลือก
         if(nextPage) {
+          // ปิด inline form ก่อนไปหน้าถัดไป
+          var form = document.getElementById('crmInlineForm');
+          var btn  = document.getElementById('btnToggleCrmForm');
+          if(form) form.style.display='none';
+          if(btn)  btn.textContent='➕ รับแจ้งด้วยตนเอง';
           var pfx = {return:'rt_',lend:'ld_',special:'sp_'}[nextPage];
           if(pfx) {
             setTimeout(function(){
@@ -4207,6 +4228,97 @@ function submitCrmTicket(btnEl) {
       courses:courses.join(','), tags:tags, recorderName:currentUser,
       assigneeName:assignee,
     });
+}
+
+function openCrmImportModal() {
+  document.getElementById('crmImportModal').classList.remove('hidden');
+  document.getElementById('crmExcelFile').value='';
+  document.getElementById('crmImportPreview').innerHTML='';
+}
+
+function parseAndImportCrmExcel() {
+  const fileInput = document.getElementById('crmExcelFile');
+  const file = fileInput.files[0];
+  if (!file) { showToast('กรุณาเลือกไฟล์','error'); return; }
+
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const data = new Uint8Array(e.target.result);
+      const workbook = XLSX.read(data, {type: 'array'});
+      const sheet = workbook.Sheets[workbook.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(sheet);
+
+      if (!rows || rows.length === 0) {
+        showToast('ไฟล์ Excel ว่างเปล่า','error');
+        return;
+      }
+
+      const preview = rows.slice(0, 3).map((r,i) =>
+        `<div style="padding:8px;border-bottom:1px solid var(--gray1);font-size:12px">
+          <strong>${i+1}.</strong> ${r['ชื่อ'] || r['Name'] || ''} | ${r['อีเมล'] || r['Email'] || ''} | ${r['เบอร์โทร'] || r['Phone'] || ''}
+        </div>`
+      ).join('');
+
+      document.getElementById('crmImportPreview').innerHTML =
+        `<div style="background:var(--gray1);border-radius:var(--rsm);padding:10px">
+          <div style="font-size:12px;color:var(--gray3);margin-bottom:8px">📊 ${rows.length} รายการ</div>
+          ${preview}
+          ${rows.length > 3 ? `<div style="padding:8px;color:var(--gray3);font-size:11px">...และอีก ${rows.length-3} รายการ</div>` : ''}
+        </div>`;
+
+      window._crmImportData = rows;
+      showToast('✅ โหลดไฟล์เรียบร้อย','success');
+    } catch(err) {
+      showToast('❌ ผิดพลาด: '+err.message,'error');
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function importCrmExcel() {
+  const rows = window._crmImportData;
+  if (!rows || !Array.isArray(rows)) {
+    showToast('กรุณาโหลดไฟล์ก่อน','error');
+    return;
+  }
+
+  const btn = document.getElementById('crmImportBtn');
+  const origText = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = '⏳ กำลังนำเข้า...';
+
+  const importData = rows.map(r => ({
+    reporterName: r['ชื่อ'] || r['Name'] || '',
+    reporterEmail: r['อีเมล'] || r['Email'] || '',
+    reporterPhone: r['เบอร์โทร'] || r['Phone'] || '',
+    issueType: r['ประเภทปัญหา'] || r['Issue Type'] || '',
+    detail: r['รายละเอียด'] || r['Detail'] || '',
+    courses: r['ชุดวิชา'] || r['Courses'] || '',
+    studentId: r['รหัสนักศึกษา'] || r['Student ID'] || '',
+    term: r['ภาค'] || r['Term'] || '',
+    year: r['ปี'] || r['Year'] || '',
+    priority: r['ลำดับความสำคัญ'] || r['Priority'] || 'normal',
+  }));
+
+  google.script.run
+    .withSuccessHandler(res => {
+      btn.disabled = false;
+      btn.textContent = origText;
+      if (res.success) {
+        showToast('✅ นำเข้า ' + res.count + ' รายการสำเร็จ','success');
+        document.getElementById('crmImportModal').classList.add('hidden');
+        loadCrm();
+      } else {
+        showToast('❌ ' + (res.error || 'เกิดข้อผิดพลาด'),'error');
+      }
+    })
+    .withFailureHandler(e => {
+      btn.disabled = false;
+      btn.textContent = origText;
+      showError(e);
+    })
+    .bulkImportCrmTickets(importData);
 }
 
 // ============================================================
