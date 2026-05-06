@@ -5012,6 +5012,7 @@ function editUserModal(email, name, role, perms) {
       <button class="btn btn-primary btn-sm" onclick="saveUserEdit('${email}')">💾 บันทึก</button>
       <button class="btn btn-outline btn-sm" onclick="this.closest('.modal-overlay').remove()">ยกเลิก</button>
     </div>
+    <div style="font-size:11px;color:var(--gray3);margin-top:12px;text-align:center">กรุณารอสักครู่...</div>
   </div>`;
   document.body.appendChild(modal);
 }
@@ -5028,15 +5029,39 @@ function editRoleAutoFill(role) {
 function saveUserEdit(email) {
   const role = document.getElementById('editRole').value;
   const perms = Array.from(document.querySelectorAll('.edit-perm-chk:checked')).map(c=>c.dataset.page).join(',');
+  const modalEl = document.querySelector('.modal-overlay');
+  const saveBtn = modalEl ? modalEl.querySelector('.btn-primary') : null;
+  if(saveBtn) saveBtn.disabled = true;
+
+  let done = false;
+  const timeoutId = setTimeout(() => {
+    if (!done) {
+      done = true;
+      showToast('⏱️ หมดเวลา กรุณาลองใหม่','error');
+      if(saveBtn) saveBtn.disabled = false;
+    }
+  }, 10000);
+
   google.script.run
     .withSuccessHandler(res=>{
+      if(done) return;
+      done = true;
+      clearTimeout(timeoutId);
+      if(saveBtn) saveBtn.disabled = false;
       if(res.success){
         showToast('✅ อัปเดตแล้ว','success');
-        document.querySelector('.modal-overlay').remove();
+        if(modalEl) modalEl.remove();
         loadUsersTable();
       } else {
         showToast('❌ '+res.error,'error');
       }
+    })
+    .withFailureHandler(e=>{
+      if(done) return;
+      done = true;
+      clearTimeout(timeoutId);
+      if(saveBtn) saveBtn.disabled = false;
+      showError(e);
     })
     .withFailureHandler(showError)
     .updateUserRole(email, role, perms);
