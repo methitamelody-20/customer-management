@@ -32,6 +32,7 @@ function doGet(e) {
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
       .addMetaTag('viewport','width=device-width,initial-scale=1');
   }
+  // ถ้ามี ?page=setpw → ให้ Mainsystem จัดการ (window.onload detect URL params)
   const tpl = HtmlService.createTemplateFromFile('Mainsystem');
   return tpl.evaluate()
     .setTitle('ระบบจัดการและติดตามเอกสารการสอน มสธ.')
@@ -1239,6 +1240,7 @@ function addCrmTicket(data) {
     const sess = _sess();
     const assigneeName = data.assigneeName || (sess.valid ? sess.name||sess.email : '');
     const recorderName = data.recorderName || (sess.valid ? sess.name||sess.email : 'ผู้แจ้งออนไลน์');
+    const source = data.source || (sess.valid ? 'admin' : 'external');
     const row   = [
       id, fmtDate(now), data.reporterName||'', data.studentId||'',
       data.reporterEmail||'', data.reporterPhone||'', data.department||'',
@@ -1246,7 +1248,7 @@ function addCrmTicket(data) {
       data.courses||'', data.issueType||'', data.detail||'',
       data.channel||'online', data.priority||'normal',
       data.tags||'', 'open', assigneeName, '', '[]',
-      recorderName,
+      recorderName, source, data.org||'',
     ];
     sheet.appendRow(row);
     const lr = sheet.getLastRow();
@@ -1273,11 +1275,16 @@ function getCrmTickets(filters) {
       } catch(e) { return String(v); }
     };
     
-    const rawRows = sheet.getRange(2,1,lr-1,21).getValues();
+    const ncols = Math.min(sheet.getLastColumn(), 23);
+    const rawRows = sheet.getRange(2,1,lr-1,ncols).getValues();
     const rows = [];
     for (let i = 0; i < rawRows.length; i++) {
       const r = rawRows[i];
       if (!r[0]) continue;
+      const recorderName = S(r[20]);
+      // infer source for older rows that don't have col 21
+      const storedSource = ncols >= 22 ? S(r[21]) : '';
+      const source = storedSource || (recorderName === 'ผู้แจ้งออนไลน์' || recorderName === '' ? 'external' : 'admin');
       rows.push({
         id: S(r[0]), date: D(r[1]), reporterName: S(r[2]), studentId: S(r[3]),
         reporterEmail: S(r[4]), reporterPhone: S(r[5]), department: S(r[6]),
@@ -1285,18 +1292,21 @@ function getCrmTickets(filters) {
         courses: S(r[10]), issueType: S(r[11]), detail: S(r[12]),
         channel: S(r[13]), priority: S(r[14]), tags: S(r[15]),
         status: S(r[16]), assigneeName: S(r[17]), assigneeEmail: S(r[18]),
-        replies: S(r[19]) || '[]', recorderName: S(r[20]),
+        replies: S(r[19]) || '[]', recorderName: recorderName,
+        source: source, org: ncols >= 23 ? S(r[22]) : '',
       });
     }
-    
+
     let result = rows;
     if (filters) {
       if (filters.status)  result = result.filter(function(r){ return r.status === filters.status; });
       if (filters.channel) result = result.filter(function(r){ return r.channel === filters.channel; });
+      if (filters.source)  result = result.filter(function(r){ return r.source === filters.source; });
+      if (filters.org)     result = result.filter(function(r){ return r.org === filters.org; });
       if (filters.search) {
         const q = String(filters.search).toLowerCase();
         result = result.filter(function(r) {
-          return [r.reporterName, r.studentId, r.detail, r.issueType, r.department]
+          return [r.reporterName, r.studentId, r.detail, r.issueType, r.department, r.org]
             .some(function(v){ return v && v.toLowerCase().indexOf(q) !== -1; });
         });
       }
@@ -1450,8 +1460,91 @@ function addUser(email, password, role, name, perms) {
     for (let i=1;i<data.length;i++) {
       if ((data[i][0]||'').toLowerCase()===email.toLowerCase()) return { success:false, error:'Email นี้มีอยู่แล้ว' };
     }
-    sheet.appendRow([email.toLowerCase(), hashPw(password), role, name, true, '', perms||'']);
+    sheet.appendRow([email.toLowerCase(), hashPw(password), role, name, true, '', perms||'', '', '']);
     return { success:true };
+  } catch(e) { return { success:false, error:e.message }; }
+}
+
+function inviteUser(email, role, name, perms) {
+  if (!_autoRefreshSession()) return { success:false, error:'ไม่มีสิทธิ์' };
+  try {
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SH_USERS);
+    const data  = sheet.getDataRange().getValues();
+    for (let i=1;i<data.length;i++) {
+      if ((data[i][0]||'').toLowerCase()===email.toLowerCase()) return { success:false, error:'Email นี้มีอยู่แล้ว' };
+    }
+    const token = Utilities.getUuid();
+    // columns: email, hashpw(empty), role, name, active(false until pw set), lastLogin, perms, invite_token, invite_expires
+    const expires = new Date(); expires.setHours(expires.getHours()+72);
+    sheet.appendRow([email.toLowerCase(), '', role, name, false, '', perms||'', token, fmtDate(expires)]);
+    const scriptUrl = ScriptApp.getService().getUrl();
+    const setpwUrl = scriptUrl + '?page=setpw&token=' + token + '&email=' + encodeURIComponent(email);
+    const subject = '[มสธ.] คำเชิญเข้าใช้งานระบบจัดการเอกสาร มสธ.';
+    const body = 'เรียน ' + name + '\n\n'
+      + 'ท่านได้รับสิทธิ์เข้าใช้งานระบบจัดการและติดตามเอกสารการสอน มสธ. ในบทบาท: ' + role + '\n\n'
+      + 'กรุณาคลิกลิงก์ด้านล่างเพื่อตั้งรหัสผ่าน (ลิงก์ใช้ได้ 72 ชม.):\n\n'
+      + setpwUrl + '\n\n'
+      + 'หากท่านไม่ได้รับคำเชิญนี้ กรุณาเพิกเฉยต่ออีเมลนี้\n\n'
+      + 'ขอแสดงความนับถือ\n'
+      + 'ผู้ดูแลระบบ มสธ.';
+    GmailApp.sendEmail(email, subject, body);
+    logAudit('เชิญผู้ใช้', email + ' | ' + role);
+    return { success:true };
+  } catch(e) { return { success:false, error:e.message }; }
+}
+
+function resendUserInvite(email) {
+  if (!_autoRefreshSession()) return { success:false, error:'ไม่มีสิทธิ์' };
+  try {
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SH_USERS);
+    const data  = sheet.getDataRange().getValues();
+    for (let i=1;i<data.length;i++) {
+      if ((data[i][0]||'').toLowerCase()===email.toLowerCase()) {
+        const token = Utilities.getUuid();
+        const expires = new Date(); expires.setHours(expires.getHours()+72);
+        // ensure columns exist
+        while (sheet.getLastColumn() < 9) sheet.getRange(1, sheet.getLastColumn()+1).setValue('');
+        sheet.getRange(i+1, 8).setValue(token);
+        sheet.getRange(i+1, 9).setValue(fmtDate(expires));
+        const scriptUrl = ScriptApp.getService().getUrl();
+        const setpwUrl = scriptUrl + '?page=setpw&token=' + token + '&email=' + encodeURIComponent(email);
+        const name = data[i][3] || email;
+        const subject = '[มสธ.] ลิงก์ตั้งรหัสผ่านใหม่ — ระบบจัดการเอกสาร มสธ.';
+        const body = 'เรียน ' + name + '\n\n'
+          + 'กรุณาคลิกลิงก์ด้านล่างเพื่อตั้งรหัสผ่านใหม่ (ลิงก์ใช้ได้ 72 ชม.):\n\n'
+          + setpwUrl + '\n\n'
+          + 'หากท่านไม่ได้ร้องขอ กรุณาเพิกเฉยต่ออีเมลนี้\n\n'
+          + 'ขอแสดงความนับถือ\n'
+          + 'ผู้ดูแลระบบ มสธ.';
+        GmailApp.sendEmail(email, subject, body);
+        return { success:true };
+      }
+    }
+    return { success:false, error:'ไม่พบ Email' };
+  } catch(e) { return { success:false, error:e.message }; }
+}
+
+function confirmInvitePassword(email, token, password) {
+  try {
+    if (!email || !token || !password) return { success:false, error:'ข้อมูลไม่ครบ' };
+    if (password.length < 8) return { success:false, error:'รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร' };
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SH_USERS);
+    const data  = sheet.getDataRange().getValues();
+    for (let i=1;i<data.length;i++) {
+      if ((data[i][0]||'').toLowerCase()===email.toLowerCase()) {
+        const storedToken = (data[i][7]||'').toString().trim();
+        if (!storedToken || storedToken !== token) return { success:false, error:'ลิงก์ไม่ถูกต้องหรือหมดอายุแล้ว' };
+        // check expiry (col 9, index 8)
+        const expiry = data[i][8];
+        if (expiry && new Date(expiry) < new Date()) return { success:false, error:'ลิงก์หมดอายุแล้ว กรุณาขอคำเชิญใหม่' };
+        sheet.getRange(i+1, 2).setValue(hashPw(password)); // set hash
+        sheet.getRange(i+1, 5).setValue(true);             // activate
+        sheet.getRange(i+1, 8).setValue('');               // clear token
+        sheet.getRange(i+1, 9).setValue('');               // clear expiry
+        return { success:true };
+      }
+    }
+    return { success:false, error:'ไม่พบบัญชีนี้' };
   } catch(e) { return { success:false, error:e.message }; }
 }
 

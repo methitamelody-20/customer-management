@@ -432,6 +432,20 @@ tbody td{padding:12px;vertical-align:middle}
 <body>
 
 <!-- LOGIN -->
+<div id="setpwScreen" style="display:none;position:fixed;inset:0;z-index:10000;background:linear-gradient(135deg,#0D47A1,#1565C0);display:none;align-items:center;justify-content:center">
+  <div class="login-box">
+    <div class="login-logo">
+      <div class="ico">🔑</div>
+      <h2>ตั้งรหัสผ่าน<br>เพื่อเข้าใช้งานระบบ</h2>
+      <p id="spwEmailDisplay" style="font-size:12px;color:#90caf9"></p>
+    </div>
+    <div class="lf"><label>รหัสผ่านใหม่</label><input type="password" id="spwPass" placeholder="อย่างน้อย 8 ตัวอักษร" onkeydown="if(event.key==='Enter')doSetPassword()"></div>
+    <div class="lf"><label>ยืนยันรหัสผ่าน</label><input type="password" id="spwPass2" placeholder="กรอกซ้ำอีกครั้ง" onkeydown="if(event.key==='Enter')doSetPassword()"></div>
+    <button class="login-btn" id="spwBtn" onclick="doSetPassword()">✅ บันทึกรหัสผ่าน</button>
+    <div class="login-err" id="spwErr"></div>
+  </div>
+</div>
+
 <div id="loginScreen">
   <div class="login-box">
     <div class="login-logo">
@@ -1433,13 +1447,34 @@ tbody td{padding:12px;vertical-align:middle}
       <div id="page-crm-list" class="page">
         <div class="sec-head">
           <div><h2>รายการรวมแจ้งปัญหา CRM</h2><div class="sub">ติดตามปัญหาจากนักศึกษาและหน่วยงานทั้งหมด</div></div>
-          <div style="display:flex;gap:8px">
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
             <button class="btn btn-outline btn-sm" onclick="showCrmPublicLink()">🔗 ลิ้งค์แจ้งปัญหาสำหรับภายนอก</button>
+            <button class="btn btn-primary btn-sm" onclick="showExtDashLink()">🏢 Dashboard ติดตามสำหรับหน่วยงานภายนอก</button>
           </div>
         </div>
         <div class="filter-bar no-print">
           <div><label>สถานะ</label><select class="fsel" id="crm_filter_status" onchange="loadCrm()" style="width:140px"><option value="">ทั้งหมด</option><option value="open">รอรับเรื่อง</option><option value="inprogress">กำลังดำเนินการ</option><option value="resolved">แก้ไขแล้ว</option><option value="closed">ปิดเรื่อง</option></select></div>
           <div><label>ช่องทาง</label><select class="fsel" id="crm_filter_ch" onchange="loadCrm()" style="width:120px"><option value="">ทั้งหมด</option><option value="online">ออนไลน์</option><option value="phone">โทรศัพท์</option><option value="line">LINE</option><option value="letter">จดหมาย</option><option value="walkin">มาด้วยตนเอง</option></select></div>
+          <div>
+            <label>แหล่งที่มา</label>
+            <select class="fsel" id="crm_filter_source" onchange="onCrmSourceFilter()" style="width:160px">
+              <option value="">ทั้งหมด</option>
+              <option value="admin">บันทึกโดย Admin ภายใน</option>
+              <option value="external">บันทึกจากลิ้งค์ภายนอก</option>
+            </select>
+          </div>
+          <div id="crm_filter_org_wrap" style="display:none">
+            <label>หน่วยงาน</label>
+            <select class="fsel" id="crm_filter_org" onchange="loadCrm()" style="width:160px">
+              <option value="">ทุกหน่วยงาน</option>
+              <option value="ศูนย์สารสนเทศ">ศูนย์สารสนเทศ</option>
+              <option value="สำนักทะเบียน">สำนักทะเบียน</option>
+              <option value="สำนักพิมพ์">สำนักพิมพ์</option>
+              <option value="สำนักบัณฑิต">สำนักบัณฑิต</option>
+              <option value="สาขาวิชา">สาขาวิชา (ระบุสาขา)</option>
+              <option value="อื่นๆ">อื่นๆ</option>
+            </select>
+          </div>
           <div><label>ค้นหา</label><input class="finput" id="crm_search" placeholder="ชื่อ / รหัส / ปัญหา" oninput="loadCrm()" style="width:180px"></div>
         </div>
         <div class="crm-list" id="crmList">
@@ -1754,10 +1789,12 @@ tbody td{padding:12px;vertical-align:middle}
         <!-- เพิ่มผู้ใช้ -->
         <div class="card" id="addUserCard" style="display:none;margin-bottom:14px">
           <div class="card-title">👤 เพิ่มผู้ใช้งานใหม่</div>
-          <div class="form-grid g4">
+          <div style="background:#e8f4fd;border:1.5px solid #90caf9;border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:12px;color:#1565c0">
+            📨 ระบบจะส่ง <strong>คำเชิญทางอีเมล</strong> ให้ผู้ใช้ตั้งรหัสผ่านด้วยตนเอง (ปลอดภัยกว่าการระบุรหัสผ่านโดยตรง)
+          </div>
+          <div class="form-grid g3">
             <div class="fg"><label class="flbl">ชื่อ-สกุล<span class="req">*</span></label><input class="finput" id="nuName"></div>
             <div class="fg"><label class="flbl">Email<span class="req">*</span></label><input class="finput" id="nuEmail" type="email"></div>
-            <div class="fg"><label class="flbl">Password<span class="req">*</span></label><input class="finput" id="nuPass" type="password"></div>
             <div class="fg"><label class="flbl">บทบาทเริ่มต้น</label>
               <select class="fsel" id="nuRole" onchange="autoFillPerms(this.value)">
                 <option value="viewer">Viewer (อ่านอย่างเดียว)</option>
@@ -1774,7 +1811,7 @@ tbody td{padding:12px;vertical-align:middle}
             </div>
           </div>
           <div class="btn-row">
-            <button class="btn btn-primary" onclick="submitAddUser()">💾 บันทึก</button>
+            <button class="btn btn-primary" onclick="submitAddUser()">📨 ส่งคำเชิญทางอีเมล</button>
             <button class="btn btn-outline" onclick="document.getElementById('addUserCard').style.display='none'">ยกเลิก</button>
           </div>
         </div>
@@ -2254,6 +2291,18 @@ async function waitForFirebase(maxWait = 5000) {
 // INIT — ตรวจ session จาก Apps Script / Firebase
 // ============================================================
 window.onload = function() {
+  // ตรวจสอบ URL params สำหรับ set-password flow
+  try {
+    var urlParams = new URLSearchParams(window.location.search);
+    var spPage  = urlParams.get('page');
+    var spToken = urlParams.get('token');
+    var spEmail = urlParams.get('email');
+    if (spPage === 'setpw' && spToken && spEmail) {
+      showSetPasswordScreen(decodeURIComponent(spEmail), spToken);
+      return;
+    }
+  } catch(e) {}
+
   // โหลด saved credentials ถ้าเคยติ๊ก "จดจำรหัสผ่าน"
   try {
     var savedEmail = localStorage.getItem('stou_saved_email');
@@ -2427,6 +2476,42 @@ async function testFirebaseAPI() {
   console.log('\n📚 Usage examples:');
   console.log('  firebaseAPI.getCrmTickets({}).then(t => console.log("Found", t.length, "tickets"))');
   console.log('  await firebaseAPI.getCrmTickets({})');
+}
+
+var _spwEmail='', _spwToken='';
+function showSetPasswordScreen(email, token) {
+  _spwEmail = email; _spwToken = token;
+  var scr = document.getElementById('setpwScreen');
+  var disp = document.getElementById('spwEmailDisplay');
+  if (scr) { scr.style.display = 'flex'; }
+  if (disp) disp.textContent = 'บัญชี: ' + email;
+}
+function doSetPassword() {
+  var p1 = document.getElementById('spwPass').value;
+  var p2 = document.getElementById('spwPass2').value;
+  var errEl = document.getElementById('spwErr');
+  if (errEl) errEl.textContent = '';
+  if (!p1 || p1.length < 8) { if(errEl) errEl.textContent='รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร'; return; }
+  if (p1 !== p2) { if(errEl) errEl.textContent='รหัสผ่านไม่ตรงกัน กรุณากรอกใหม่'; return; }
+  var btn = document.getElementById('spwBtn');
+  if(btn){btn.disabled=true;btn.textContent='กำลังบันทึก...';}
+  google.script.run
+    .withSuccessHandler(function(res) {
+      if(btn){btn.disabled=false;btn.textContent='✅ บันทึกรหัสผ่าน';}
+      if (res.success) {
+        document.getElementById('setpwScreen').style.display='none';
+        document.getElementById('loginScreen').classList.remove('hidden');
+        document.getElementById('lgEmail').value = _spwEmail;
+        showToast('✅ ตั้งรหัสผ่านสำเร็จ กรุณาเข้าสู่ระบบ','success');
+      } else {
+        if(errEl) errEl.textContent = res.error || 'เกิดข้อผิดพลาด';
+      }
+    })
+    .withFailureHandler(function(e) {
+      if(btn){btn.disabled=false;btn.textContent='✅ บันทึกรหัสผ่าน';}
+      if(errEl) errEl.textContent = 'เกิดข้อผิดพลาด กรุณาลองใหม่';
+    })
+    .confirmInvitePassword(_spwEmail, _spwToken, p1);
 }
 
 function doLogin() {
@@ -3473,11 +3558,21 @@ function printSingleRecord(r) {
 // ============================================================
 // CRM — ดึงและบันทึกจาก Sheets จริง
 // ============================================================
+function onCrmSourceFilter() {
+  var src = document.getElementById('crm_filter_source').value;
+  var orgWrap = document.getElementById('crm_filter_org_wrap');
+  if (orgWrap) orgWrap.style.display = (src === 'external') ? '' : 'none';
+  if (src !== 'external') { var og=document.getElementById('crm_filter_org'); if(og) og.value=''; }
+  loadCrm();
+}
+
 function loadCrm() {
   const filters={
     status:document.getElementById('crm_filter_status').value,
     channel:document.getElementById('crm_filter_ch').value,
     search:document.getElementById('crm_search').value.trim(),
+    source:(document.getElementById('crm_filter_source')||{}).value||'',
+    org:(document.getElementById('crm_filter_org')||{}).value||'',
   };
   document.getElementById('crmList').innerHTML='<div style="text-align:center;padding:30px;color:var(--gray3)"><div class="spinner" style="margin:0 auto 10px"></div>กำลังโหลด...</div>';
   google.script.run
@@ -3549,7 +3644,9 @@ function renderCrmList(items) {
             +(c.studentId?'<span style="font-family:monospace;font-weight:400;font-size:12px;color:var(--gray3)">('+c.studentId+')</span>':'')
             +(total>0?freqBadge(total):'')
           +'</div>'
-          +'<div class="crm-meta">'+(c.issueType||'')+' · '+(c.date||'')+' · '+(pMap[c.priority]||'')+'</div>'
+          +'<div class="crm-meta">'+(c.issueType||'')+' · '+(c.date||'')+' · '+(pMap[c.priority]||'')
+            +(c.source==='external'?'<span style="margin-left:6px;font-size:10px;background:#e3f2fd;color:#1565c0;padding:1px 6px;border-radius:10px;font-weight:600">🌐 ภายนอก'+(c.org?' · '+c.org:'')+'</span>':'<span style="margin-left:6px;font-size:10px;background:#e8f5e9;color:#2e7d32;padding:1px 6px;border-radius:10px;font-weight:600">🏢 admin</span>')
+          +'</div>'
         +'</div>'
         +'<div class="crm-status '+sm.cls+'">'+sm.label+'</div>'
       +'</div>'
@@ -3816,6 +3913,26 @@ function copyCrmLink() {
       showToast('✅ คัดลอก URL แล้ว','success');
     });
   }
+}
+
+function showExtDashLink() {
+  google.script.run
+    .withSuccessHandler(function(res) {
+      if (!res.success) { showToast('ไม่พบ URL — กรุณา Deploy ใหม่','error'); return; }
+      var url = res.url.replace('?page=crm', '?page=ext_staff');
+      var msg = 'ลิ้งค์ Dashboard สำหรับหน่วยงานภายนอก:\n\n' + url
+        + '\n\nหน่วยงานภายนอกสามารถสมัครบัญชีและติดตามปัญหาผ่านลิ้งค์นี้';
+      var area = document.createElement('textarea');
+      area.style.cssText = 'position:fixed;top:-999px';
+      area.value = url;
+      document.body.appendChild(area);
+      area.select();
+      try { document.execCommand('copy'); showToast('✅ คัดลอก URL แล้ว','success'); } catch(e) {}
+      document.body.removeChild(area);
+      alert(msg);
+    })
+    .withFailureHandler(function(){ showToast('เกิดข้อผิดพลาด','error'); })
+    .getPublicUrl();
 }
 
 // ===== STUDENT HISTORY LOOKUP (CRM Modal) =====
@@ -4109,18 +4226,23 @@ function autoFillPerms(role){buildPermGrid(role);}
 function submitAddUser() {
   const name=document.getElementById('nuName').value.trim();
   const email=document.getElementById('nuEmail').value.trim();
-  const pass=document.getElementById('nuPass').value;
   const role=document.getElementById('nuRole').value;
-  if(!name||!email||!pass){showToast('กรุณากรอกข้อมูลให้ครบ','error');return;}
-  if(pass.length<6){showToast('Password ต้องมีอย่างน้อย 6 ตัวอักษร','error');return;}
+  if(!name||!email){showToast('กรุณากรอกชื่อและอีเมล','error');return;}
   const perms=Array.from(document.querySelectorAll('.perm-chk:checked')).map(c=>c.dataset.page).join(',');
+  const btn=document.querySelector('#addUserCard .btn-primary');
+  if(btn){btn.disabled=true;btn.textContent='กำลังส่ง...';}
   google.script.run
     .withSuccessHandler(res=>{
-      if(res.success){showToast(`✅ เพิ่มผู้ใช้ "${name}" สำเร็จ`,'success');document.getElementById('addUserCard').style.display='none';['nuName','nuEmail','nuPass'].forEach(id=>document.getElementById(id).value='');loadUsersTable();}
-      else showToast('❌ '+res.error,'error');
+      if(btn){btn.disabled=false;btn.textContent='📨 ส่งคำเชิญทางอีเมล';}
+      if(res.success){
+        showToast(`✅ ส่งคำเชิญถึง "${email}" แล้ว — รอผู้ใช้ตั้งรหัสผ่านทางอีเมล`,'success');
+        document.getElementById('addUserCard').style.display='none';
+        ['nuName','nuEmail'].forEach(id=>document.getElementById(id).value='');
+        loadUsersTable();
+      } else showToast('❌ '+res.error,'error');
     })
-    .withFailureHandler(showError)
-    .addUser(email, pass, role, name, perms);
+    .withFailureHandler(e=>{if(btn){btn.disabled=false;btn.textContent='📨 ส่งคำเชิญทางอีเมล';}showError(e);})
+    .inviteUser(email, role, name, perms);
 }
 
 function loadUsersTable() {
@@ -4137,7 +4259,7 @@ function loadUsersTable() {
         <td>${u.active?'<span style="color:var(--green);font-weight:600;font-size:12px">✅ ใช้งาน</span>':'<span style="color:var(--red);font-size:12px">🚫 ระงับ</span>'}</td>
         <td style="font-size:11px;color:var(--gray3)">${u.lastLogin||'-'}</td>
         <td class="no-print" style="display:flex;gap:5px;flex-wrap:wrap">
-          <button class="btn btn-outline btn-sm" onclick="promptChangePass('${u.email}')">🔑 PW</button>
+          <button class="btn btn-outline btn-sm" onclick="sendUserInvite('${u.email}','${(u.name||'').replace(/'/g,'')}')" title="ส่งลิ้งค์ตั้งรหัสผ่านใหม่ทางอีเมล">📨 คำเชิญ</button>
           ${u.active
             ?`<button class="btn btn-sm" style="background:var(--red);color:#fff" onclick="toggleActive('${u.email}',false)">🚫</button>`
             :`<button class="btn btn-sm" style="background:var(--green);color:#fff" onclick="toggleActive('${u.email}',true)">✅</button>`}
@@ -4155,6 +4277,18 @@ function promptChangePass(email) {
     .withSuccessHandler(res=>{res.success?showToast('เปลี่ยน Password แล้ว','success'):showToast('❌ '+res.error,'error');})
     .withFailureHandler(showError)
     .updateUserPassword(email, np);
+}
+
+function sendUserInvite(email, name) {
+  if(!confirm('ส่งลิ้งค์ตั้งรหัสผ่านใหม่ไปยัง ' + email + ' ?'))return;
+  google.script.run
+    .withSuccessHandler(res=>{
+      res.success
+        ? showToast('✅ ส่งลิ้งค์ตั้งรหัสผ่านถึง ' + email + ' แล้ว','success')
+        : showToast('❌ '+res.error,'error');
+    })
+    .withFailureHandler(showError)
+    .resendUserInvite(email);
 }
 
 function toggleActive(email, active) {
