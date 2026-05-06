@@ -494,6 +494,9 @@ tbody td{padding:12px;vertical-align:middle}
         <span class="ic">💬</span>รายการรวมแจ้งปัญหา CRM
         <span class="cnt red" id="crmBadge2" style="display:none">0</span>
       </button>
+      <button class="nav-btn" onclick="showExtDashLink()" style="color:var(--sky);font-size:11px;padding:6px 10px">
+        <span class="ic">🔗</span>ลิ้งค์ Dashboard ภายนอก
+      </button>
       <button class="nav-btn" onclick="go('list',this)" data-page="list"><span class="ic">📋</span>รายการทั้งหมด</button>
       <button class="nav-btn" onclick="go('labels',this)" data-page="labels"><span class="ic">🖨️</span>พิมพ์ใบจ่าหน้า</button>
       <button class="nav-btn" onclick="go('invest',this)" data-page="invest"><span class="ic">🔎</span>สอบสวนไปรษณีย์</button>
@@ -3371,8 +3374,8 @@ function openRecordDetail(idOrObj) {
   if (!modal) {
     modal = document.createElement('div');
     modal.id = 'recordDetailModal';
-    modal.className = 'modal-overlay';
-    modal.innerHTML = '<div class="modal-box" style="max-width:640px"><div class="modal-title">📋 รายละเอียดรายการ <button onclick="this.closest(\'.modal-overlay\').classList.add(\'hidden\')" style="float:right;border:none;background:none;font-size:18px;cursor:pointer">✕</button></div><div id="recordDetailBody"></div></div>';
+    modal.className = 'modal-overlay hidden';
+    modal.innerHTML = '<div class="modal" style="max-width:680px;width:100%"><div class="modal-title" style="font-size:18px;margin-bottom:16px">📋 รายละเอียดรายการ <button onclick="this.closest(\'.modal-overlay\').classList.add(\'hidden\')" style="float:right;border:none;background:none;font-size:20px;cursor:pointer;line-height:1">✕</button></div><div id="recordDetailBody"></div></div>';
     document.body.appendChild(modal);
   }
   document.getElementById('recordDetailBody').innerHTML = html;
@@ -3642,6 +3645,21 @@ function renderCrmList(items) {
     var emailBtn=c.reporterEmail
       ?('<button class="btn btn-outline btn-xs" data-crm-id="'+cid+'" onclick="sendCrmEmail(this.dataset.crmId)" style="color:var(--green)">📧 แจ้งผล</button>'):'';
 
+    var contactInfo='';
+    if(c.reporterEmail||c.reporterPhone){
+      contactInfo+='<div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:6px;font-size:12px">';
+      if(c.reporterPhone) contactInfo+='<span>📞 '+c.reporterPhone+'</span>';
+      if(c.reporterEmail) contactInfo+='<span>📧 '+c.reporterEmail+'</span>';
+      contactInfo+='</div>';
+    }
+    var deptInfo = (c.department||c.educationLevel)
+      ? '<div style="font-size:12px;color:var(--gray3);margin-top:4px">'
+        +(c.department?'🎓 '+c.department:'')
+        +(c.educationLevel?' · '+c.educationLevel:'')
+        +(c.term&&c.year?' · ภาค '+c.term+'/'+c.year:'')
+        +'</div>'
+      : '';
+
     return '<div class="crm-card '+c.status+'">'
       +'<div class="crm-head">'
         +'<div class="crm-avatar">'+( (c.assigneeName||'?')[0])+'</div>'
@@ -3649,18 +3667,21 @@ function renderCrmList(items) {
           +'<div class="crm-title" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">'+(c.reporterName||'—')
             +(c.studentId?'<span style="font-family:monospace;font-weight:400;font-size:12px;color:var(--gray3)">('+c.studentId+')</span>':'')
             +(total>0?freqBadge(total):'')
+            +'<span style="font-size:10px;background:var(--gray1);color:var(--gray3);padding:1px 6px;border-radius:10px">#'+cid+'</span>'
           +'</div>'
           +'<div class="crm-meta">'+(c.issueType||'')+' · '+(c.date||'')+' · '+(pMap[c.priority]||'')
             +(c.source==='external'?'<span style="margin-left:6px;font-size:10px;background:#e3f2fd;color:#1565c0;padding:1px 6px;border-radius:10px;font-weight:600">🌐 ภายนอก'+(c.org?' · '+c.org:'')+'</span>':'<span style="margin-left:6px;font-size:10px;background:#e8f5e9;color:#2e7d32;padding:1px 6px;border-radius:10px;font-weight:600">🏢 admin</span>')
           +'</div>'
+          +contactInfo
+          +deptInfo
         +'</div>'
         +'<div class="crm-status '+sm.cls+'">'+sm.label+'</div>'
       +'</div>'
-      +'<div class="crm-body">'+(c.detail||'')+'</div>'
+      +'<div class="crm-body" style="white-space:pre-wrap">'+(c.detail||'')+'</div>'
+      +(courseChips?'<div style="margin:6px 0">'+courseChips+'</div>':'')
       +histHtml
       +'<div class="crm-footer">'
         +'<span class="crm-channel">'+(chLabels[c.channel]||c.channel||'')+'</span>'
-        +courseChips
         +'<div class="crm-tags">'+renderTagChips(tags)+'</div>'
         +assigneeHtml
       +'</div>'
@@ -3922,23 +3943,46 @@ function copyCrmLink() {
 }
 
 function showExtDashLink() {
+  // สร้าง modal ถ้ายังไม่มี
+  var m = document.getElementById('extDashLinkModal');
+  if (!m) {
+    m = document.createElement('div');
+    m.id = 'extDashLinkModal';
+    m.className = 'modal-overlay hidden';
+    m.innerHTML = '<div class="modal" style="max-width:560px;width:100%">'
+      +'<div class="modal-title" style="font-size:16px;margin-bottom:12px">🏢 Dashboard ติดตามปัญหา สำหรับหน่วยงานภายนอก'
+        +'<button onclick="document.getElementById(\'extDashLinkModal\').classList.add(\'hidden\')" style="float:right;border:none;background:none;font-size:20px;cursor:pointer">✕</button>'
+      +'</div>'
+      +'<p style="font-size:13px;color:var(--gray3);margin-bottom:10px">ส่งลิ้งค์นี้ให้หน่วยงานภายนอก เพื่อให้เจ้าหน้าที่สมัครบัญชีและติดตามปัญหาที่แจ้งไว้</p>'
+      +'<div style="display:flex;gap:8px;align-items:center">'
+        +'<input id="extDashUrl" class="finput" readonly style="flex:1;font-family:monospace;font-size:11px" value="กำลังโหลด...">'
+        +'<button class="btn btn-primary btn-sm" onclick="copyExtDashUrl()">📋 คัดลอก</button>'
+      +'</div>'
+      +'<div style="margin-top:14px;background:#e8f4fd;border-radius:8px;padding:10px 14px;font-size:12px;color:#1565c0">'
+        +'<strong>วิธีใช้:</strong> หน่วยงานภายนอกเปิดลิ้งค์ → ลงทะเบียน → รอ Admin อนุมัติ → รับอีเมลตั้งรหัสผ่าน → เข้าดู Dashboard ติดตามปัญหา'
+      +'</div>'
+    +'</div>';
+    document.body.appendChild(m);
+  }
+  m.classList.remove('hidden');
+  var urlEl = document.getElementById('extDashUrl');
+  if (urlEl) urlEl.value = 'กำลังโหลด...';
   google.script.run
     .withSuccessHandler(function(res) {
-      if (!res.success) { showToast('ไม่พบ URL — กรุณา Deploy ใหม่','error'); return; }
+      if (!res.success) { if(urlEl) urlEl.value='ไม่พบ URL — กรุณา Deploy ใหม่'; return; }
       var url = res.url.replace('?page=crm', '?page=ext_staff');
-      var msg = 'ลิ้งค์ Dashboard สำหรับหน่วยงานภายนอก:\n\n' + url
-        + '\n\nหน่วยงานภายนอกสามารถสมัครบัญชีและติดตามปัญหาผ่านลิ้งค์นี้';
-      var area = document.createElement('textarea');
-      area.style.cssText = 'position:fixed;top:-999px';
-      area.value = url;
-      document.body.appendChild(area);
-      area.select();
-      try { document.execCommand('copy'); showToast('✅ คัดลอก URL แล้ว','success'); } catch(e) {}
-      document.body.removeChild(area);
-      alert(msg);
+      if (urlEl) urlEl.value = url;
     })
-    .withFailureHandler(function(){ showToast('เกิดข้อผิดพลาด','error'); })
+    .withFailureHandler(function(){ if(urlEl) urlEl.value='เกิดข้อผิดพลาด'; })
     .getPublicUrl();
+}
+function copyExtDashUrl() {
+  var el = document.getElementById('extDashUrl');
+  if (!el) return;
+  el.select();
+  try { document.execCommand('copy'); } catch(e) {}
+  navigator.clipboard.writeText(el.value).catch(function(){});
+  showToast('✅ คัดลอก URL แล้ว','success');
 }
 
 // ===== STUDENT HISTORY LOOKUP (CRM Modal) =====
