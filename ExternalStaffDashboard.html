@@ -149,6 +149,10 @@ html,body{min-height:100%;font-family:var(--font);color:var(--text);background:v
           <input class="finput" id="loginPassword" type="password" placeholder="••••••••"
             onkeydown="if(event.key==='Enter')doLogin()">
         </div>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px">
+          <input type="checkbox" id="rememberPassword" style="width:18px;height:18px;cursor:pointer">
+          <label style="margin:0;cursor:pointer;font-size:13px;color:var(--text)" for="rememberPassword">จดจำรหัสผ่าน</label>
+        </div>
         <div style="margin-top:18px">
           <button class="btn-primary" id="loginBtn" onclick="doLogin()">🔑 เข้าสู่ระบบ</button>
         </div>
@@ -346,6 +350,16 @@ window.addEventListener('load', function() {
       if (currentUser.status === 'active')  { loadDashboard(); return; }
     } catch(e) { sessionStorage.removeItem('ext_user'); }
   }
+  // โหลด remembered credentials ถ้ามี
+  const remembered = localStorage.getItem('ext_remembered');
+  if (remembered) {
+    try {
+      const creds = JSON.parse(remembered);
+      document.getElementById('loginEmail').value = creds.email || '';
+      document.getElementById('loginPassword').value = creds.password || '';
+      document.getElementById('rememberPassword').checked = true;
+    } catch(e) { localStorage.removeItem('ext_remembered'); }
+  }
   showPage('authPage');
 });
 
@@ -386,9 +400,18 @@ function showAlert(id, msg, type) {
 function doLogin() {
   const email = document.getElementById('loginEmail').value.trim();
   const pw    = document.getElementById('loginPassword').value;
+  const remember = document.getElementById('rememberPassword').checked;
   if (!email || !pw) { showAlert('loginAlert','กรุณากรอกอีเมลและรหัสผ่าน','err'); return; }
   const btn = document.getElementById('loginBtn');
   btn.disabled = true; btn.textContent = '⏳ กำลังเข้าสู่ระบบ...';
+
+  // save credentials ถ้า checkbox ถูก
+  if (remember) {
+    localStorage.setItem('ext_remembered', JSON.stringify({email:email, password:pw}));
+  } else {
+    localStorage.removeItem('ext_remembered');
+  }
+
   google.script.run
     .withSuccessHandler(function(res) {
       btn.disabled = false; btn.textContent = '🔑 เข้าสู่ระบบ';
@@ -473,6 +496,8 @@ function doLogout() {
   sessionStorage.removeItem('ext_user');
   currentUser = null;
   allTickets = [];
+  // เลือกให้ clear remembered credentials เมื่อออกจากระบบ
+  localStorage.removeItem('ext_remembered');
   showPage('authPage');
 }
 
