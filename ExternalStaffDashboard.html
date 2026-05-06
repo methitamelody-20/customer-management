@@ -298,15 +298,18 @@ let setPwToken  = '';
 // INIT
 // ============================================================
 window.addEventListener('load', function() {
-  // ตรวจ token ตั้งรหัสผ่านจาก URL ?token=xxx&email=xxx
+  // ตรวจ token ตั้งรหัสผ่านจาก URL ?token=xxx&email=xxx (priority ต้องใช้ URL param)
   const params = new URLSearchParams(window.location.search);
-  if (params.get('token') && params.get('email')) {
-    setPwToken = params.get('token');
-    document.getElementById('setPwEmail').textContent = params.get('email');
+  const token = params.get('token');
+  const email = params.get('email');
+  if (token && email) {
+    sessionStorage.removeItem('ext_user');
+    setPwToken = token;
+    document.getElementById('setPwEmail').textContent = email;
     showPage('setPasswordPage');
     return;
   }
-  // ตรวจ session
+  // ตรวจ session ถ้าไม่มี URL param
   const saved = sessionStorage.getItem('ext_user');
   if (saved) {
     try {
