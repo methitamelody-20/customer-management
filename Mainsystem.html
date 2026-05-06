@@ -1774,20 +1774,22 @@ tbody td{padding:12px;vertical-align:middle}
                 <div class="form-grid g2">
                   <div class="fg full"><label class="flbl">หัวข้องาน<span class="req">*</span></label><input class="finput" id="task_title" placeholder="เช่น โพสภาพ Facebook, แจ้งไปรษณีย์ไทย"></div>
                   <div class="fg"><label class="flbl">ประเภทงาน</label>
-                    <select class="fsel" id="task_type">
+                    <select class="fsel" id="task_type" onchange="onTaskTypeChange('task_type','task_type_custom')">
                       <option value="ทั่วไป">ทั่วไป</option>
                       <option value="โพสโซเชียลมีเดีย">โพสโซเชียลมีเดีย</option>
                       <option value="แจ้งไปรษณีย์ไทย">แจ้งไปรษณีย์ไทย</option>
                       <option value="จัดทำเอกสาร">จัดทำเอกสาร</option>
                       <option value="ประสานงาน">ประสานงาน</option>
+                      <option value="__custom__">อื่นๆ (ระบุเอง)</option>
                     </select>
+                    <input class="finput" id="task_type_custom" type="text" placeholder="ระบุประเภทงาน..." style="display:none;margin-top:6px">
                   </div>
                   <div class="fg"><label class="flbl">มอบหมายให้</label>
                     <select class="fsel" id="task_assignee">
                       <option value="">-- เลือก --</option>
                     </select>
                   </div>
-                  <div class="fg"><label class="flbl">กำหนดส่ง</label><input class="finput datepickr" id="task_due" type="text" placeholder="dd/mm/yyyy"></div>
+                  <div class="fg"><label class="flbl" style="display:flex;align-items:center;justify-content:space-between">กำหนดส่ง<label style="font-weight:400;font-size:12px;color:var(--gray3);cursor:pointer;display:flex;align-items:center;gap:4px"><input type="checkbox" id="task_due_none" onchange="toggleDueDate('task_due','task_due_none')"> ไม่ระบุ</label></label><input class="finput datepickr" id="task_due" type="text" placeholder="dd/mm/yyyy"></div>
                 </div>
                 <div class="fg" style="margin-top:10px">
                   <label class="flbl">รายละเอียด</label>
@@ -1839,19 +1841,21 @@ tbody td{padding:12px;vertical-align:middle}
                 <div class="form-grid g2">
                   <div class="fg full"><label class="flbl">หัวข้องาน<span class="req">*</span></label><input class="finput" id="task_title_new" placeholder="เช่น โพสภาพ Facebook, แจ้งไปรษณีย์ไทย"></div>
                   <div class="fg"><label class="flbl">ประเภทงาน</label>
-                    <select class="fsel" id="task_type_new">
+                    <select class="fsel" id="task_type_new" onchange="onTaskTypeChange('task_type_new','task_type_new_custom')">
                       <option value="">-- เลือก --</option>
                       <option value="โพสสื่อสาร">โพสสื่อสาร</option>
                       <option value="สำนักพิมพ์">สำนักพิมพ์</option>
                       <option value="ประสานงาน">ประสานงาน</option>
+                      <option value="__custom__">อื่นๆ (ระบุเอง)</option>
                     </select>
+                    <input class="finput" id="task_type_new_custom" type="text" placeholder="ระบุประเภทงาน..." style="display:none;margin-top:6px">
                   </div>
                   <div class="fg"><label class="flbl">มอบหมายให้</label>
                     <select class="fsel" id="task_assignee_new">
                       <option value="">-- เลือก --</option>
                     </select>
                   </div>
-                  <div class="fg"><label class="flbl">กำหนดส่ง</label><input class="finput datepickr" id="task_due_new" type="text" placeholder="dd/mm/yyyy"></div>
+                  <div class="fg"><label class="flbl" style="display:flex;align-items:center;justify-content:space-between">กำหนดส่ง<label style="font-weight:400;font-size:12px;color:var(--gray3);cursor:pointer;display:flex;align-items:center;gap:4px"><input type="checkbox" id="task_due_new_none" onchange="toggleDueDate('task_due_new','task_due_new_none')"> ไม่ระบุ</label></label><input class="finput datepickr" id="task_due_new" type="text" placeholder="dd/mm/yyyy"></div>
                 </div>
               </div>
               <div>
@@ -4698,7 +4702,10 @@ function renderCrmDashboard(tickets, stats) {
   // Update filter options (issue types, terms, plans)
   const issueTypes = [...new Set(tickets.map(t => t.issueType).filter(Boolean))].sort();
   const terms = [...new Set(tickets.map(t => t.term).filter(Boolean))].sort();
-  const plans = [...new Set(tickets.map(t => t.plan).filter(Boolean))].sort();
+  // รวม plan จาก ticket data + settings.plans เพื่อให้มีตัวเลือกครบแม้ไม่มีข้อมูล
+  const settingsPlans = (typeof settings !== 'undefined' && settings && settings.plans) ? settings.plans : ['แผน ก.1','แผน ก.2','แผน ก.3'];
+  const planFromTickets = tickets.map(t => t.plan).filter(Boolean);
+  const plans = [...new Set([...settingsPlans, ...planFromTickets])].sort();
 
   const issueSelect = document.getElementById('crmd_issuetype');
   const currentIssue = issueSelect.value;
@@ -7084,6 +7091,44 @@ function renderTaskList(tasks) {
   }).join('');
 }
 
+// แสดง/ซ่อน text input เมื่อเลือก "อื่นๆ (ระบุเอง)"
+function onTaskTypeChange(selectId, customId) {
+  var sel = document.getElementById(selectId);
+  var inp = document.getElementById(customId);
+  if (!sel || !inp) return;
+  inp.style.display = sel.value === '__custom__' ? 'block' : 'none';
+  if (sel.value === '__custom__') inp.focus();
+}
+
+// คืนค่าประเภทงานจริง (ถ้าเลือก custom ให้ใช้จาก text input)
+function getTaskTypeValue(selectId, customId) {
+  var sel = document.getElementById(selectId);
+  if (!sel) return '';
+  if (sel.value === '__custom__') {
+    var inp = document.getElementById(customId);
+    return inp ? inp.value.trim() : '';
+  }
+  return sel.value;
+}
+
+// toggle กำหนดส่ง ไม่ระบุ
+function toggleDueDate(inputId, checkboxId) {
+  var inp = document.getElementById(inputId);
+  var chk = document.getElementById(checkboxId);
+  if (!inp || !chk) return;
+  if (chk.checked) {
+    inp.dataset.prevVal = inp.value;
+    if (inp._flatpickr) inp._flatpickr.clear();
+    else inp.value = '';
+    inp.disabled = true;
+    inp.style.opacity = '0.4';
+  } else {
+    inp.disabled = false;
+    inp.style.opacity = '1';
+    if (inp.dataset.prevVal && inp._flatpickr) inp._flatpickr.setDate(inp.dataset.prevVal, false, 'd/m/Y');
+  }
+}
+
 function openAddTaskForm() {
   var form = document.getElementById('addTaskForm');
   if(form) {
@@ -7096,8 +7141,8 @@ function submitAddTask() {
   var title    = document.getElementById('task_title')?.value.trim();
   var assignee = document.getElementById('task_assignee')?.value;
   var detail   = document.getElementById('task_detail')?.value.trim();
-  var dueDate  = document.getElementById('task_due')?.value;
-  var taskType = document.getElementById('task_type')?.value;
+  var dueDate  = document.getElementById('task_due_none')?.checked ? '' : document.getElementById('task_due')?.value;
+  var taskType = getTaskTypeValue('task_type','task_type_custom');
   var fileUrl  = document.getElementById('task_file_url')?.value.trim();
   var needApproval = document.getElementById('task_need_approval')?.checked||false;
   if(!title){showToast('กรุณากรอกหัวข้องาน','error');return;}
@@ -7193,8 +7238,8 @@ function submitNewTask() {
   var title    = document.getElementById('task_title_new')?.value.trim();
   var assignee = document.getElementById('task_assignee_new')?.value;
   var detail   = document.getElementById('task_detail_new')?.value.trim();
-  var dueDate  = document.getElementById('task_due_new')?.value;
-  var taskType = document.getElementById('task_type_new')?.value;
+  var dueDate  = document.getElementById('task_due_new_none')?.checked ? '' : document.getElementById('task_due_new')?.value;
+  var taskType = getTaskTypeValue('task_type_new','task_type_new_custom');
 
   if(!title){showToast('กรุณากรอกหัวข้องาน','error');return;}
   if(!assignee){showToast('กรุณาเลือกผู้รับผิดชอบ','error');return;}
