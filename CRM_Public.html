@@ -755,6 +755,14 @@ function loadIssueTypes() {
         issues.map(t => '<option>' + t + '</option>').join('') +
         '<option value="อื่นๆ">อื่นๆ (ระบุเอง)</option>';
       issueSelect.value = currentVal;
+
+      const planSelect = document.getElementById('f_plan');
+      if (planSelect && settings && settings.plans && settings.plans.length) {
+        const currentPlanVal = planSelect.value;
+        planSelect.innerHTML = '<option value="">— เลือกแผน —</option>' +
+          settings.plans.map(p => '<option>' + p + '</option>').join('');
+        planSelect.value = currentPlanVal;
+      }
     })
     .getSettings();
 }
