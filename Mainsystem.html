@@ -514,6 +514,7 @@ tbody td{padding:12px;vertical-align:middle}
       </button>
       <button class="nav-btn nav-superadmin" onclick="go('admin-report',this)" data-page="admin-report"><span class="ic">📊</span>สรุปงานเจ้าหน้าที่</button>
       <button class="nav-btn" onclick="go('stats',this)" data-page="stats"><span class="ic">📈</span>สถิติของฉัน</button>
+      <button class="nav-btn nav-superadmin" onclick="go('task-assign',this)" data-page="task-assign"><span class="ic">✏️</span>มอบหมายงานใหม่</button>
       <button class="nav-btn" onclick="go('tasks',this)" data-page="tasks">
         <span class="ic">✅</span>งานที่ได้รับ
         <span id="taskBadge" style="display:none;background:var(--red);color:#fff;border-radius:12px;font-size:10px;padding:1px 6px;margin-left:4px"></span>
@@ -1732,7 +1733,6 @@ tbody td{padding:12px;vertical-align:middle}
             <div class="sub">ติดตามงานที่ได้รับ และอนุมัติก่อนโพส/ส่ง</div>
           </div>
           <div style="display:flex;gap:8px" id="taskActionBtns">
-            <button class="btn btn-primary btn-sm nav-superadmin" onclick="openAddTaskForm()">➕ มอบหมายงาน</button>
           </div>
         </div>
 
@@ -1808,6 +1808,71 @@ tbody td{padding:12px;vertical-align:middle}
         <!-- รายการงาน -->
         <div id="taskList" style="display:grid;gap:12px">
           <div style="text-align:center;padding:40px;color:var(--gray3)">⏳ กำลังโหลด...</div>
+        </div>
+      </div>
+
+      <!-- ===== TASK ASSIGN (SUPER ADMIN ONLY) ===== -->
+      <div id="page-task-assign" class="page">
+        <div class="sec-head">
+          <div>
+            <h2>✏️ มอบหมายงานใหม่</h2>
+            <div class="sub">สร้างและมอบหมายงานให้เจ้าหน้าที่ (Super Admin เท่านั้น)</div>
+          </div>
+        </div>
+
+        <!-- ฟอร์มมอบหมายงาน -->
+        <div id="assignTaskFormPage" style="margin-bottom:16px">
+          <div class="card">
+            <div class="card-title">➕ มอบหมายงานใหม่</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+              <div>
+                <div class="form-grid g2">
+                  <div class="fg full"><label class="flbl">หัวข้องาน<span class="req">*</span></label><input class="finput" id="task_title_new" placeholder="เช่น โพสภาพ Facebook, แจ้งไปรษณีย์ไทย"></div>
+                  <div class="fg"><label class="flbl">ประเภทงาน</label>
+                    <select class="fsel" id="task_type_new">
+                      <option value="">-- เลือก --</option>
+                      <option value="โพสสื่อสาร">โพสสื่อสาร</option>
+                      <option value="สำนักพิมพ์">สำนักพิมพ์</option>
+                      <option value="ประสานงาน">ประสานงาน</option>
+                    </select>
+                  </div>
+                  <div class="fg"><label class="flbl">มอบหมายให้</label>
+                    <select class="fsel" id="task_assignee_new">
+                      <option value="">-- เลือก --</option>
+                    </select>
+                  </div>
+                  <div class="fg"><label class="flbl">กำหนดส่ง</label><input class="finput" id="task_due_new" type="date"></div>
+                </div>
+              </div>
+              <div>
+                <label class="flbl" style="display:block;margin-bottom:6px">รายละเอียดงาน</label>
+                <textarea class="ftextarea" id="task_detail_new" placeholder="อธิบายงานโดยละเอียด..." style="min-height:150px"></textarea>
+              </div>
+            </div>
+            <div style="display:flex;gap:8px;margin-top:14px">
+              <button class="btn btn-primary btn-sm" onclick="submitNewTask()">💾 มอบหมาย</button>
+              <button class="btn btn-outline btn-sm" onclick="clearNewTaskForm()">ล้าง</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- รายการงานที่มอบหมาย -->
+        <div class="card">
+          <div class="card-title">📋 งานที่มอบหมายไป</div>
+          <div style="overflow-x:auto">
+            <table style="width:100%;border-collapse:collapse;font-size:13px">
+              <thead style="background:var(--gray1)">
+                <tr>
+                  <th style="padding:10px;text-align:left">หัวข้องาน</th>
+                  <th style="padding:10px;text-align:left">ผู้รับ</th>
+                  <th style="padding:10px;text-align:left">ประเภท</th>
+                  <th style="padding:10px;text-align:left">กำหนดส่ง</th>
+                  <th style="padding:10px;text-align:center">สถานะ</th>
+                </tr>
+              </thead>
+              <tbody id="assignedTasksList" style="color:var(--gray3);text-align:center"><tr><td colspan="5" style="padding:20px">ไม่มีงาน</td></tr></tbody>
+            </table>
+          </div>
         </div>
       </div>
 
@@ -2952,6 +3017,8 @@ const pageTitles={
   'crm-dashboard':'📊 <span>Dashboard</span>แจ้งปัญหา CRM',
   tags:'🏷️ <span>จัดการ</span>Tag',
   users:'👥 <span>จัดการ</span>ผู้ใช้งาน',
+  'task-assign':'✏️ <span>มอบหมาย</span>งานใหม่',
+  tasks:'✅ <span>งาน</span>ที่ได้รับ',
   'ext-staff':'🏢 <span>เจ้าหน้าที่</span>ภายนอก',
 };
 function go(id,btn) {
@@ -2970,6 +3037,7 @@ function go(id,btn) {
   if(id==='audit') loadAuditLog();
   if(id==='settings') { loadSettings_page(); setTimeout(initBarcodeFields, 500); }
   if(id==='stats') loadPersonalStats();
+  if(id==='task-assign') showAssignTaskForm();
   if(id==='tasks') loadTasks();
   if(id==='crm')       loadCrm();
   if(id==='crm-list')  loadCrm();
@@ -6843,6 +6911,84 @@ function approveTask(taskId, approve) {
     })
     .withFailureHandler(showError)
     .updateTask(taskId, {approve:approve});
+}
+
+// TASK ASSIGNMENT (NEW MENU - SUPER ADMIN ONLY)
+function showAssignTaskForm() {
+  // Load assignees and populate dropdown
+  var assigneeSelect = document.getElementById('task_assignee_new');
+  if(assigneeSelect && assigneeSelect.options.length <= 1) {
+    var DEFAULT_ASSIGNEES=['หทัย เริงเกษตรกิจ','วรรณี รัตนากร','สุพรรษา ช่อปทุมมา','เมธิตา สาไพรวัน'];
+    var alist=(settings.assignees&&settings.assignees.length)?settings.assignees:DEFAULT_ASSIGNEES;
+    assigneeSelect.innerHTML='<option value="">-- เลือก --</option>'+alist.map(function(a){return '<option>'+a+'</option>';}).join('');
+  }
+  // Load and display assigned tasks
+  loadAssignedTasksList();
+}
+
+function loadAssignedTasksList() {
+  document.getElementById('assignedTasksList').innerHTML='<tr><td colspan="5" style="padding:20px;text-align:center;color:var(--gray3)">⏳ กำลังโหลด...</td></tr>';
+  google.script.run
+    .withSuccessHandler(function(tasks){
+      if(!tasks||tasks.error){
+        document.getElementById('assignedTasksList').innerHTML='<tr><td colspan="5" style="padding:20px;text-align:center;color:var(--red)">❌ เกิดข้อผิดพลาด</td></tr>';
+        return;
+      }
+      renderAssignedTasksTable(tasks);
+    })
+    .withFailureHandler(function(err){
+      document.getElementById('assignedTasksList').innerHTML='<tr><td colspan="5" style="padding:20px;text-align:center;color:var(--red)">❌ '+err+'</td></tr>';
+    })
+    .getTasks({});
+}
+
+function renderAssignedTasksTable(tasks) {
+  var tbody = document.getElementById('assignedTasksList');
+  if(!tasks||!tasks.length){
+    tbody.innerHTML='<tr><td colspan="5" style="padding:20px;text-align:center;color:var(--gray3)">ไม่มีงาน</td></tr>';
+    return;
+  }
+  var statusColor = {'รอดำเนินการ':'#e57c00','กำลังดำเนินการ':'#185FA5','รออนุมัติ':'#856404','อนุมัติแล้ว — พร้อมโพส':'#16a34a','เสร็จสิ้น':'#5F5E5A','ไม่อนุมัติ':'#a32d2d'};
+  tbody.innerHTML = tasks.map(function(t){
+    var color = statusColor[t.status]||'#5F5E5A';
+    return '<tr style="border-bottom:1px solid var(--gray1)">'
+      +'<td style="padding:12px">'+t.title+'</td>'
+      +'<td style="padding:12px">'+t.assignee+'</td>'
+      +'<td style="padding:12px">'+t.taskType+'</td>'
+      +'<td style="padding:12px">'+t.dueDate+'</td>'
+      +'<td style="padding:12px;text-align:center"><span style="background:'+color+';color:#fff;font-size:11px;padding:3px 8px;border-radius:12px;display:inline-block">'+t.status+'</span></td>'
+      +'</tr>';
+  }).join('');
+}
+
+function submitNewTask() {
+  var title    = document.getElementById('task_title_new')?.value.trim();
+  var assignee = document.getElementById('task_assignee_new')?.value;
+  var detail   = document.getElementById('task_detail_new')?.value.trim();
+  var dueDate  = document.getElementById('task_due_new')?.value;
+  var taskType = document.getElementById('task_type_new')?.value;
+
+  if(!title){showToast('กรุณากรอกหัวข้องาน','error');return;}
+  if(!assignee){showToast('กรุณาเลือกผู้รับผิดชอบ','error');return;}
+
+  showToast('⏳ กำลังบันทึก...','');
+  google.script.run
+    .withSuccessHandler(function(res){
+      if(res.success){
+        showToast('✅ มอบหมายงาน '+res.id+' แล้ว','success');
+        clearNewTaskForm();
+        loadAssignedTasksList();
+      } else showToast('❌ '+res.error,'error');
+    })
+    .withFailureHandler(showError)
+    .addTask({title:title,assignee:assignee,detail:detail,dueDate:dueDate,taskType:taskType||'ทั่วไป',fileUrl:''});
+}
+
+function clearNewTaskForm() {
+  ['task_title_new','task_type_new','task_assignee_new','task_due_new','task_detail_new'].forEach(function(id){
+    var el=document.getElementById(id);
+    if(el) el.value='';
+  });
 }
 
 
