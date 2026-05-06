@@ -7,6 +7,8 @@
 <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&family=Prompt:wght@500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -623,7 +625,7 @@ tbody td{padding:12px;vertical-align:middle}
                 <td><input class="finput" id="rt_c1_b3" placeholder="ชื่อ/เลขเล่ม 3" style="width:100%"></td>
                 <td><input class="finput" id="rt_c1_ex" placeholder="แบบฝึก/เพิ่มเติม" style="width:100%;font-size:11px"></td>
                 <td><input class="finput" id="rt_c1_track" placeholder="EY123456789TH" style="width:100%"></td>
-                <td><input class="finput" id="rt_c1_date" type="date" style="width:100%"></td>
+                <td><input class="finput datepickr" id="rt_c1_date" type="text" placeholder="dd/mm/yyyy" style="width:100%"></td>
               </tr>
               <tr>
                 <td><span class="course-num-badge" style="background:var(--gray3)">2</span></td>
@@ -633,7 +635,7 @@ tbody td{padding:12px;vertical-align:middle}
                 <td><input class="finput" id="rt_c2_b3" placeholder="ชื่อ/เลขเล่ม 3" style="width:100%"></td>
                 <td><input class="finput" id="rt_c2_ex" placeholder="แบบฝึก/เพิ่มเติม" style="width:100%;font-size:11px"></td>
                 <td><input class="finput" id="rt_c2_track" placeholder="EY123456789TH" style="width:100%"></td>
-                <td><input class="finput" id="rt_c2_date" type="date" style="width:100%"></td>
+                <td><input class="finput datepickr" id="rt_c2_date" type="text" placeholder="dd/mm/yyyy" style="width:100%"></td>
               </tr>
               <tr>
                 <td><span class="course-num-badge" style="background:var(--gray3)">3</span></td>
@@ -643,7 +645,7 @@ tbody td{padding:12px;vertical-align:middle}
                 <td><input class="finput" id="rt_c3_b3" placeholder="ชื่อ/เลขเล่ม 3" style="width:100%"></td>
                 <td><input class="finput" id="rt_c3_ex" placeholder="แบบฝึก/เพิ่มเติม" style="width:100%;font-size:11px"></td>
                 <td><input class="finput" id="rt_c3_track" placeholder="EY123456789TH" style="width:100%"></td>
-                <td><input class="finput" id="rt_c3_date" type="date" style="width:100%"></td>
+                <td><input class="finput datepickr" id="rt_c3_date" type="text" placeholder="dd/mm/yyyy" style="width:100%"></td>
               </tr>
             </tbody>
           </table>
@@ -751,7 +753,7 @@ tbody td{padding:12px;vertical-align:middle}
                 <td><input class="finput" id="ld_c1_b3" placeholder="ชื่อ/เลขเล่ม 3" style="width:100%"></td>
                 <td><input class="finput" id="ld_c1_ex" placeholder="แบบฝึก/เพิ่มเติม" style="width:100%;font-size:11px"></td>
                 <td><input class="finput" id="ld_c1_track" placeholder="EY123456789TH" style="width:100%"></td>
-                <td><input class="finput" id="ld_c1_date" type="date" style="width:100%"></td>
+                <td><input class="finput datepickr" id="ld_c1_date" type="text" placeholder="dd/mm/yyyy" style="width:100%"></td>
               </tr>
               <tr>
                 <td><span class="course-num-badge" style="background:var(--gray3)">2</span></td>
@@ -761,7 +763,7 @@ tbody td{padding:12px;vertical-align:middle}
                 <td><input class="finput" id="ld_c2_b3" placeholder="ชื่อ/เลขเล่ม 3" style="width:100%"></td>
                 <td><input class="finput" id="ld_c2_ex" placeholder="แบบฝึก/เพิ่มเติม" style="width:100%;font-size:11px"></td>
                 <td><input class="finput" id="ld_c2_track" placeholder="EY123456789TH" style="width:100%"></td>
-                <td><input class="finput" id="ld_c2_date" type="date" style="width:100%"></td>
+                <td><input class="finput datepickr" id="ld_c2_date" type="text" placeholder="dd/mm/yyyy" style="width:100%"></td>
               </tr>
               <tr>
                 <td><span class="course-num-badge" style="background:var(--gray3)">3</span></td>
@@ -771,7 +773,7 @@ tbody td{padding:12px;vertical-align:middle}
                 <td><input class="finput" id="ld_c3_b3" placeholder="ชื่อ/เลขเล่ม 3" style="width:100%"></td>
                 <td><input class="finput" id="ld_c3_ex" placeholder="แบบฝึก/เพิ่มเติม" style="width:100%;font-size:11px"></td>
                 <td><input class="finput" id="ld_c3_track" placeholder="EY123456789TH" style="width:100%"></td>
-                <td><input class="finput" id="ld_c3_date" type="date" style="width:100%"></td>
+                <td><input class="finput datepickr" id="ld_c3_date" type="text" placeholder="dd/mm/yyyy" style="width:100%"></td>
               </tr>
             </tbody>
           </table>
@@ -882,7 +884,7 @@ tbody td{padding:12px;vertical-align:middle}
                 <td><input class="finput" id="sp_c1_b3" placeholder="ชื่อ/เลขเล่ม 3" style="width:100%"></td>
                 <td><input class="finput" id="sp_c1_ex" placeholder="แบบฝึก/เพิ่มเติม" style="width:100%;font-size:11px"></td>
                 <td><input class="finput" id="sp_c1_track" placeholder="EY123456789TH" style="width:100%"></td>
-                <td><input class="finput" id="sp_c1_date" type="date" style="width:100%"></td>
+                <td><input class="finput datepickr" id="sp_c1_date" type="text" placeholder="dd/mm/yyyy" style="width:100%"></td>
               </tr>
               <tr>
                 <td><span class="course-num-badge" style="background:var(--gray3)">2</span></td>
@@ -892,7 +894,7 @@ tbody td{padding:12px;vertical-align:middle}
                 <td><input class="finput" id="sp_c2_b3" placeholder="ชื่อ/เลขเล่ม 3" style="width:100%"></td>
                 <td><input class="finput" id="sp_c2_ex" placeholder="แบบฝึก/เพิ่มเติม" style="width:100%;font-size:11px"></td>
                 <td><input class="finput" id="sp_c2_track" placeholder="EY123456789TH" style="width:100%"></td>
-                <td><input class="finput" id="sp_c2_date" type="date" style="width:100%"></td>
+                <td><input class="finput datepickr" id="sp_c2_date" type="text" placeholder="dd/mm/yyyy" style="width:100%"></td>
               </tr>
               <tr>
                 <td><span class="course-num-badge" style="background:var(--gray3)">3</span></td>
@@ -902,7 +904,7 @@ tbody td{padding:12px;vertical-align:middle}
                 <td><input class="finput" id="sp_c3_b3" placeholder="ชื่อ/เลขเล่ม 3" style="width:100%"></td>
                 <td><input class="finput" id="sp_c3_ex" placeholder="แบบฝึก/เพิ่มเติม" style="width:100%;font-size:11px"></td>
                 <td><input class="finput" id="sp_c3_track" placeholder="EY123456789TH" style="width:100%"></td>
-                <td><input class="finput" id="sp_c3_date" type="date" style="width:100%"></td>
+                <td><input class="finput datepickr" id="sp_c3_date" type="text" placeholder="dd/mm/yyyy" style="width:100%"></td>
               </tr>
             </tbody>
           </table>
@@ -1114,7 +1116,7 @@ tbody td{padding:12px;vertical-align:middle}
     </div>
     <div class="fg">
       <label class="flbl">วันที่ส่ง (ครั้งแรกที่มีปัญหา)</label>
-      <input class="finput" id="iup_sent_date" type="date">
+      <input class="finput datepickr" id="iup_sent_date" type="text" placeholder="dd/mm/yyyy">
     </div>
     <div class="fg">
       <label class="flbl">ประเภทพัสดุ</label>
@@ -1140,7 +1142,7 @@ tbody td{padding:12px;vertical-align:middle}
       <div class="form-grid g2">
         <div class="fg">
           <label class="flbl">วันที่แจ้งไปรษณีย์</label>
-          <input class="finput" id="iup_notify_date" type="date" onchange="calcInvestDays()">
+          <input class="finput datepickr" id="iup_notify_date" type="text" placeholder="dd/mm/yyyy" onchange="calcInvestDays()">
         </div>
         <div class="fg">
           <label class="flbl">อีเมลที่แจ้ง</label>
@@ -1152,7 +1154,7 @@ tbody td{padding:12px;vertical-align:middle}
         </div>
         <div class="fg">
           <label class="flbl">วันที่ได้รับผลตอบ</label>
-          <input class="finput" id="iup_reply_date" type="date" onchange="calcInvestDays()">
+          <input class="finput datepickr" id="iup_reply_date" type="text" placeholder="dd/mm/yyyy" onchange="calcInvestDays()">
         </div>
         <div class="fg">
           <label class="flbl">จำนวนวันตอบ</label>
@@ -1785,7 +1787,7 @@ tbody td{padding:12px;vertical-align:middle}
                       <option value="">-- เลือก --</option>
                     </select>
                   </div>
-                  <div class="fg"><label class="flbl">กำหนดส่ง</label><input class="finput" id="task_due" type="date"></div>
+                  <div class="fg"><label class="flbl">กำหนดส่ง</label><input class="finput datepickr" id="task_due" type="text" placeholder="dd/mm/yyyy"></div>
                 </div>
                 <div class="fg" style="margin-top:10px">
                   <label class="flbl">รายละเอียด</label>
@@ -1849,7 +1851,7 @@ tbody td{padding:12px;vertical-align:middle}
                       <option value="">-- เลือก --</option>
                     </select>
                   </div>
-                  <div class="fg"><label class="flbl">กำหนดส่ง</label><input class="finput" id="task_due_new" type="date"></div>
+                  <div class="fg"><label class="flbl">กำหนดส่ง</label><input class="finput datepickr" id="task_due_new" type="text" placeholder="dd/mm/yyyy"></div>
                 </div>
               </div>
               <div>
@@ -2521,6 +2523,9 @@ window.onload = function() {
 
   // เริ่มโหลดข้อมูลที่อยู่ไทย + attach autocomplete
   try { initThaiAddressAutocomplete(); } catch(e) { console.warn('ThaiAddress init:', e); }
+
+  // เริ่มต้น date pickers (dd/mm/yyyy)
+  try { initDatePickers(); } catch(e) { console.warn('DatePicker init:', e); }
 
   // ลอง checkSession — ถ้า timeout 5 วิ ให้แสดง login เลย
   let sessionChecked = false;
@@ -5403,8 +5408,8 @@ function calcPostDays() {
   const daysEl    = document.getElementById('ld_reply_days');
   if (!daysEl) return;
   if (postDate && replyDate) {
-    const d1 = new Date(postDate);
-    const d2 = new Date(replyDate);
+    const d1 = parseDdMmYyyy(postDate) || new Date(postDate);
+    const d2 = parseDdMmYyyy(replyDate) || new Date(replyDate);
     const diff = Math.round((d2 - d1) / (1000*60*60*24));
     daysEl.value = diff >= 0 ? diff : '—';
   } else {
@@ -5630,30 +5635,47 @@ function openInvestUpdate(r) {
   _investPendingUploads = [];
   
   document.getElementById('investUpdateModal').classList.remove('hidden');
+  setTimeout(initDatePickers, 50);
 }
 
-// แปลงค่าวันที่ → รูปแบบ yyyy-MM-dd สำหรับ <input type="date">
+// แปลงค่าวันที่ → รูปแบบ dd/mm/yyyy สำหรับ flatpickr text input
 function toDateInput(v) {
   if (!v) return '';
   var s = String(v).trim();
-  // รูปแบบ dd/MM/yyyy HH:mm
+  // รูปแบบ dd/MM/yyyy หรือ dd/MM/yyyy HH:mm อยู่แล้ว
   var m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
-  if (m) {
-    var dd = m[1].padStart(2,'0');
-    var mm = m[2].padStart(2,'0');
-    return m[3]+'-'+mm+'-'+dd;
-  }
-  // ลอง parse เป็น Date
+  if (m) return m[1].padStart(2,'0')+'/'+m[2].padStart(2,'0')+'/'+m[3];
+  // รูปแบบ yyyy-MM-dd (ISO)
+  var iso = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (iso) return iso[3]+'/'+iso[2]+'/'+iso[1];
+  // ลอง parse เป็น Date object
   try {
     var d = new Date(s);
     if (!isNaN(d.getTime())) {
-      var y = d.getFullYear();
-      var mn = String(d.getMonth()+1).padStart(2,'0');
-      var dy = String(d.getDate()).padStart(2,'0');
-      return y+'-'+mn+'-'+dy;
+      return String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')+'/'+d.getFullYear();
     }
   } catch(e) {}
   return '';
+}
+
+// แปลง dd/mm/yyyy → Date object (สำหรับคำนวณวัน)
+function parseDdMmYyyy(s) {
+  if (!s) return null;
+  var m = String(s).trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if (!m) return null;
+  return new Date(parseInt(m[3]), parseInt(m[2])-1, parseInt(m[1]));
+}
+
+// เริ่มต้น flatpickr บน .datepickr ทุกอัน
+function initDatePickers() {
+  document.querySelectorAll('.datepickr').forEach(function(el) {
+    if (el._flatpickr) return;
+    flatpickr(el, {
+      dateFormat: 'd/m/Y',
+      allowInput: true,
+      locale: { firstDayOfWeek: 1 }
+    });
+  });
 }
 
 function renderExistingInvestFiles(resultDetail) {
@@ -5743,7 +5765,9 @@ function calcInvestDays() {
   const d1 = document.getElementById('iup_notify_date').value;
   const d2 = document.getElementById('iup_reply_date').value;
   if (d1 && d2) {
-    const diff = Math.round((new Date(d2)-new Date(d1))/(1000*60*60*24));
+    const date1 = parseDdMmYyyy(d1) || new Date(d1);
+    const date2 = parseDdMmYyyy(d2) || new Date(d2);
+    const diff = Math.round((date2 - date1)/(1000*60*60*24));
     document.getElementById('iup_reply_days').value = diff>=0?diff:'';
   }
 }
@@ -6936,6 +6960,7 @@ function openTaskUpdate(taskId) {
   document.getElementById('tup_file').value   = t.fileUrl||'';
   document.getElementById('tup_approve_wrap').style.display = (t.needApprove&&currentRole==='superadmin') ? 'block':'none';
   document.getElementById('taskUpdateModal').classList.remove('hidden');
+  setTimeout(initDatePickers, 50);
 }
 
 function submitTaskUpdate() {
@@ -7061,7 +7086,10 @@ function renderTaskList(tasks) {
 
 function openAddTaskForm() {
   var form = document.getElementById('addTaskForm');
-  if(form) form.style.display = form.style.display==='none'?'block':'none';
+  if(form) {
+    form.style.display = form.style.display==='none'?'block':'none';
+    if(form.style.display==='block') setTimeout(initDatePickers, 50);
+  }
 }
 
 function submitAddTask() {
