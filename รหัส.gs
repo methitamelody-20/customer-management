@@ -3104,6 +3104,7 @@ function registerExternalStaff(data) {
     const sh = _getExtSheet();
     const email = (data.email||'').toLowerCase().trim();
     if (!email || !data.name) return { success:false, error:'กรุณากรอกชื่อและอีเมล' };
+    if (!data.password || data.password.length < 8) return { success:false, error:'รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร' };
     // ตรวจซ้ำ
     const rows = sh.getDataRange().getValues();
     for (let i = 1; i < rows.length; i++) {
@@ -3111,7 +3112,9 @@ function registerExternalStaff(data) {
         return { success:false, error:'อีเมลนี้ลงทะเบียนไว้แล้ว' };
       }
     }
-    sh.appendRow([email, data.name||'', data.org||'', data.phone||'', 'pending', '', '', new Date(), '', '']);
+    // Hash the password and store it during registration
+    const hashedPassword = hashPw(data.password);
+    sh.appendRow([email, data.name||'', data.org||'', data.phone||'', 'pending', hashedPassword, '', new Date(), '', '']);
     // แจ้ง admin ทาง email (ถ้ามี admin email ใน settings)
     try {
       const settings = getSettings();
@@ -3119,7 +3122,7 @@ function registerExternalStaff(data) {
       if (adminEmail) {
         GmailApp.sendEmail(adminEmail,
           '[มสธ.] คำขอลงทะเบียนเจ้าหน้าที่ภายนอก: ' + data.name,
-          'มีคำขอลงทะเบียนใหม่จาก:\nชื่อ: ' + data.name + '\nอีเมล: ' + email + '\nหน่วยงาน: ' + (data.org||'-') + '\n\nกรุณาเข้าระบบเพื่ออนุมัติ');
+          'มีคำขอลงทะเบียนใหม่จาก:\nชื่อ: ' + data.name + '\nอีเมล: ' + email + '\nหน่วยงาน: ' + (data.org||'-') + '\nเบอร์โทร: ' + (data.phone||'-') + '\n\nกรุณาเข้าระบบเพื่ออนุมัติการลงทะเบียน');
       }
     } catch(e2) {}
     return { success:true };
@@ -3134,23 +3137,19 @@ function approveExternalStaff(email) {
     for (let i = 1; i < rows.length; i++) {
       if ((rows[i][0]||'').toLowerCase().trim() === email.toLowerCase().trim()) {
         if (rows[i][4] === 'active') return { success:false, error:'อนุมัติไปแล้ว' };
-        // สร้าง token สำหรับตั้งรหัสผ่าน
-        const token = Utilities.getUuid();
         const sess = _sess();
-        sh.getRange(i+1, 5).setValue('approved');
-        sh.getRange(i+1, 7).setValue(token);
+        // Password is already set during registration, so just activate the account
+        sh.getRange(i+1, 5).setValue('active');
         sh.getRange(i+1, 9).setValue(new Date());
         sh.getRange(i+1, 10).setValue(sess.name||sess.email||'admin');
-        // ส่งลิงก์ตั้งรหัสผ่าน
-        const scriptUrl = ScriptApp.getService().getUrl();
-        const setpwUrl = scriptUrl + '?page=ext_staff&token=' + token + '&email=' + encodeURIComponent(email);
+        // Send approval notification email
         try {
           GmailApp.sendEmail(email,
-            '[มสธ.] อนุมัติการลงทะเบียนแล้ว — กรุณาตั้งรหัสผ่าน',
-            'ท่านได้รับการอนุมัติให้เข้าใช้ระบบ Dashboard เจ้าหน้าที่ภายนอก มสธ.\n\nกรุณาคลิกลิงก์ด้านล่างเพื่อตั้งรหัสผ่าน (ลิงก์ใช้ได้ 24 ชม.):\n\n' + setpwUrl + '\n\nหากท่านไม่ได้ลงทะเบียน กรุณาเพิกเฉยต่ออีเมลนี้');
+            '[มสธ.] ✅ อนุมัติการลงทะเบียนแล้ว',
+            'ท่านได้รับการอนุมัติให้เข้าใช้ระบบ Dashboard เจ้าหน้าที่ภายนอก มสธ.\n\nท่านสามารถเข้าสู่ระบบได้ทันที โดยใช้อีเมลและรหัสผ่านที่ท่านตั้งไว้ตอนลงทะเบียน\n\nสนใจติดต่อระบบ:\nขอแสดงความนับถือ\nผู้ดูแลระบบ มสธ.');
         } catch(e2) {}
         logAudit('อนุมัติเจ้าหน้าที่ภายนอก', email);
-        return { success:true, token:token };
+        return { success:true };
       }
     }
     return { success:false, error:'ไม่พบอีเมลนี้' };
