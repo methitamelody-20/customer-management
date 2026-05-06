@@ -6,6 +6,7 @@
 <title>ระบบจัดการและติดตามเอกสารการสอน มสธ.</title>
 <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&family=Prompt:wght@500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -493,6 +494,9 @@ tbody td{padding:12px;vertical-align:middle}
       <button class="nav-btn" onclick="go('crm-list',this)" data-page="crm-list">
         <span class="ic">💬</span>รายการรวมแจ้งปัญหา CRM
         <span class="cnt red" id="crmBadge2" style="display:none">0</span>
+      </button>
+      <button class="nav-btn" onclick="go('crm-dashboard',this)" data-page="crm-dashboard">
+        <span class="ic">📊</span>Dashboard CRM
       </button>
       <button class="nav-btn" onclick="showExtDashLink()" style="color:var(--sky);font-size:11px;padding:6px 10px">
         <span class="ic">🔗</span>ลิ้งค์ Dashboard ภายนอก
@@ -1306,6 +1310,7 @@ tbody td{padding:12px;vertical-align:middle}
           <div><h2>บันทึกข้อมูลรับแจ้งปัญหา CRM</h2><div class="sub">กรอกข้อมูลจาก นศ./หน่วยงาน</div></div>
           <div style="display:flex;gap:8px;flex-wrap:wrap">
             <button class="btn btn-outline btn-sm" onclick="showCrmPublicLink()">🔗 ลิ้งค์แจ้งปัญหาสำหรับภายนอก</button>
+            <button class="btn btn-outline btn-sm" onclick="downloadCrmTemplate()">📥 ดาวน์โหลดเทมเพลต</button>
             <button class="btn btn-primary btn-sm" onclick="openCrmImportModal()">📥 นำเข้า Excel</button>
           </div>
         </div>
@@ -1483,6 +1488,109 @@ tbody td{padding:12px;vertical-align:middle}
         </div>
         <div class="crm-list" id="crmList">
           <div style="text-align:center;padding:30px;color:var(--gray3)">กำลังโหลด...</div>
+        </div>
+      </div>
+
+      <!-- ===== CRM DASHBOARD ===== -->
+      <div id="page-crm-dashboard" class="page">
+        <div class="sec-head">
+          <div><h2>📊 Dashboard แจ้งปัญหา CRM</h2><div class="sub">วิเคราะห์ปัญหาและติดตามสถานะ</div></div>
+          <button class="btn btn-outline btn-sm" onclick="loadCrmDashboard()">🔄 รีเฟรช</button>
+        </div>
+
+        <!-- Filter Bar -->
+        <div class="card" style="background:var(--light);padding:16px;margin-bottom:14px">
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;align-items:end">
+            <div>
+              <label class="flbl" style="display:block;margin-bottom:4px;font-size:12px">ช่องทางติดต่อ</label>
+              <select class="fsel" id="crmd_channel" style="font-size:13px" onchange="loadCrmDashboard()">
+                <option value="">ทั้งหมด</option>
+                <option value="online">ออนไลน์</option>
+                <option value="phone">โทรศัพท์</option>
+                <option value="line">LINE</option>
+                <option value="letter">จดหมาย</option>
+                <option value="walkin">มาด้วยตนเอง</option>
+              </select>
+            </div>
+            <div>
+              <label class="flbl" style="display:block;margin-bottom:4px;font-size:12px">ประเภทปัญหา</label>
+              <select class="fsel" id="crmd_issuetype" style="font-size:13px" onchange="loadCrmDashboard()">
+                <option value="">ทั้งหมด</option>
+              </select>
+            </div>
+            <div>
+              <label class="flbl" style="display:block;margin-bottom:4px;font-size:12px">ภาคการศึกษา</label>
+              <select class="fsel" id="crmd_term" style="font-size:13px" onchange="loadCrmDashboard()">
+                <option value="">ทั้งหมด</option>
+              </select>
+            </div>
+            <div>
+              <label class="flbl" style="display:block;margin-bottom:4px;font-size:12px">ชุดวิชา</label>
+              <input class="finput" id="crmd_course" placeholder="รหัสชุดวิชา" style="font-size:13px" onchange="loadCrmDashboard()">
+            </div>
+            <div>
+              <label class="flbl" style="display:block;margin-bottom:4px;font-size:12px">ลำดับความสำคัญ</label>
+              <select class="fsel" id="crmd_priority" style="font-size:13px" onchange="loadCrmDashboard()">
+                <option value="">ทั้งหมด</option>
+                <option value="normal">ปกติ</option>
+                <option value="high">สูง</option>
+                <option value="urgent">เร่งด่วน</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Stats Cards -->
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:14px">
+          <div class="card" style="text-align:center;padding:16px">
+            <div style="font-size:28px;font-weight:700;color:var(--blue)" id="crmd_total">0</div>
+            <div style="font-size:12px;color:var(--gray3);margin-top:4px">เรื่องทั้งหมด</div>
+          </div>
+          <div class="card" style="text-align:center;padding:16px">
+            <div style="font-size:28px;font-weight:700;color:var(--red)" id="crmd_open">0</div>
+            <div style="font-size:12px;color:var(--gray3);margin-top:4px">รอรับเรื่อง</div>
+          </div>
+          <div class="card" style="text-align:center;padding:16px">
+            <div style="font-size:28px;font-weight:700;color:var(--orange)" id="crmd_inprogress">0</div>
+            <div style="font-size:12px;color:var(--gray3);margin-top:4px">กำลังดำเนินการ</div>
+          </div>
+          <div class="card" style="text-align:center;padding:16px">
+            <div style="font-size:28px;font-weight:700;color:var(--green)" id="crmd_resolved">0</div>
+            <div style="font-size:12px;color:var(--gray3);margin-top:4px">แก้ไขแล้ว</div>
+          </div>
+        </div>
+
+        <!-- Charts -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
+          <div class="card" style="padding:16px">
+            <div class="card-title" style="margin-bottom:12px">สถานะเรื่อง</div>
+            <canvas id="chartStatus" style="max-height:300px"></canvas>
+          </div>
+          <div class="card" style="padding:16px">
+            <div class="card-title" style="margin-bottom:12px">ประเภทปัญหา</div>
+            <canvas id="chartIssueType" style="max-height:300px"></canvas>
+          </div>
+          <div class="card" style="padding:16px">
+            <div class="card-title" style="margin-bottom:12px">ช่องทางติดต่อ</div>
+            <canvas id="chartChannel" style="max-height:300px"></canvas>
+          </div>
+          <div class="card" style="padding:16px">
+            <div class="card-title" style="margin-bottom:12px">ลำดับความสำคัญ</div>
+            <canvas id="chartPriority" style="max-height:300px"></canvas>
+          </div>
+        </div>
+
+        <!-- Top Issues -->
+        <div class="card" style="padding:16px">
+          <div class="card-title" style="margin-bottom:12px">ชุดวิชาที่มีปัญหามากที่สุด</div>
+          <div style="overflow-x:auto">
+            <table style="width:100%;border-collapse:collapse;font-size:13px">
+              <thead style="background:var(--gray1)">
+                <tr><th style="padding:8px;text-align:left">ชุดวิชา</th><th style="padding:8px;text-align:center">จำนวน</th></tr>
+              </thead>
+              <tbody id="crmTopCourses"></tbody>
+            </table>
+          </div>
         </div>
       </div>
 
@@ -2841,6 +2949,7 @@ const pageTitles={
   labels:'🖨️ <span>พิมพ์</span>ใบจ่าหน้า',
   crm:'📝 <span>บันทึกข้อมูล</span>รับแจ้งปัญหา CRM',
   'crm-list':'💬 <span>รายการรวม</span>แจ้งปัญหา CRM',
+  'crm-dashboard':'📊 <span>Dashboard</span>แจ้งปัญหา CRM',
   tags:'🏷️ <span>จัดการ</span>Tag',
   users:'👥 <span>จัดการ</span>ผู้ใช้งาน',
   'ext-staff':'🏢 <span>เจ้าหน้าที่</span>ภายนอก',
@@ -2864,6 +2973,7 @@ function go(id,btn) {
   if(id==='tasks') loadTasks();
   if(id==='crm')       loadCrm();
   if(id==='crm-list')  loadCrm();
+  if(id==='crm-dashboard') loadCrmDashboard();
   if(id==='users')     loadUsersTable();
   if(id==='ext-staff') loadExtStaff();
 }
@@ -4319,6 +4429,178 @@ function importCrmExcel() {
       showError(e);
     })
     .bulkImportCrmTickets(importData);
+}
+
+function downloadCrmTemplate() {
+  const headers = ['ชื่อ', 'อีเมล', 'เบอร์โทร', 'รหัสนักศึกษา', 'ประเภทปัญหา', 'รายละเอียด', 'ชุดวิชา', 'ภาค', 'ปี', 'ลำดับความสำคัญ'];
+  const example = [
+    ['สมชาย สมสีวงค์', 'somchai@mail.com', '0812345678', '123456', 'ไม่ได้รับเอกสาร', 'ไม่ได้รับหนังสือการศึกษา', '1100101', '1', '2567', 'normal'],
+    ['อนันท์ อนันต์สกุล', 'anan@mail.com', '0898765432', '654321', 'ชำรุด', 'เอกสารชำรุดจากการขนส่ง', '1100102,1100103', '2', '2567', 'high'],
+  ];
+
+  const ws = XLSX.utils.aoa_to_sheet([headers, ...example]);
+  ws['!cols'] = [
+    {wch: 20}, {wch: 20}, {wch: 15}, {wch: 15},
+    {wch: 20}, {wch: 30}, {wch: 15}, {wch: 8}, {wch: 8}, {wch: 12}
+  ];
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'CRM Template');
+  XLSX.writeFile(wb, 'CRM_Import_Template_' + new Date().toLocaleDateString('th-TH') + '.xlsx');
+  showToast('✅ ดาวน์โหลดเทมเพลตเสร็จสิ้น','success');
+}
+
+// ============================================================
+// CRM DASHBOARD
+// ============================================================
+var crmDashCharts = {};
+
+function loadCrmDashboard() {
+  const filters = {
+    channel: document.getElementById('crmd_channel').value,
+    issueType: document.getElementById('crmd_issuetype').value,
+    term: document.getElementById('crmd_term').value,
+    course: document.getElementById('crmd_course').value.trim(),
+    priority: document.getElementById('crmd_priority').value,
+  };
+
+  google.script.run
+    .withSuccessHandler(function(res) {
+      if (res.success) {
+        renderCrmDashboard(res.data, res.stats);
+      } else {
+        showToast('❌ ' + (res.error || 'เกิดข้อผิดพลาด'), 'error');
+      }
+    })
+    .withFailureHandler(showError)
+    .getCrmDashboardData(filters);
+}
+
+function renderCrmDashboard(tickets, stats) {
+  // Update stats
+  document.getElementById('crmd_total').textContent = stats.total;
+  document.getElementById('crmd_open').textContent = stats.open;
+  document.getElementById('crmd_inprogress').textContent = stats.inprogress;
+  document.getElementById('crmd_resolved').textContent = stats.resolved;
+
+  // Update filter options (issue types, terms)
+  const issueTypes = [...new Set(tickets.map(t => t.issueType).filter(Boolean))].sort();
+  const terms = [...new Set(tickets.map(t => t.term).filter(Boolean))].sort();
+
+  const issueSelect = document.getElementById('crmd_issuetype');
+  const currentIssue = issueSelect.value;
+  issueSelect.innerHTML = '<option value="">ทั้งหมด</option>' +
+    issueTypes.map(t => `<option value="${t}">${t}</option>`).join('');
+  issueSelect.value = currentIssue;
+
+  const termSelect = document.getElementById('crmd_term');
+  const currentTerm = termSelect.value;
+  termSelect.innerHTML = '<option value="">ทั้งหมด</option>' +
+    terms.map(t => `<option value="${t}">${t}</option>`).join('');
+  termSelect.value = currentTerm;
+
+  // Prepare chart data
+  const statusCount = {open:0, inprogress:0, resolved:0, closed:0};
+  const issueTypeCount = {};
+  const channelCount = {online:0, phone:0, line:0, letter:0, walkin:0};
+  const priorityCount = {normal:0, high:0, urgent:0};
+  const courseCount = {};
+
+  tickets.forEach(t => {
+    statusCount[t.status] = (statusCount[t.status] || 0) + 1;
+    issueTypeCount[t.issueType] = (issueTypeCount[t.issueType] || 0) + 1;
+    channelCount[t.channel] = (channelCount[t.channel] || 0) + 1;
+    priorityCount[t.priority] = (priorityCount[t.priority] || 0) + 1;
+    if (t.courses) {
+      t.courses.split(',').forEach(c => {
+        const code = c.trim();
+        if (code) courseCount[code] = (courseCount[code] || 0) + 1;
+      });
+    }
+  });
+
+  // Destroy old charts if exist
+  Object.values(crmDashCharts).forEach(chart => chart.destroy && chart.destroy());
+  crmDashCharts = {};
+
+  // Status Chart
+  const statusCtx = document.getElementById('chartStatus').getContext('2d');
+  crmDashCharts.status = new Chart(statusCtx, {
+    type: 'doughnut',
+    data: {
+      labels: ['รอรับเรื่อง', 'กำลังดำเนินการ', 'แก้ไขแล้ว', 'ปิดแล้ว'],
+      datasets: [{
+        data: [statusCount.open, statusCount.inprogress, statusCount.resolved, statusCount.closed],
+        backgroundColor: ['#ff9800', '#2196F3', '#4caf50', '#9e9e9e'],
+      }]
+    },
+    options: { responsive: true, plugins: { legend: { position: 'bottom' } } }
+  });
+
+  // Issue Type Chart
+  const issueCtx = document.getElementById('chartIssueType').getContext('2d');
+  const issueLabels = Object.keys(issueTypeCount).sort((a,b) => issueTypeCount[b] - issueTypeCount[a]).slice(0, 8);
+  const issueData = issueLabels.map(l => issueTypeCount[l]);
+  crmDashCharts.issue = new Chart(issueCtx, {
+    type: 'bar',
+    data: {
+      labels: issueLabels,
+      datasets: [{
+        label: 'จำนวน',
+        data: issueData,
+        backgroundColor: '#2196F3',
+      }]
+    },
+    options: {
+      responsive: true,
+      indexAxis: 'y',
+      plugins: { legend: { display: false } },
+      scales: { x: { beginAtZero: true } }
+    }
+  });
+
+  // Channel Chart
+  const channelCtx = document.getElementById('chartChannel').getContext('2d');
+  const channelLabels = ['ออนไลน์', 'โทรศัพท์', 'LINE', 'จดหมาย', 'มาด้วยตนเอง'];
+  crmDashCharts.channel = new Chart(channelCtx, {
+    type: 'pie',
+    data: {
+      labels: channelLabels,
+      datasets: [{
+        data: [channelCount.online, channelCount.phone, channelCount.line, channelCount.letter, channelCount.walkin],
+        backgroundColor: ['#3f51b5', '#009688', '#ff5722', '#673ab7', '#00bcd4'],
+      }]
+    },
+    options: { responsive: true, plugins: { legend: { position: 'bottom' } } }
+  });
+
+  // Priority Chart
+  const priorityCtx = document.getElementById('chartPriority').getContext('2d');
+  crmDashCharts.priority = new Chart(priorityCtx, {
+    type: 'bar',
+    data: {
+      labels: ['ปกติ', 'สูง', 'เร่งด่วน'],
+      datasets: [{
+        label: 'จำนวน',
+        data: [priorityCount.normal, priorityCount.high, priorityCount.urgent],
+        backgroundColor: ['#4caf50', '#ff9800', '#f44336'],
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { display: false } },
+      scales: { y: { beginAtZero: true } }
+    }
+  });
+
+  // Top Courses
+  const topCourses = Object.entries(courseCount)
+    .sort((a,b) => b[1] - a[1])
+    .slice(0, 10);
+  const courseHtml = topCourses.map(([code, count]) =>
+    `<tr><td style="padding:8px">${code}</td><td style="padding:8px;text-align:center;font-weight:600">${count}</td></tr>`
+  ).join('');
+  document.getElementById('crmTopCourses').innerHTML = courseHtml || '<tr><td colspan="2" style="padding:8px;text-align:center;color:var(--gray3)">ไม่มีข้อมูล</td></tr>';
 }
 
 // ============================================================

@@ -1300,6 +1300,37 @@ function bulkImportCrmTickets(dataList) {
   } catch(e) { return { success:false, error:e.message }; }
 }
 
+function getCrmDashboardData(filters) {
+  if (!_autoRefreshSession()) return { success:false, error:'SESSION_EXPIRED' };
+  try {
+    const allTickets = getCrmTickets({});
+    if (allTickets.error) return { success:false, error:allTickets.error };
+
+    // Filter
+    let filtered = allTickets;
+    if (filters.channel) filtered = filtered.filter(t => t.channel === filters.channel);
+    if (filters.issueType) filtered = filtered.filter(t => t.issueType === filters.issueType);
+    if (filters.term) filtered = filtered.filter(t => t.term === filters.term);
+    if (filters.priority) filtered = filtered.filter(t => t.priority === filters.priority);
+    if (filters.course) {
+      filtered = filtered.filter(t =>
+        t.courses && t.courses.split(',').some(c => c.trim().toLowerCase().includes(filters.course.toLowerCase()))
+      );
+    }
+
+    // Calculate stats
+    const stats = {
+      total: filtered.length,
+      open: filtered.filter(t => t.status === 'open').length,
+      inprogress: filtered.filter(t => t.status === 'inprogress').length,
+      resolved: filtered.filter(t => t.status === 'resolved').length,
+      closed: filtered.filter(t => t.status === 'closed').length,
+    };
+
+    return { success:true, data:filtered, stats:stats };
+  } catch(e) { return { success:false, error:e.message }; }
+}
+
 function getCrmTickets(filters) {
   // session check ผ่าน _autoRefreshSession อัตโนมัติ
   try {
