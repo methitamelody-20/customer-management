@@ -3278,6 +3278,26 @@ function registerExternalStaff(data) {
     // Hash the password and store it during registration
     const hashedPassword = hashPw(data.password);
     sh.appendRow([email, data.name||'', data.org||'', data.phone||'', 'pending', hashedPassword, '', new Date(), '', '']);
+
+    // ส่งอีเมลยืนยันให้ผู้สมัคร
+    try {
+      GmailApp.sendEmail(email,
+        '✅ ได้รับคำขอลงทะเบียนสำเร็จแล้ว',
+        'สวัสดีค่ะ ' + (data.name||'') + '\n\n'
+        + 'ขอขอบคุณที่ลงทะเบียนเป็นเจ้าหน้าที่ภายนอกกับระบบจัดการรายไปรษณีย์ของมสธ.\n\n'
+        + '📋 ข้อมูลที่ลงทะเบียน:\n'
+        + '• ชื่อ: ' + (data.name||'-') + '\n'
+        + '• อีเมล: ' + email + '\n'
+        + '• หน่วยงาน: ' + (data.org||'-') + '\n'
+        + '• เบอร์โทร: ' + (data.phone||'-') + '\n\n'
+        + '⏳ ขั้นตอนต่อไป:\n'
+        + 'เจ้าหน้าที่ของระบบจะตรวจสอบและอนุมัติการลงทะเบียนของท่านโดยเร็วที่สุด\n'
+        + 'เมื่ออนุมัติแล้ว ท่านจะสามารถเข้าระบบได้ทันที\n\n'
+        + 'หากมีข้อสงสัยติดต่อเจ้าหน้าที่ระบบได้ที่ 02 504 7623, 7626\n\n'
+        + 'ด้วยความเคารพ\n'
+        + 'ระบบจัดการเอกสารการสอน มสธ.');
+    } catch(e2) {}
+
     // แจ้ง admin ทาง email (ถ้ามี admin email ใน settings)
     try {
       const settings = getSettings();
