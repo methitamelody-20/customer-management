@@ -1558,6 +1558,14 @@ tbody td{padding:12px;vertical-align:middle}
                 <option value="urgent">เร่งด่วน</option>
               </select>
             </div>
+            <div>
+              <label class="flbl" style="display:block;margin-bottom:4px;font-size:12px">📅 วันที่แจ้ง (จาก)</label>
+              <input class="finput" id="crmd_date_from" type="text" placeholder="dd/mm/yyyy" style="font-size:13px;width:120px" oninput="loadCrmDashboard()">
+            </div>
+            <div>
+              <label class="flbl" style="display:block;margin-bottom:4px;font-size:12px">📅 วันที่แจ้ง (ถึง)</label>
+              <input class="finput" id="crmd_date_to" type="text" placeholder="dd/mm/yyyy" style="font-size:13px;width:120px" oninput="loadCrmDashboard()">
+            </div>
           </div>
         </div>
 
@@ -4741,6 +4749,8 @@ function loadCrmDashboard() {
     plan: document.getElementById('crmd_plan').value,
     course: document.getElementById('crmd_course').value.trim(),
     priority: document.getElementById('crmd_priority').value,
+    dateFrom: (document.getElementById('crmd_date_from')?.value||'').trim(),
+    dateTo:   (document.getElementById('crmd_date_to')?.value||'').trim(),
   };
 
   google.script.run

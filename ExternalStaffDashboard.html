@@ -269,7 +269,7 @@ html,body{min-height:100%;font-family:var(--font);color:var(--text);background:v
         <button class="btn-outline" style="padding:6px 12px;font-size:12px" onclick="toggleCreateIssue()">ปิด</button>
       </div>
       <iframe id="crmIframe"
-        src="https://script.google.com/a/g.stou.ac.th/macros/s/AKfycbxTikZrZ7YxPPNg5fKr2-nOopI2axcUT7SCvvrDT3r1R7qZrxwEyy8WyoRRY1v9-gNpIg/exec?page=crm"
+        src=""
         style="width:100%;height:720px;border:none;display:block"
         allow="forms"
         title="ฟอร์มแจ้งปัญหา CRM">
@@ -278,9 +278,10 @@ html,body{min-height:100%;font-family:var(--font);color:var(--text);background:v
 
     <!-- Ticket list -->
     <div class="card">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
         <div class="card-title" style="margin-bottom:0">📋 รายการเรื่องร้องเรียน</div>
         <div style="display:flex;gap:8px">
+          <button class="btn-outline" style="padding:8px 14px;font-size:12px;width:auto" onclick="loadTickets()" id="refreshBtn">🔄 รีเฟรช</button>
           <button class="btn-outline" style="padding:8px 14px;font-size:12px;width:auto" onclick="exportTickets()">⬇️ Export</button>
           <button class="btn-primary" style="padding:8px 14px;font-size:12px;width:auto" onclick="toggleCreateIssue()">➕ เรื่องใหม่</button>
         </div>
@@ -290,8 +291,15 @@ html,body{min-height:100%;font-family:var(--font);color:var(--text);background:v
         <button class="filter-chip" onclick="filterTickets('open',this)">รอดำเนินการ</button>
         <button class="filter-chip" onclick="filterTickets('in_progress',this)">กำลังดำเนินการ</button>
         <button class="filter-chip" onclick="filterTickets('closed',this)">ปิดแล้ว</button>
-        <input class="finput" id="ticketSearch" placeholder="ค้นหา..." style="width:180px;padding:7px 12px;font-size:13px"
+        <input class="finput" id="ticketSearch" placeholder="ค้นหา..." style="width:160px;padding:7px 12px;font-size:13px"
           oninput="renderTickets()">
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+        <span style="font-size:12px;color:var(--gray3)">📅 ช่วงวันที่:</span>
+        <input class="finput" id="filterDateFrom" type="text" placeholder="dd/mm/yyyy" style="width:120px;padding:6px 10px;font-size:12px" oninput="renderTickets()">
+        <span style="font-size:12px;color:var(--gray3)">ถึง</span>
+        <input class="finput" id="filterDateTo" type="text" placeholder="dd/mm/yyyy" style="width:120px;padding:6px 10px;font-size:12px" oninput="renderTickets()">
+        <button class="btn-outline" style="padding:5px 10px;font-size:11px;width:auto" onclick="clearDateFilter()">ล้าง</button>
       </div>
       <div style="overflow-x:auto">
         <table class="ticket-table">
@@ -507,17 +515,7 @@ function doLogout() {
 function loadDashboard() {
   showPage('dashPage');
   document.getElementById('dashUserName').textContent = (currentUser.name || currentUser.email) + ' (' + (currentUser.org || 'ภายนอก') + ')';
-  // โหลด tickets จาก email ของ user
-  google.script.run
-    .withSuccessHandler(function(data) {
-      allTickets = data || [];
-      updateStats();
-      renderTickets();
-    })
-    .withFailureHandler(function(e) {
-      console.error('loadDashboard error:', e.message);
-    })
-    .getExternalStaffTickets(currentUser.email);
+  loadTickets();
 }
 
 function updateStats() {
@@ -546,8 +544,25 @@ const statusLabel = {
   pending:     '<span class="badge pending">รอตรวจสอบ</span>',
 };
 
+function parseDateStr(s) {
+  if (!s) return null;
+  var m = String(s).trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if (m) return new Date(+m[3], +m[2]-1, +m[1]);
+  return new Date(s);
+}
+
+function clearDateFilter() {
+  var f = document.getElementById('filterDateFrom');
+  var t = document.getElementById('filterDateTo');
+  if(f) f.value = '';
+  if(t) t.value = '';
+  renderTickets();
+}
+
 function renderTickets() {
   const q = (document.getElementById('ticketSearch')?.value || '').toLowerCase();
+  const dateFrom = parseDateStr(document.getElementById('filterDateFrom')?.value);
+  const dateTo   = parseDateStr(document.getElementById('filterDateTo')?.value);
   let list = allTickets;
   if (activeFilter !== 'all') list = list.filter(t => t.status === activeFilter);
   if (q) list = list.filter(t =>
@@ -555,6 +570,13 @@ function renderTickets() {
     (t.detail||'').toLowerCase().includes(q) ||
     (t.id||'').toLowerCase().includes(q)
   );
+  if (dateFrom && !isNaN(dateFrom)) list = list.filter(function(t) {
+    var d = parseDateStr(t.date); return d && d >= dateFrom;
+  });
+  if (dateTo && !isNaN(dateTo)) {
+    var dateToEnd = new Date(dateTo); dateToEnd.setHours(23,59,59,999);
+    list = list.filter(function(t) { var d = parseDateStr(t.date); return d && d <= dateToEnd; });
+  }
   const tbody = document.getElementById('ticketBody');
   const empty = document.getElementById('ticketEmpty');
   if (!list.length) {
@@ -595,8 +617,53 @@ function esc(s) {
 
 function toggleCreateIssue() {
   const card = document.getElementById('createIssueCard');
-  card.style.display = card.style.display === 'none' ? 'block' : 'none';
+  const isHidden = card.style.display === 'none';
+  card.style.display = isHidden ? 'block' : 'none';
+  if (isHidden) {
+    // ส่ง email/name/phone ให้ iframe เพื่อ pre-fill ฟอร์ม
+    const base = 'https://script.google.com/a/g.stou.ac.th/macros/s/AKfycbxTikZrZ7YxPPNg5fKr2-nOopI2axcUT7SCvvrDT3r1R7qZrxwEyy8WyoRRY1v9-gNpIg/exec';
+    const p = new URLSearchParams({
+      page: 'crm',
+      prefill_email: currentUser.email || '',
+      prefill_name:  currentUser.name  || '',
+      prefill_phone: currentUser.phone || '',
+      prefill_org:   currentUser.org   || ''
+    });
+    const iframe = document.getElementById('crmIframe');
+    if (!iframe.src || iframe.src === window.location.href) {
+      iframe.src = base + '?' + p.toString();
+    }
+    card.scrollIntoView({behavior:'smooth', block:'start'});
+  }
 }
+
+// โหลด ticket list ใหม่ (ใช้ใน refresh button ด้วย)
+function loadTickets() {
+  const btn = document.getElementById('refreshBtn');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳...'; }
+  google.script.run
+    .withSuccessHandler(function(data) {
+      allTickets = data || [];
+      updateStats();
+      renderTickets();
+      if (btn) { btn.disabled = false; btn.textContent = '🔄 รีเฟรช'; }
+    })
+    .withFailureHandler(function(e) {
+      if (btn) { btn.disabled = false; btn.textContent = '🔄 รีเฟรช'; }
+      console.error('loadTickets error:', e.message);
+    })
+    .getExternalStaffTickets(currentUser.email);
+}
+
+// รับ postMessage จาก iframe CRM เมื่อ submit สำเร็จ
+window.addEventListener('message', function(ev) {
+  if (ev.data && ev.data.type === 'crm_submitted') {
+    setTimeout(function() {
+      toggleCreateIssue(); // ปิด iframe
+      loadTickets();       // รีโหลด ticket list
+    }, 800);
+  }
+});
 
 function exportTickets() {
   const q = (document.getElementById('ticketSearch')?.value || '').toLowerCase();

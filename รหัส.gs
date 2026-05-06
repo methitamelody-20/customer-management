@@ -1441,6 +1441,34 @@ function getCrmTickets(filters) {
       if (filters.channel) result = result.filter(function(r){ return r.channel === filters.channel; });
       if (filters.source)  result = result.filter(function(r){ return r.source === filters.source; });
       if (filters.org)     result = result.filter(function(r){ return r.org === filters.org; });
+      if (filters.plan)    result = result.filter(function(r){ return r.plan === filters.plan; });
+      if (filters.issueType) result = result.filter(function(r){ return r.issueType === filters.issueType; });
+      if (filters.term)    result = result.filter(function(r){ return r.term === filters.term; });
+      if (filters.priority) result = result.filter(function(r){ return r.priority === filters.priority; });
+      if (filters.course)  result = result.filter(function(r){ return (r.courses||'').indexOf(filters.course) !== -1; });
+      if (filters.dateFrom || filters.dateTo) {
+        function parseFilterDate(s) {
+          if (!s) return null;
+          var m = String(s).trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+          if (m) return new Date(parseInt(m[3]), parseInt(m[2])-1, parseInt(m[1]));
+          return new Date(s);
+        }
+        var dFrom = parseFilterDate(filters.dateFrom);
+        var dTo   = parseFilterDate(filters.dateTo);
+        if (dTo) dTo.setHours(23,59,59,999);
+        result = result.filter(function(r) {
+          var d = r.date ? new Date(r.date) : null;
+          if (!d || isNaN(d.getTime())) {
+            // ลอง parse dd/MM/yyyy
+            var m2 = String(r.date||'').match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+            if (m2) d = new Date(parseInt(m2[3]), parseInt(m2[2])-1, parseInt(m2[1]));
+          }
+          if (!d || isNaN(d.getTime())) return true; // ถ้า parse ไม่ได้ให้ผ่าน
+          if (dFrom && !isNaN(dFrom.getTime()) && d < dFrom) return false;
+          if (dTo   && !isNaN(dTo.getTime())   && d > dTo)   return false;
+          return true;
+        });
+      }
       if (filters.search) {
         const q = String(filters.search).toLowerCase();
         result = result.filter(function(r) {
