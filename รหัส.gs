@@ -1701,14 +1701,22 @@ function setupSystem() {
     const sh=st.getRange(1,1,1,2);sh.setBackground('#1a3a5c');sh.setFontColor('#fff');sh.setFontWeight('bold');
   }
 
-  // Sheet: ผู้ใช้งาน (เพิ่มคอลัมน์ perms)
+  // Sheet: ผู้ใช้งาน (เพิ่มคอลัมน์ perms, token, expires สำหรับ invitation flow)
   let us = ss.getSheetByName(SH_USERS);
   if (!us) {
     us = ss.insertSheet(SH_USERS);
-    us.appendRow(['email','password_hash','role','ชื่อ-สกุล','active','last_login','perms']);
-    const uh=us.getRange(1,1,1,7);uh.setBackground('#1a3a5c');uh.setFontColor('#fff');uh.setFontWeight('bold');
-    us.appendRow(['admin@stou.ac.th',hashPw('admin1234'),'superadmin','ผู้ดูแลระบบ',true,'','dash,search,rec-return,rec-lend,rec-special,list,labels,crm,tags,users']);
-    [220,200,100,160,70,150,300].forEach((w,i)=>us.setColumnWidth(i+1,w));
+    us.appendRow(['email','password_hash','role','ชื่อ-สกุล','active','last_login','perms','invite_token','invite_expires']);
+    const uh=us.getRange(1,1,1,9);uh.setBackground('#1a3a5c');uh.setFontColor('#fff');uh.setFontWeight('bold');
+    us.appendRow(['admin@stou.ac.th',hashPw('admin1234'),'superadmin','ผู้ดูแลระบบ',true,'','dash,search,rec-return,rec-lend,rec-special,list,labels,crm,tags,users','','']);
+    [220,200,100,160,70,150,300,250,200].forEach((w,i)=>us.setColumnWidth(i+1,w));
+  } else {
+    // If sheet exists but doesn't have invite_token column, add them
+    const lastCol = us.getLastColumn();
+    if (lastCol < 8) {
+      us.getRange(1, 8).setValue('invite_token');
+      us.getRange(1, 9).setValue('invite_expires');
+      us.getRange(1, 8, 1, 2).setBackground('#1a3a5c').setFontColor('#fff').setFontWeight('bold');
+    }
   }
 
   // Sheet: Tags
