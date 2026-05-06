@@ -980,14 +980,46 @@ function getFirebaseStatus() {
 // ============================================================
 // SETTINGS
 // ============================================================
+var _settingsCache = null;
+var _tagsCache = null;
+var _yearsCache = null;
+
+function getInitData() {
+  try {
+    const settings = getSettings();
+    const tags = getTags();
+    const years = getUniqueYears();
+    const taskStats = getTaskStats();
+    return {
+      success: true,
+      settings: settings,
+      tags: tags,
+      years: years,
+      taskStats: taskStats
+    };
+  } catch(e) {
+    return { success: false, error: e.message };
+  }
+}
+
 function getSettings() {
   try {
+    if (_settingsCache) return _settingsCache;
+
     const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SH_SETTINGS);
-    if (!sheet) return { parcelTypes:[],returnCauses:[],prefixes:[],terms:[],branches:[],plans:[],issueTypes:[],assignees:[] };
-    const data = sheet.getDataRange().getValues();
+    if (!sheet) {
+      _settingsCache = { parcelTypes:[],returnCauses:[],prefixes:[],terms:[],branches:[],plans:[],issueTypes:[],assignees:[] };
+      return _settingsCache;
+    }
+    const lr = sheet.getLastRow();
+    if (lr < 2) {
+      _settingsCache = { parcelTypes:[],returnCauses:[],prefixes:[],terms:[],branches:[],plans:[],issueTypes:[],assignees:[] };
+      return _settingsCache;
+    }
+    const data = sheet.getRange(2, 1, lr-1, 2).getValues(); // ดึงเฉพาะ 2 คอลัมน์ที่ใช้
     const s = {};
-    for (let i=1;i<data.length;i++) s[data[i][0]] = data[i][1]?data[i][1].toString().split(','):[];
-    return {
+    for (let i=0;i<data.length;i++) s[data[i][0]] = data[i][1]?data[i][1].toString().split(','):[];
+    _settingsCache = {
       parcelTypes:  s['ประเภทพัสดุ']  || [],
       returnCauses: s['สาเหตุตีคืน'] || [],
       prefixes:     s['คำนำหน้า']    || [],
@@ -997,16 +1029,26 @@ function getSettings() {
       issueTypes:   s['ประเภทปัญหา'] || [],
       assignees:    s['ผู้รับเรื่อง'] || [],
     };
+    return _settingsCache;
   } catch(e) { return { error:e.message }; }
 }
 
 function getUniqueYears() {
   try {
+    if (_yearsCache) return _yearsCache;
     const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SH_DATA);
+    if (!sheet) {
+      _yearsCache = [];
+      return _yearsCache;
+    }
     const lr = sheet.getLastRow();
-    if (lr < 2) return [];
+    if (lr < 2) {
+      _yearsCache = [];
+      return _yearsCache;
+    }
     const years = sheet.getRange(2,4,lr-1,1).getValues().flat();
-    return [...new Set(years.filter(y=>y!==''))].sort().reverse();
+    _yearsCache = [...new Set(years.filter(y=>y!==''))].sort().reverse();
+    return _yearsCache;
   } catch(e) { return []; }
 }
 
@@ -1015,10 +1057,20 @@ function getUniqueYears() {
 // ============================================================
 function getTags() {
   try {
+    if (_tagsCache) return _tagsCache;
     const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SH_TAGS);
-    if (!sheet) return [];
-    const data = sheet.getDataRange().getValues();
-    return data.slice(1).map(r=>({name:r[0],color:r[1]||0})).filter(t=>t.name);
+    if (!sheet) {
+      _tagsCache = [];
+      return _tagsCache;
+    }
+    const lr = sheet.getLastRow();
+    if (lr < 2) {
+      _tagsCache = [];
+      return _tagsCache;
+    }
+    const data = sheet.getRange(2, 1, lr-1, 2).getValues();
+    _tagsCache = data.map(r=>({name:r[0],color:r[1]||0})).filter(t=>t.name);
+    return _tagsCache;
   } catch(e) { return []; }
 }
 
@@ -1082,6 +1134,10 @@ function addRecord(data) {
   } catch(e) { return { success:false, error:e.message }; }
 }
 
+var _recordsCache = null;
+var _recordsCacheTime = 0;
+const CACHE_TTL = 60000; // 60 seconds cache
+
 function getRecords(filters) {
   // ไม่ตรวจ session — ใช้ login screen ฝั่ง HTML แทน
   try {
@@ -1089,9 +1145,10 @@ function getRecords(filters) {
     if (!sheet) return { error:'ไม่พบ Sheet กรุณารัน setupSystem()' };
     const lr    = sheet.getLastRow();
     if (lr < 2) return [];
-    
-    // อ่านข้อมูลดิบแล้ว convert ทุกค่าเป็น string/number safely
-    const rawRows = sheet.getRange(2,1,lr-1,30).getValues();
+
+    // ดึงเฉพาะ 30 คอลัมน์ที่ใช้จริง (ต่อมาตรวจสอบจำนวนจริง)
+    const numCols = Math.min(sheet.getLastColumn(), 30);
+    const rawRows = sheet.getRange(2,1,lr-1,numCols).getValues();
     const rows = [];
     for (let i = 0; i < rawRows.length; i++) {
       const r = rawRows[i];
@@ -2543,7 +2600,8 @@ function setupTaskSheet() {
 function getTasks(filters) {
   // session check ผ่าน _autoRefreshSession อัตโนมัติ
   try {
-    const sh = setupTaskSheet();
+    const sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SH_TASKS);
+    if (!sh) return [];
     const lr = sh.getLastRow();
     if (lr < 2) return [];
     const sess = _sess();
