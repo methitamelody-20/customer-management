@@ -1210,6 +1210,10 @@ function getRecords(filters) {
       if (filters.year)          filtered = filtered.filter(function(r){ return r.year == filters.year; });
       if (filters.contactStatus) filtered = filtered.filter(function(r){ return r.contactStatus === filters.contactStatus; });
       if (filters.courseCode)    filtered = filtered.filter(function(r){ return r.courseCode.indexOf(filters.courseCode) !== -1; });
+      if (filters.province)      filtered = filtered.filter(function(r){ return r.province === filters.province; });
+      if (filters.district)      filtered = filtered.filter(function(r){ return r.district === filters.district; });
+      if (filters.zipCode)       filtered = filtered.filter(function(r){ return r.zipCode === filters.zipCode; });
+      if (filters.tag)           filtered = filtered.filter(function(r){ return (r.tags||'').split(',').map(function(t){return t.trim();}).indexOf(filters.tag) !== -1; });
       if (filters.search) {
         const q = String(filters.search).toLowerCase();
         filtered = filtered.filter(function(r) {

@@ -9,7 +9,17 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
 <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/css/tom-select.min.css">
+<script src="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/js/tom-select.complete.min.js"></script>
 <style>
+/* Tom Select overrides */
+.ts-wrapper.single .ts-control{border:1.5px solid var(--outline,#c5cfe0);border-radius:8px;padding:8px 32px 8px 12px;font-family:inherit;font-size:13px;background:#fff;min-height:unset;box-shadow:none}
+.ts-wrapper.single.focus .ts-control{border-color:var(--primary,#2196F3);box-shadow:0 0 0 3px rgba(33,150,243,.12)}
+.ts-wrapper .ts-dropdown{border:1.5px solid var(--primary,#2196F3);border-radius:8px;margin-top:2px;font-family:inherit;font-size:13px}
+.ts-wrapper .ts-dropdown .option{padding:8px 12px}
+.ts-wrapper .ts-dropdown .option.active{background:var(--primary-container,#DBEAFE);color:var(--on-primary-container,#0B47A5)}
+.ts-wrapper .ts-dropdown-content{max-height:220px}
+.ts-wrapper .ts-control input{font-family:inherit;font-size:13px}
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
   /* Material Design 3 - Material Blue Palette */
@@ -2825,6 +2835,8 @@ function loadSettings() {
       setTimeout(function(){ loadThailandDB(); }, 1000);
       // init barcode scanner support
       setTimeout(initBarcodeFields, 800);
+      // init searchable filter dropdowns
+      setTimeout(initDashFilterSelects, 200);
     })
     .withFailureHandler(showError)
     .getInitData();
@@ -2843,6 +2855,30 @@ function populateYearDropdowns(years) {
 function populateTagsList(tags) {
   loadTagsPage();
   refreshTagDropdowns();
+}
+
+// init Tom Select บน dashboard filter selects
+function initDashFilterSelects() {
+  var opts = {
+    placeholder: 'ทั้งหมด',
+    allowEmptyOption: true,
+    maxOptions: 200,
+    onChange: function(){ loadDash(); }
+  };
+  ['dTerm','dYear','dProvince','dDistrict','dTag'].forEach(function(id){
+    var el = document.getElementById(id);
+    if(el && !el.tomselect) {
+      // ถอด onchange inline ออกก่อน แล้วให้ Tom Select จัดการ
+      el.removeAttribute('onchange');
+      new TomSelect(el, opts);
+    }
+  });
+  // dType (ประเภทรายการ) — ไม่จำเป็นต้องค้นหา แต่ใส่ให้ consistent
+  var dType = document.getElementById('dType');
+  if(dType && !dType.tomselect) {
+    dType.removeAttribute('onchange');
+    new TomSelect(dType, {allowEmptyOption:true, onChange:function(){loadDash();}});
+  }
 }
 
 function updateTaskBadgeDisplay(taskStats) {
@@ -3088,22 +3124,21 @@ function go(id,btn) {
 // ============================================================
 // DASHBOARD — ดึงจาก Sheets จริง
 // ============================================================
+function getSelVal(id) {
+  var el = document.getElementById(id);
+  if (!el) return '';
+  return el.tomselect ? el.tomselect.getValue() : el.value;
+}
+
 function loadDash() {
-  var dTerm = document.getElementById('dTerm'); 
-  var dYear = document.getElementById('dYear');
-  var dType = document.getElementById('dType');
-  var dProv = document.getElementById('dProvince');
-  var dDist = document.getElementById('dDistrict');
-  var dZip  = document.getElementById('dZip');
-  var dTag  = document.getElementById('dTag');
   var filters = {
-    term:     dTerm ? dTerm.value : '',
-    year:     dYear ? dYear.value : '',
-    recType:  dType ? dType.value : '',
-    province: dProv ? dProv.value : '',
-    district: dDist ? dDist.value : '',
-    zipCode:  dZip  ? dZip.value.trim() : '',
-    tag:      dTag  ? dTag.value : '',
+    term:     getSelVal('dTerm'),
+    year:     getSelVal('dYear'),
+    recType:  getSelVal('dType'),
+    province: getSelVal('dProvince'),
+    district: getSelVal('dDistrict'),
+    zipCode:  (document.getElementById('dZip')||{}).value ? document.getElementById('dZip').value.trim() : '',
+    tag:      getSelVal('dTag'),
   };
   google.script.run
     .withSuccessHandler(function(d) {
@@ -3164,10 +3199,38 @@ function renderDash(d, filters) {
 function updateGeoDropdowns(records) {
   const provs=[...new Set(records.map(r=>r.province).filter(Boolean))].sort();
   const dists=[...new Set(records.map(r=>r.district).filter(Boolean))].sort();
-  const dp=document.getElementById('dProvince');
-  if(dp){const c=dp.value;dp.innerHTML='<option value="">ทั้งหมด</option>';provs.forEach(p=>dp.innerHTML+=`<option>${p}</option>`);dp.value=c;}
-  const dd=document.getElementById('dDistrict');
-  if(dd){const c=dd.value;dd.innerHTML='<option value="">ทั้งหมด</option>';dists.forEach(d=>dd.innerHTML+=`<option>${d}</option>`);dd.value=c;}
+
+  // อัปเดต Tom Select province
+  var tsP = document.getElementById('dProvince');
+  if(tsP && tsP.tomselect) {
+    var curP = tsP.tomselect.getValue();
+    tsP.tomselect.clearOptions();
+    tsP.tomselect.addOption({value:'',text:'ทั้งหมด'});
+    provs.forEach(function(p){tsP.tomselect.addOption({value:p,text:p});});
+    tsP.tomselect.refreshOptions(false);
+    tsP.tomselect.setValue(curP, true);
+  } else if(tsP) {
+    var c=tsP.value;
+    tsP.innerHTML='<option value="">ทั้งหมด</option>';
+    provs.forEach(p=>tsP.innerHTML+=`<option>${p}</option>`);
+    tsP.value=c;
+  }
+
+  // อัปเดต Tom Select district
+  var tsD = document.getElementById('dDistrict');
+  if(tsD && tsD.tomselect) {
+    var curD = tsD.tomselect.getValue();
+    tsD.tomselect.clearOptions();
+    tsD.tomselect.addOption({value:'',text:'ทั้งหมด'});
+    dists.forEach(function(d){tsD.tomselect.addOption({value:d,text:d});});
+    tsD.tomselect.refreshOptions(false);
+    tsD.tomselect.setValue(curD, true);
+  } else if(tsD) {
+    var c=tsD.value;
+    tsD.innerHTML='<option value="">ทั้งหมด</option>';
+    dists.forEach(d=>tsD.innerHTML+=`<option>${d}</option>`);
+    tsD.value=c;
+  }
 }
 
 function countBy(data,key){
