@@ -7304,8 +7304,9 @@ function renderExtStaff(rows) {
     const actBtn = r.status === 'pending'
       ? '<button class="btn btn-primary btn-xs" onclick="approveExt(\''+esc(r.email)+'\')">✅ อนุมัติ</button> '
         + '<button class="btn btn-sm" style="background:var(--red);color:#fff;font-size:11px;padding:3px 8px" onclick="rejectExt(\''+esc(r.email)+'\')">❌ ปฏิเสธ</button>'
-      : r.status === 'active'
-        ? '<span style="font-size:11px;color:var(--gray3)">ใช้งานได้แล้ว</span>'
+      : (r.status === 'active' || r.status === 'approved')
+        ? '<button class="btn btn-outline btn-xs" style="font-size:11px;padding:3px 8px;margin-right:4px" onclick="editExtStaff(\''+esc(r.email)+'\')">✏️ แก้ไข</button>'
+          + '<button class="btn btn-sm" style="background:#dc3545;color:#fff;font-size:11px;padding:3px 8px" onclick="deleteExtStaff(\''+esc(r.email)+'\',\''+esc(r.name)+'\')">🗑️ ลบ</button>'
         : '<span style="font-size:11px;color:var(--gray3)">—</span>';
     return '<tr style="border-bottom:1px solid var(--gray1)">'
       + '<td style="padding:10px 12px;font-weight:600">'+esc(r.name||'')+'</td>'
@@ -7339,6 +7340,77 @@ function rejectExt(email) {
     })
     .withFailureHandler(showError)
     .rejectExternalStaff(email);
+}
+
+function editExtStaff(email) {
+  google.script.run
+    .withSuccessHandler(function(staff) {
+      if (!staff) { showToast('ไม่พบข้อมูล', 'error'); return; }
+      const modal = document.createElement('div');
+      modal.className = 'modal-overlay';
+      modal.innerHTML = `<div class="modal" style="max-width:500px">
+        <div class="modal-title">✏️ แก้ไขข้อมูลเจ้าหน้าที่ <button onclick="this.closest('.modal-overlay').remove()" style="float:right;border:none;background:none;font-size:20px;cursor:pointer">✕</button></div>
+        <div style="margin-bottom:14px">
+          <label class="flbl">ชื่อ</label>
+          <input class="finput" id="est_name" value="${esc(staff.name||'')}" style="width:100%">
+        </div>
+        <div style="margin-bottom:14px">
+          <label class="flbl">อีเมล</label>
+          <input class="finput" type="email" value="${esc(staff.email||'')}" readonly style="width:100%;background:var(--gray1)">
+        </div>
+        <div style="margin-bottom:14px">
+          <label class="flbl">หน่วยงาน</label>
+          <input class="finput" id="est_org" value="${esc(staff.org||'')}" style="width:100%">
+        </div>
+        <div style="margin-bottom:14px">
+          <label class="flbl">เบอร์โทร</label>
+          <input class="finput" id="est_phone" value="${esc(staff.phone||'')}" style="width:100%">
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-primary btn-sm" onclick="saveExtStaffEdit('${esc(email)}')">💾 บันทึก</button>
+          <button class="btn btn-outline btn-sm" onclick="this.closest('.modal-overlay').remove()">ยกเลิก</button>
+        </div>
+      </div>`;
+      document.body.appendChild(modal);
+    })
+    .withFailureHandler(showError)
+    .getExternalStaffDetail(email);
+}
+
+function saveExtStaffEdit(email) {
+  const name = document.getElementById('est_name').value.trim();
+  const org = document.getElementById('est_org').value.trim();
+  const phone = document.getElementById('est_phone').value.trim();
+
+  if (!name) { showToast('กรุณากรอกชื่อ', 'error'); return; }
+
+  google.script.run
+    .withSuccessHandler(function(res) {
+      if (res.success) {
+        showToast('✅ บันทึกแล้ว', 'success');
+        document.querySelector('.modal-overlay').remove();
+        loadExtStaff();
+      } else {
+        showToast('❌ ' + (res.error||'เกิดข้อผิดพลาด'), 'error');
+      }
+    })
+    .withFailureHandler(showError)
+    .updateExternalStaff(email, {name: name, org: org, phone: phone});
+}
+
+function deleteExtStaff(email, name) {
+  if (!confirm('ลบ ' + name + ' (' + email + ') ?')) return;
+  google.script.run
+    .withSuccessHandler(function(res) {
+      if (res.success) {
+        showToast('✅ ลบแล้ว', 'success');
+        loadExtStaff();
+      } else {
+        showToast('❌ ' + (res.error||'เกิดข้อผิดพลาด'), 'error');
+      }
+    })
+    .withFailureHandler(showError)
+    .deleteExternalStaff(email);
 }
 </script>
 </body>

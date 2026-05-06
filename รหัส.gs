@@ -3406,3 +3406,57 @@ function getPendingExternalRegistrations() {
     })};
   } catch(e) { return { success:false, error:e.message }; }
 }
+
+function getExternalStaffDetail(email) {
+  if (!_autoRefreshSession()) return null;
+  try {
+    const sh = _getExtSheet();
+    const rows = sh.getDataRange().getValues();
+    for (let i = 1; i < rows.length; i++) {
+      if ((rows[i][0]||'').toLowerCase() === email.toLowerCase()) {
+        return {
+          email: rows[i][0],
+          name: rows[i][1],
+          org: rows[i][2],
+          phone: rows[i][3],
+          status: rows[i][4]
+        };
+      }
+    }
+    return null;
+  } catch(e) { return null; }
+}
+
+function updateExternalStaff(email, data) {
+  if (!_autoRefreshSession()) return { success:false, error:'SESSION_EXPIRED' };
+  try {
+    const sh = _getExtSheet();
+    const rows = sh.getDataRange().getValues();
+    for (let i = 1; i < rows.length; i++) {
+      if ((rows[i][0]||'').toLowerCase() === email.toLowerCase()) {
+        if (data.name) sh.getRange(i+1, 2).setValue(data.name);
+        if (data.org) sh.getRange(i+1, 3).setValue(data.org);
+        if (data.phone) sh.getRange(i+1, 4).setValue(data.phone);
+        logAudit('อัปเดตเจ้าหน้าที่ภายนอก', email + ' | ' + (data.name||rows[i][1]));
+        return { success:true };
+      }
+    }
+    return { success:false, error:'ไม่พบผู้ใช้' };
+  } catch(e) { return { success:false, error:e.message }; }
+}
+
+function deleteExternalStaff(email) {
+  if (!_autoRefreshSession()) return { success:false, error:'SESSION_EXPIRED' };
+  try {
+    const sh = _getExtSheet();
+    const rows = sh.getDataRange().getValues();
+    for (let i = 1; i < rows.length; i++) {
+      if ((rows[i][0]||'').toLowerCase() === email.toLowerCase()) {
+        sh.deleteRow(i+1);
+        logAudit('ลบเจ้าหน้าที่ภายนอก', email);
+        return { success:true };
+      }
+    }
+    return { success:false, error:'ไม่พบผู้ใช้' };
+  } catch(e) { return { success:false, error:e.message }; }
+}
