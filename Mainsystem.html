@@ -5063,7 +5063,8 @@ function submitInvestUpdate(btnEl) {
   
   const _invOrigLabel = btnEl ? btnEl.textContent : '';
   if(btnEl){btnEl.disabled=true;btnEl.textContent='⏳ กำลังบันทึก...';}
-  const _invReset=function(){if(btnEl){btnEl.disabled=false;btnEl.textContent=_invOrigLabel||'💾 บันทึก';}};
+  const _invReset=function(){clearTimeout(_invTimeout);if(btnEl){btnEl.disabled=false;btnEl.textContent=_invOrigLabel||'💾 บันทึก';}};
+  const _invTimeout=setTimeout(_invReset, 60000);
   showToast('⏳ กำลังบันทึก...','');
 
   // ถ้ามีไฟล์รออัปโหลด → อัปก่อน แล้วค่อย save updates
