@@ -3365,11 +3365,12 @@ function approveExternalStaff(email) {
         sh.getRange(i+1, 5).setValue('active');
         sh.getRange(i+1, 9).setValue(new Date());
         sh.getRange(i+1, 10).setValue(sess.name||sess.email||'admin');
-        // Send approval notification email
+        // Send approval notification email with dashboard link
         try {
+          const dashboardUrl = ScriptApp.getService().getUrl() + '?page=ext_staff';
           GmailApp.sendEmail(email,
             '[มสธ.] ✅ อนุมัติการลงทะเบียนแล้ว',
-            'ท่านได้รับการอนุมัติให้เข้าใช้ระบบ Dashboard เจ้าหน้าที่ภายนอก มสธ.\n\nท่านสามารถเข้าสู่ระบบได้ทันที โดยใช้อีเมลและรหัสผ่านที่ท่านตั้งไว้ตอนลงทะเบียน\n\nสนใจติดต่อระบบ:\nขอแสดงความนับถือ\nผู้ดูแลระบบ มสธ.');
+            'ท่านได้รับการอนุมัติให้เข้าใช้ระบบ Dashboard เจ้าหน้าที่ภายนอก มสธ.\n\nท่านสามารถเข้าสู่ระบบได้ทันที โดยใช้อีเมลและรหัสผ่านที่ท่านตั้งไว้ตอนลงทะเบียน\n\nเข้าระบบที่: ' + dashboardUrl + '\n\nขอแสดงความนับถือ\nผู้ดูแลระบบ มสธ.');
         } catch(e2) {}
         logAudit('อนุมัติเจ้าหน้าที่ภายนอก', email);
         return { success:true };

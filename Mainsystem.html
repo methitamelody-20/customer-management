@@ -7499,10 +7499,17 @@ function renderExtStaff(rows) {
 }
 
 function approveExt(email) {
-  if (!confirm('อนุมัติ ' + email + ' ? ระบบจะส่งลิงก์ตั้งรหัสผ่านทางอีเมล')) return;
+  if (!confirm('อนุมัติ ' + email + ' ? ระบบจะส่งอีเมลแจ้งสิทธิ์เข้าถึงระบบ')) return;
   google.script.run
     .withSuccessHandler(function(res) {
-      if (res.success) { showToast('✅ อนุมัติแล้ว ส่งลิงก์ตั้งรหัสผ่านทางอีเมล', 'success'); loadExtStaff(); }
+      if (res.success) {
+        const dashboardUrl = 'https://script.google.com/a/g.stou.ac.th/macros/s/AKfycbxTikZrZ7YxPPNg5fKr2-nOopI2axcUT7SCvvrDT3r1R7qZrxwEyy8WyoRRY1v9-gNpIg/exec?page=ext_staff';
+        const modal = document.createElement('div');
+        modal.className = 'modal-overlay';
+        modal.innerHTML = '<div class="modal" style="max-width:600px"><div class="modal-title">✅ อนุมัติแล้ว</div><div style="padding:20px"><div style="font-size:13px;line-height:1.6;color:var(--navy)">ได้อนุมัติการลงทะเบียนสำเร็จ และส่งข้อความแจ้งทางอีเมลไปที่ ' + esc(email) + ' แล้ว</div><div style="margin-top:16px;padding:12px;background:#f0f7ff;border-radius:6px;border-left:4px solid var(--blue)"><strong>🔗 Dashboard:</strong><br><a href="' + dashboardUrl + '" target="_blank" style="color:var(--blue);text-decoration:none;word-break:break-all">เข้าสู่ระบบ Dashboard เจ้าหน้าที่ภายนอก</a></div></div><div style="display:flex;gap:8px;border-top:1px solid var(--gray1);padding-top:16px;margin-top:16px"><button class="btn btn-primary btn-sm" onclick="this.closest(\'.modal-overlay\').remove();loadExtStaff()">✓ ปิด</button></div></div>';
+        document.body.appendChild(modal);
+        showToast('✅ อนุมัติแล้ว ส่งอีเมลแจ้งไปยัง ' + email, 'success');
+      }
       else showToast('❌ ' + (res.error||'เกิดข้อผิดพลาด'), 'error');
     })
     .withFailureHandler(showError)
