@@ -16,9 +16,8 @@ const R_VIEWER = 'viewer';
 // ENTRY POINTS
 // ============================================================
 function doGet(e) {
-  const params = (e && e.parameter) ? e.parameter : {};
   // ถ้ามี ?page=crm → ให้หน้าสำหรับ นศ. แจ้งปัญหา
-  if (params.page === 'crm') {
+  if (e && e.parameter && e.parameter.page === 'crm') {
     const tpl = HtmlService.createTemplateFromFile('CRM_Public');
     return tpl.evaluate()
       .setTitle('แจ้งปัญหาเอกสารการสอน — มสธ.')
@@ -26,17 +25,15 @@ function doGet(e) {
       .addMetaTag('viewport','width=device-width,initial-scale=1');
   }
   // ถ้ามี ?page=ext_staff → Dashboard เจ้าหน้าที่ภายนอก
-  if (params.page === 'ext_staff') {
+  if (e && e.parameter && e.parameter.page === 'ext_staff') {
     const tpl = HtmlService.createTemplateFromFile('ExternalStaffDashboard');
     return tpl.evaluate()
       .setTitle('Dashboard เจ้าหน้าที่ภายนอก — มสธ.')
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
       .addMetaTag('viewport','width=device-width,initial-scale=1');
   }
-  // ส่ง setpw params ผ่าน template variables เพื่อให้ Mainsystem.html ใช้งานได้
+  // ถ้ามี ?page=setpw → ให้ Mainsystem จัดการ (window.onload detect URL params)
   const tpl = HtmlService.createTemplateFromFile('Mainsystem');
-  tpl.setpwToken = (params.page === 'setpw' && params.token) ? params.token : '';
-  tpl.setpwEmail = (params.page === 'setpw' && params.email) ? params.email : '';
   return tpl.evaluate()
     .setTitle('ระบบจัดการและติดตามเอกสารการสอน มสธ.')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
@@ -56,15 +53,6 @@ function include(filename) {
 // ============================================================
 // AUTH
 // ============================================================
-function _generateRefreshToken() {
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-  let token = '';
-  for (let i = 0; i < 32; i++) {
-    token += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return token;
-}
-
 function login(email, password) {
   try {
     const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SH_USERS);
@@ -79,14 +67,12 @@ function login(email, password) {
       if (rowEmail === email.toLowerCase().trim()) {
         if (!rowActive) return { success:false, error:'บัญชีนี้ถูกระงับ' };
         if (hashPw(password) === rowHash) {
-          // สร้าง session + refresh token
-          const refreshToken = _generateRefreshToken();
-          const sessData = {email:rowEmail, role:rowRole, name:rowName, ts:Date.now(), refreshToken:refreshToken};
+          // ใช้ ScriptProperties + key = email (ตรงกับ checkSession)
+          const sessData = {email:rowEmail, role:rowRole, name:rowName, ts:Date.now()};
           PropertiesService.getScriptProperties().setProperty('sess_'+rowEmail, JSON.stringify(sessData));
-          PropertiesService.getScriptProperties().setProperty('rtoken_'+refreshToken, JSON.stringify({email:rowEmail, createdAt:Date.now()}));
           sheet.getRange(i+1, 6).setValue(fmtDate(new Date()));
           Logger.log('Login success: '+rowEmail+' role='+rowRole);
-          return { success:true, role:rowRole, name:rowName, email:rowEmail, refreshToken:refreshToken };
+          return { success:true, role:rowRole, name:rowName, email:rowEmail };
         }
         return { success:false, error:'รหัสผ่านไม่ถูกต้อง' };
       }
@@ -98,48 +84,6 @@ function login(email, password) {
 function logout() {
   PropertiesService.getScriptProperties().deleteProperty('sess_'+Session.getEffectiveUser().getEmail());
   return { success:true };
-}
-
-function refreshSession(refreshToken) {
-  try {
-    if (!refreshToken) return { success:false, error:'ไม่มี refresh token' };
-
-    const sp = PropertiesService.getScriptProperties();
-    const rtokenData = sp.getProperty('rtoken_'+refreshToken);
-    if (!rtokenData) return { success:false, error:'Invalid refresh token' };
-
-    const rtoken = JSON.parse(rtokenData);
-    if (!rtoken.email) return { success:false, error:'Invalid refresh token' };
-
-    // ตรวจว่า refresh token ยังไม่หมดอายุ (7 วัน)
-    if (Date.now() - rtoken.createdAt > 7*24*60*60*1000) {
-      sp.deleteProperty('rtoken_'+refreshToken);
-      return { success:false, error:'Refresh token expired' };
-    }
-
-    // หา user info จาก Sheet
-    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SH_USERS);
-    if (!sheet) return { success:false, error:'Cannot access users sheet' };
-
-    const data = sheet.getDataRange().getValues();
-    for (let i = 1; i < data.length; i++) {
-      const rowEmail = (data[i][0]||'').toString().trim().toLowerCase();
-      if (rowEmail === rtoken.email.toLowerCase()) {
-        const rowRole = (data[i][2]||'').toString().trim();
-        const rowName = (data[i][3]||'').toString().trim();
-
-        // สร้าง session ใหม่
-        const newRefreshToken = _generateRefreshToken();
-        const sessData = {email:rtoken.email, role:rowRole, name:rowName, ts:Date.now(), refreshToken:newRefreshToken};
-        sp.setProperty('sess_'+rtoken.email, JSON.stringify(sessData));
-        sp.setProperty('rtoken_'+newRefreshToken, JSON.stringify({email:rtoken.email, createdAt:Date.now()}));
-        sp.deleteProperty('rtoken_'+refreshToken);
-
-        return { success:true, role:rowRole, name:rowName, email:rtoken.email, refreshToken:newRefreshToken };
-      }
-    }
-    return { success:false, error:'User not found' };
-  } catch(e) { return { success:false, error:e.message }; }
 }
 
 function checkSession() {
@@ -228,8 +172,6 @@ function _can(roles) {
 // ============================================================
 // FIREBASE INTEGRATION
 // ============================================================
-// ⚠️ SENSITIVE: API Key stored here - NEVER expose to client
-// Use getFirebaseConfigForClient() to get safe config for frontend
 const FIREBASE_CONFIG = {
   apiKey: "AIzaSyDpRytR1M8rLsckJXdJb3HTaHxP2S53HWc",
   authDomain: "management-crm-stoupost.firebaseapp.com",
@@ -241,20 +183,6 @@ const FIREBASE_CONFIG = {
 };
 
 const USE_FIREBASE = false; // ตั้งเป็น true เมื่อต้องการใช้ Firebase
-
-// ✅ SAFE: Returns Firebase config without API key for client-side use
-function getFirebaseConfigForClient() {
-  return {
-    authDomain: FIREBASE_CONFIG.authDomain,
-    projectId: FIREBASE_CONFIG.projectId,
-    databaseURL: FIREBASE_CONFIG.databaseURL,
-    storageBucket: FIREBASE_CONFIG.storageBucket,
-    messagingSenderId: FIREBASE_CONFIG.messagingSenderId,
-    appId: FIREBASE_CONFIG.appId
-    // ⚠️ Note: apiKey intentionally excluded. Client must not have it.
-    // Use backend functions for Firebase operations instead.
-  };
-}
 
 // Firebase REST API Helper
 function firebaseCall(method, path, data = null) {
@@ -1049,46 +977,14 @@ function getFirebaseStatus() {
 // ============================================================
 // SETTINGS
 // ============================================================
-var _settingsCache = null;
-var _tagsCache = null;
-var _yearsCache = null;
-
-function getInitData() {
-  try {
-    const settings = getSettings();
-    const tags = getTags();
-    const years = getUniqueYears();
-    const taskStats = getTaskStats();
-    return {
-      success: true,
-      settings: settings,
-      tags: tags,
-      years: years,
-      taskStats: taskStats
-    };
-  } catch(e) {
-    return { success: false, error: e.message };
-  }
-}
-
 function getSettings() {
   try {
-    if (_settingsCache) return _settingsCache;
-
     const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SH_SETTINGS);
-    if (!sheet) {
-      _settingsCache = { parcelTypes:[],returnCauses:[],prefixes:[],terms:[],branches:[],plans:[],issueTypes:[],assignees:[] };
-      return _settingsCache;
-    }
-    const lr = sheet.getLastRow();
-    if (lr < 2) {
-      _settingsCache = { parcelTypes:[],returnCauses:[],prefixes:[],terms:[],branches:[],plans:[],issueTypes:[],assignees:[] };
-      return _settingsCache;
-    }
-    const data = sheet.getRange(2, 1, lr-1, 2).getValues(); // ดึงเฉพาะ 2 คอลัมน์ที่ใช้
+    if (!sheet) return { parcelTypes:[],returnCauses:[],prefixes:[],terms:[],branches:[],plans:[],issueTypes:[],assignees:[] };
+    const data = sheet.getDataRange().getValues();
     const s = {};
-    for (let i=0;i<data.length;i++) s[data[i][0]] = data[i][1]?data[i][1].toString().split(','):[];
-    _settingsCache = {
+    for (let i=1;i<data.length;i++) s[data[i][0]] = data[i][1]?data[i][1].toString().split(','):[];
+    return {
       parcelTypes:  s['ประเภทพัสดุ']  || [],
       returnCauses: s['สาเหตุตีคืน'] || [],
       prefixes:     s['คำนำหน้า']    || [],
@@ -1098,26 +994,16 @@ function getSettings() {
       issueTypes:   s['ประเภทปัญหา'] || [],
       assignees:    s['ผู้รับเรื่อง'] || [],
     };
-    return _settingsCache;
   } catch(e) { return { error:e.message }; }
 }
 
 function getUniqueYears() {
   try {
-    if (_yearsCache) return _yearsCache;
     const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SH_DATA);
-    if (!sheet) {
-      _yearsCache = [];
-      return _yearsCache;
-    }
     const lr = sheet.getLastRow();
-    if (lr < 2) {
-      _yearsCache = [];
-      return _yearsCache;
-    }
+    if (lr < 2) return [];
     const years = sheet.getRange(2,4,lr-1,1).getValues().flat();
-    _yearsCache = [...new Set(years.filter(y=>y!==''))].sort().reverse();
-    return _yearsCache;
+    return [...new Set(years.filter(y=>y!==''))].sort().reverse();
   } catch(e) { return []; }
 }
 
@@ -1126,20 +1012,10 @@ function getUniqueYears() {
 // ============================================================
 function getTags() {
   try {
-    if (_tagsCache) return _tagsCache;
     const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SH_TAGS);
-    if (!sheet) {
-      _tagsCache = [];
-      return _tagsCache;
-    }
-    const lr = sheet.getLastRow();
-    if (lr < 2) {
-      _tagsCache = [];
-      return _tagsCache;
-    }
-    const data = sheet.getRange(2, 1, lr-1, 2).getValues();
-    _tagsCache = data.map(r=>({name:r[0],color:r[1]||0})).filter(t=>t.name);
-    return _tagsCache;
+    if (!sheet) return [];
+    const data = sheet.getDataRange().getValues();
+    return data.slice(1).map(r=>({name:r[0],color:r[1]||0})).filter(t=>t.name);
   } catch(e) { return []; }
 }
 
@@ -1198,17 +1074,10 @@ function addRecord(data) {
     sheet.appendRow(row);
     const lr = sheet.getLastRow();
     if (lr%2===0) sheet.getRange(lr,1,1,row.length).setBackground('#f0f4f8');
-    // Force phone (col18) and zipCode (col17) as plain text to preserve leading zeros
-    sheet.getRange(lr, 17).setNumberFormat('@STRING@').setValue(String(data.zipCode||''));
-    sheet.getRange(lr, 18).setNumberFormat('@STRING@').setValue(String(data.phone||''));
     logAudit('บันทึกพัสดุ', id+' | '+data.recType+' | นศ.'+data.studentId+' | '+data.courseCode);
     return { success:true, id:id };
   } catch(e) { return { success:false, error:e.message }; }
 }
-
-var _recordsCache = null;
-var _recordsCacheTime = 0;
-const CACHE_TTL = 60000; // 60 seconds cache
 
 function getRecords(filters) {
   // ไม่ตรวจ session — ใช้ login screen ฝั่ง HTML แทน
@@ -1217,10 +1086,9 @@ function getRecords(filters) {
     if (!sheet) return { error:'ไม่พบ Sheet กรุณารัน setupSystem()' };
     const lr    = sheet.getLastRow();
     if (lr < 2) return [];
-
-    // ดึงเฉพาะ 30 คอลัมน์ที่ใช้จริง (ต่อมาตรวจสอบจำนวนจริง)
-    const numCols = Math.min(sheet.getLastColumn(), 30);
-    const rawRows = sheet.getRange(2,1,lr-1,numCols).getValues();
+    
+    // อ่านข้อมูลดิบแล้ว convert ทุกค่าเป็น string/number safely
+    const rawRows = sheet.getRange(2,1,lr-1,30).getValues();
     const rows = [];
     for (let i = 0; i < rawRows.length; i++) {
       const r = rawRows[i];
@@ -1259,7 +1127,7 @@ function getRecords(filters) {
         district:    S(r[14]),
         province:    S(r[15]),
         zipCode:     S(r[16]),
-        phone:       (function(v){ var s=v==null?'':String(v); return (typeof v==='number'&&s.length===9)?'0'+s:s; })(r[17]),
+        phone:       S(r[17]),
         cause:       S(r[18]),
         contactStatus: S(r[19]),
         send1Track:  S(r[20]),
@@ -1282,10 +1150,6 @@ function getRecords(filters) {
       if (filters.year)          filtered = filtered.filter(function(r){ return r.year == filters.year; });
       if (filters.contactStatus) filtered = filtered.filter(function(r){ return r.contactStatus === filters.contactStatus; });
       if (filters.courseCode)    filtered = filtered.filter(function(r){ return r.courseCode.indexOf(filters.courseCode) !== -1; });
-      if (filters.province)      filtered = filtered.filter(function(r){ return r.province === filters.province; });
-      if (filters.district)      filtered = filtered.filter(function(r){ return r.district === filters.district; });
-      if (filters.zipCode)       filtered = filtered.filter(function(r){ return r.zipCode === filters.zipCode; });
-      if (filters.tag)           filtered = filtered.filter(function(r){ return (r.tags||'').split(',').map(function(t){return t.trim();}).indexOf(filters.tag) !== -1; });
       if (filters.search) {
         const q = String(filters.search).toLowerCase();
         filtered = filtered.filter(function(r) {
@@ -1384,87 +1248,13 @@ function addCrmTicket(data) {
       data.courses||'', data.issueType||'', data.detail||'',
       data.channel||'online', data.priority||'normal',
       data.tags||'', 'open', assigneeName, '', '[]',
-      recorderName, source, data.plan||'', data.org||'',
+      recorderName, source, data.org||'',
     ];
     sheet.appendRow(row);
     const lr = sheet.getLastRow();
     if (lr%2===0) sheet.getRange(lr,1,1,row.length).setBackground('#f0f8ff');
     logAudit('รับเรื่อง CRM', id+' | '+data.reporterName+' | '+data.issueType+' | ผู้รับ: '+assigneeName);
     return { success:true, id:id };
-  } catch(e) { return { success:false, error:e.message }; }
-}
-
-function bulkImportCrmTickets(dataList) {
-  if (!_autoRefreshSession()) return { success:false, error:'ไม่มีสิทธิ์' };
-  try {
-    if (!Array.isArray(dataList) || dataList.length === 0) {
-      return { success:false, error:'ข้อมูลว่างเปล่า' };
-    }
-
-    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SH_CRM);
-    const sess = _sess();
-    const recorderName = sess.valid ? sess.name||sess.email : 'ผู้แจ้งออนไลน์';
-    let successCount = 0;
-
-    for (let i = 0; i < dataList.length; i++) {
-      try {
-        const data = dataList[i];
-        if (!data.reporterName || !data.detail) continue;
-
-        const now = new Date();
-        const id = 'CRM-' + Utilities.formatDate(now,'Asia/Bangkok','yyyyMMdd') + '-' + (sheet.getLastRow() + i);
-        const assigneeName = data.assigneeName || '';
-        const row = [
-          id, fmtDate(now), data.reporterName||'', data.studentId||'',
-          data.reporterEmail||'', data.reporterPhone||'', data.department||'',
-          data.educationLevel||'', data.term||'', data.year||'',
-          data.courses||'', data.issueType||'', data.detail||'',
-          data.channel||'online', data.priority||'normal',
-          data.tags||'', 'open', assigneeName, '', '[]',
-          recorderName, 'admin', data.org||'',
-        ];
-        sheet.appendRow(row);
-        successCount++;
-      } catch(rowErr) {
-        // skip ถ้ารายการนี้ผิดพลาด
-        Logger.log('Bulk import row error: ' + rowErr.message);
-      }
-    }
-
-    logAudit('นำเข้า CRM จำนวนมาก', successCount + ' รายการ');
-    return { success:true, count:successCount };
-  } catch(e) { return { success:false, error:e.message }; }
-}
-
-function getCrmDashboardData(filters) {
-  if (!_autoRefreshSession()) return { success:false, error:'SESSION_EXPIRED' };
-  try {
-    const allTickets = getCrmTickets({});
-    if (allTickets.error) return { success:false, error:allTickets.error };
-
-    // Filter
-    let filtered = allTickets;
-    if (filters.channel) filtered = filtered.filter(t => t.channel === filters.channel);
-    if (filters.issueType) filtered = filtered.filter(t => t.issueType === filters.issueType);
-    if (filters.term) filtered = filtered.filter(t => t.term === filters.term);
-    if (filters.priority) filtered = filtered.filter(t => t.priority === filters.priority);
-    if (filters.plan) filtered = filtered.filter(t => t.plan === filters.plan);
-    if (filters.course) {
-      filtered = filtered.filter(t =>
-        t.courses && t.courses.split(',').some(c => c.trim().toLowerCase().includes(filters.course.toLowerCase()))
-      );
-    }
-
-    // Calculate stats
-    const stats = {
-      total: filtered.length,
-      open: filtered.filter(t => t.status === 'open').length,
-      inprogress: filtered.filter(t => t.status === 'inprogress').length,
-      resolved: filtered.filter(t => t.status === 'resolved').length,
-      closed: filtered.filter(t => t.status === 'closed').length,
-    };
-
-    return { success:true, data:filtered, stats:stats };
   } catch(e) { return { success:false, error:e.message }; }
 }
 
@@ -1485,14 +1275,14 @@ function getCrmTickets(filters) {
       } catch(e) { return String(v); }
     };
     
-    const ncols = Math.min(sheet.getLastColumn(), 24);
+    const ncols = Math.min(sheet.getLastColumn(), 23);
     const rawRows = sheet.getRange(2,1,lr-1,ncols).getValues();
     const rows = [];
     for (let i = 0; i < rawRows.length; i++) {
       const r = rawRows[i];
       if (!r[0]) continue;
       const recorderName = S(r[20]);
-      // col 22 (r[21]) = source (admin/external), col 23 (r[22]) = plan, col 24 (r[23]) = org
+      // infer source for older rows that don't have col 21
       const storedSource = ncols >= 22 ? S(r[21]) : '';
       const source = storedSource || (recorderName === 'ผู้แจ้งออนไลน์' || recorderName === '' ? 'external' : 'admin');
       rows.push({
@@ -1503,7 +1293,7 @@ function getCrmTickets(filters) {
         channel: S(r[13]), priority: S(r[14]), tags: S(r[15]),
         status: S(r[16]), assigneeName: S(r[17]), assigneeEmail: S(r[18]),
         replies: S(r[19]) || '[]', recorderName: recorderName,
-        source: source, plan: ncols >= 23 ? S(r[22]) : '', org: ncols >= 24 ? S(r[23]) : '',
+        source: source, org: ncols >= 23 ? S(r[22]) : '',
       });
     }
 
@@ -1513,34 +1303,6 @@ function getCrmTickets(filters) {
       if (filters.channel) result = result.filter(function(r){ return r.channel === filters.channel; });
       if (filters.source)  result = result.filter(function(r){ return r.source === filters.source; });
       if (filters.org)     result = result.filter(function(r){ return r.org === filters.org; });
-      if (filters.plan)    result = result.filter(function(r){ return r.plan === filters.plan; });
-      if (filters.issueType) result = result.filter(function(r){ return r.issueType === filters.issueType; });
-      if (filters.term)    result = result.filter(function(r){ return r.term === filters.term; });
-      if (filters.priority) result = result.filter(function(r){ return r.priority === filters.priority; });
-      if (filters.course)  result = result.filter(function(r){ return (r.courses||'').indexOf(filters.course) !== -1; });
-      if (filters.dateFrom || filters.dateTo) {
-        function parseFilterDate(s) {
-          if (!s) return null;
-          var m = String(s).trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
-          if (m) return new Date(parseInt(m[3]), parseInt(m[2])-1, parseInt(m[1]));
-          return new Date(s);
-        }
-        var dFrom = parseFilterDate(filters.dateFrom);
-        var dTo   = parseFilterDate(filters.dateTo);
-        if (dTo) dTo.setHours(23,59,59,999);
-        result = result.filter(function(r) {
-          var d = r.date ? new Date(r.date) : null;
-          if (!d || isNaN(d.getTime())) {
-            // ลอง parse dd/MM/yyyy
-            var m2 = String(r.date||'').match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
-            if (m2) d = new Date(parseInt(m2[3]), parseInt(m2[2])-1, parseInt(m2[1]));
-          }
-          if (!d || isNaN(d.getTime())) return true; // ถ้า parse ไม่ได้ให้ผ่าน
-          if (dFrom && !isNaN(dFrom.getTime()) && d < dFrom) return false;
-          if (dTo   && !isNaN(dTo.getTime())   && d > dTo)   return false;
-          return true;
-        });
-      }
       if (filters.search) {
         const q = String(filters.search).toLowerCase();
         result = result.filter(function(r) {
@@ -1816,23 +1578,6 @@ function toggleUserActive(email, active) {
   } catch(e) { return { success:false, error:e.message }; }
 }
 
-function updateUserRole(email, role, perms) {
-  if (!_autoRefreshSession()) return { success:false, error:'ไม่มีสิทธิ์' };
-  try {
-    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SH_USERS);
-    const data  = sheet.getDataRange().getValues();
-    for (let i=1;i<data.length;i++) {
-      if ((data[i][0]||'').toLowerCase()===email.toLowerCase()) {
-        sheet.getRange(i+1,3).setValue(role);
-        sheet.getRange(i+1,7).setValue(perms);
-        logAudit('อัปเดต role/permissions', email + ' | ' + role);
-        return { success:true };
-      }
-    }
-    return { success:false, error:'ไม่พบ Email' };
-  } catch(e) { return { success:false, error:e.message }; }
-}
-
 // ============================================================
 // SETUP
 // ============================================================
@@ -1866,22 +1611,14 @@ function setupSystem() {
     const sh=st.getRange(1,1,1,2);sh.setBackground('#1a3a5c');sh.setFontColor('#fff');sh.setFontWeight('bold');
   }
 
-  // Sheet: ผู้ใช้งาน (เพิ่มคอลัมน์ perms, token, expires สำหรับ invitation flow)
+  // Sheet: ผู้ใช้งาน (เพิ่มคอลัมน์ perms)
   let us = ss.getSheetByName(SH_USERS);
   if (!us) {
     us = ss.insertSheet(SH_USERS);
-    us.appendRow(['email','password_hash','role','ชื่อ-สกุล','active','last_login','perms','invite_token','invite_expires']);
-    const uh=us.getRange(1,1,1,9);uh.setBackground('#1a3a5c');uh.setFontColor('#fff');uh.setFontWeight('bold');
-    us.appendRow(['admin@stou.ac.th',hashPw('admin1234'),'superadmin','ผู้ดูแลระบบ',true,'','dash,search,rec-return,rec-lend,rec-special,list,labels,crm,tags,users','','']);
-    [220,200,100,160,70,150,300,250,200].forEach((w,i)=>us.setColumnWidth(i+1,w));
-  } else {
-    // If sheet exists but doesn't have invite_token column, add them
-    const lastCol = us.getLastColumn();
-    if (lastCol < 8) {
-      us.getRange(1, 8).setValue('invite_token');
-      us.getRange(1, 9).setValue('invite_expires');
-      us.getRange(1, 8, 1, 2).setBackground('#1a3a5c').setFontColor('#fff').setFontWeight('bold');
-    }
+    us.appendRow(['email','password_hash','role','ชื่อ-สกุล','active','last_login','perms']);
+    const uh=us.getRange(1,1,1,7);uh.setBackground('#1a3a5c');uh.setFontColor('#fff');uh.setFontWeight('bold');
+    us.appendRow(['admin@stou.ac.th',hashPw('admin1234'),'superadmin','ผู้ดูแลระบบ',true,'','dash,search,rec-return,rec-lend,rec-special,list,labels,crm,tags,users']);
+    [220,200,100,160,70,150,300].forEach((w,i)=>us.setColumnWidth(i+1,w));
   }
 
   // Sheet: Tags
@@ -1893,30 +1630,13 @@ function setupSystem() {
     [['ปัญหาซ้ำ',3],['ด่วน',4],['วิชาบังคับ',1],['ติดตามแล้ว',5],['สำคัญ',2]].forEach(row=>tg.appendRow(row));
   }
 
-  // Sheet: CRM (22 คอลัมน์)
+  // Sheet: CRM (21 คอลัมน์)
   let cm = ss.getSheetByName(SH_CRM);
   if (!cm) {
     cm = ss.insertSheet(SH_CRM);
-    // col: 1-21=ข้อมูล, 22=แหล่งที่มา(source), 23=แผนการศึกษา(plan), 24=หน่วยงาน(org)
-    cm.appendRow(['รหัส','วันที่','ชื่อผู้แจ้ง','รหัสนักศึกษา','อีเมล','เบอร์โทร','หน่วยงาน/สาขา','ระดับการศึกษา','ภาค','ปี','ชุดวิชา','ประเภทปัญหา','รายละเอียด','ช่องทาง','ความเร่งด่วน','Tags','สถานะ','ผู้รับเรื่อง','อีเมลผู้รับเรื่อง','ประวัติการตอบ','ผู้บันทึก','แหล่งที่มา','แผนการศึกษา','หน่วยงานภายนอก']);
-    const ch=cm.getRange(1,1,1,24);ch.setBackground('#1a3a5c');ch.setFontColor('#fff');ch.setFontWeight('bold');
+    cm.appendRow(['รหัส','วันที่','ชื่อผู้แจ้ง','รหัสนักศึกษา','อีเมล','เบอร์โทร','หน่วยงาน/สาขา','ระดับการศึกษา','ภาค','ปี','ชุดวิชา','ประเภทปัญหา','รายละเอียด','ช่องทาง','ความเร่งด่วน','Tags','สถานะ','ผู้รับเรื่อง','อีเมลผู้รับเรื่อง','ประวัติการตอบ','ผู้บันทึก']);
+    const ch=cm.getRange(1,1,1,21);ch.setBackground('#1a3a5c');ch.setFontColor('#fff');ch.setFontWeight('bold');
     cm.setFrozenRows(1);
-  } else {
-    // Migrate existing sheet: ensure correct column layout
-    const headers = cm.getRange(1,1,1,cm.getLastColumn()).getValues()[0];
-    // Col 22 (idx 21) = แหล่งที่มา (source), Col 23 (idx 22) = แผนการศึกษา, Col 24 (idx 23) = หน่วยงานภายนอก
-    if (!headers[21] || headers[21] === 'แผนการศึกษา') {
-      cm.getRange(1, 22).setValue('แหล่งที่มา');
-      cm.getRange(1, 22).setBackground('#1a3a5c').setFontColor('#fff').setFontWeight('bold');
-    }
-    if (!headers[22] || headers[22] !== 'แผนการศึกษา') {
-      cm.getRange(1, 23).setValue('แผนการศึกษา');
-      cm.getRange(1, 23).setBackground('#1a3a5c').setFontColor('#fff').setFontWeight('bold');
-    }
-    if (!headers[23]) {
-      cm.getRange(1, 24).setValue('หน่วยงานภายนอก');
-      cm.getRange(1, 24).setBackground('#1a3a5c').setFontColor('#fff').setFontWeight('bold');
-    }
   }
 
   Logger.log('ALERT: '+
@@ -2230,7 +1950,7 @@ function fixSuperAdminLogin() {
   const sheet = ss.getSheetByName(SH_USERS);
   const data = sheet.getDataRange().getValues();
   const email = 'methita.sap@stou.ac.th';
-  const newPassword = 'Stou@2024'; // รหัสผ่านชั่วคราว
+  const newPassword = 'Stou@2024';
   const newHash = hashPw(newPassword);
 
   Logger.log('🔍 กำลังค้นหาบัญชี: ' + email);
@@ -2239,27 +1959,12 @@ function fixSuperAdminLogin() {
     const rowEmail = (data[i][0]||'').toString().trim().toLowerCase();
     if (rowEmail === email.toLowerCase()) {
       Logger.log('✅ พบบัญชี ที่ row: ' + (i+1));
-      Logger.log('  Email: ' + data[i][0]);
-      Logger.log('  Hash before: ' + (data[i][1]||'(ว่าง)'));
-      Logger.log('  Role: ' + data[i][2]);
-      Logger.log('  Name: ' + data[i][3]);
-      Logger.log('  Active before: ' + data[i][4]);
-
-      // แก้ไข: ตั้งรหัสผ่าน + ทำให้ active
-      sheet.getRange(i+1, 2).setValue(newHash);      // col B: password hash
-      sheet.getRange(i+1, 5).setValue(true);         // col E: active = true
-      sheet.getRange(i+1, 8).setValue('');           // col H: clear invite_token
-      sheet.getRange(i+1, 9).setValue('');           // col I: clear invite_expires
-
-      Logger.log('✅ แก้ไขเสร็จ:');
-      Logger.log('  Hash after: ' + newHash.substring(0,20) + '...');
-      Logger.log('  Active after: true');
-      Logger.log('  🔑 รหัสผ่านชั่วคราว: ' + newPassword);
-      Logger.log('  📝 ให้ผู้ใช้เข้าสู่ระบบแล้วเปลี่ยนรหัสผ่านเดี๋ยวนี้');
-      return {success: true, message: 'ตั้งค่าเสร็จ', password: newPassword};
+      sheet.getRange(i+1, 2).setValue(newHash);
+      sheet.getRange(i+1, 5).setValue(true);
+      Logger.log('✅ แก้ไขเสร็จ - Password: ' + newPassword);
+      return {success: true};
     }
   }
-  Logger.log('❌ ไม่พบบัญชี ' + email);
   return {success: false, error: 'ไม่พบบัญชี'};
 }
 
@@ -2383,90 +2088,6 @@ function exportRecordsData(filters) {
 function exportCrmData() {
   if (!_autoRefreshSession()) return { error:'SESSION_EXPIRED' };
   return getCrmTickets({});
-}
-
-function getCrmTemplateOptions() {
-  const DEFAULT_ISSUES = ['พิมพ์เพิ่ม','ชุดปรับปรุง','ชุดผลิตใหม่','ปัญหาทวงถามหนังสือ (ไม่ได้สั่งซื้อ/แผน ก2-ก3)','สอบถามทะเบียนและวัดผล (ลงทะเบียน/สอบ)','สอบถามกิจกรรมประจำชุดวิชา','สอบถามเลือกแผนการศึกษา','สอบถามอบรมเข้มเสริมประสบการณ์วิชาชีพ','สอบถามสอนเสริมออนไลน์','สอบถามโครงการสัมฤทธิบัตร','ไม่ได้รับเอกสาร','เอกสารชำรุด','ส่งผิดวิชา','อื่นๆ (ระบุเอง)'];
-  const issues = (settings && settings.issueTypes && settings.issueTypes.length) ? settings.issueTypes : DEFAULT_ISSUES;
-  return {
-    issueTypes: issues,
-    educationLevels: ['ปริญญาตรี','ปริญญาโท','ปริญญาเอก','หนังสือหมายเหตุ','อื่นๆ'],
-    channels: ['อีเมล','โทรศัพท์','Line','Facebook','อื่นๆ'],
-    priorities: ['normal','high','urgent'],
-  };
-}
-
-function createCrmImportTemplate() {
-  if (!_autoRefreshSession()) return { success:false, error:'SESSION_EXPIRED' };
-  try {
-    const options = getCrmTemplateOptions();
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
-    let templateSheet = ss.getSheetByName('CRM_Import_Template');
-    if (!templateSheet) {
-      templateSheet = ss.insertSheet('CRM_Import_Template');
-    } else {
-      templateSheet.clear();
-    }
-
-    const headers = ['ชื่อ','อีเมล','เบอร์โทร','รหัสนักศึกษา','ประเภทปัญหา','รายละเอียด','ชุดวิชา','หน่วยงาน/สาขา','ระดับการศึกษา','ภาค','ปี','แผนการศึกษา','ช่องทาง','ลำดับความสำคัญ','หมายเหตุ'];
-    templateSheet.appendRow(headers);
-    const headerRange = templateSheet.getRange(1, 1, 1, headers.length);
-    headerRange.setBackground('#1a3a5c').setFontColor('#fff').setFontWeight('bold');
-    templateSheet.setFrozenRows(1);
-
-    // ตั้ง column width
-    templateSheet.setColumnWidth(1, 150);
-    templateSheet.setColumnWidth(2, 180);
-    templateSheet.setColumnWidth(3, 130);
-    templateSheet.setColumnWidth(4, 110);
-    templateSheet.setColumnWidth(5, 200);
-    templateSheet.setColumnWidth(6, 250);
-    templateSheet.setColumnWidth(7, 130);
-    templateSheet.setColumnWidth(8, 150);
-    templateSheet.setColumnWidth(9, 140);
-    templateSheet.setColumnWidth(10, 70);
-    templateSheet.setColumnWidth(11, 70);
-    templateSheet.setColumnWidth(12, 150);
-    templateSheet.setColumnWidth(13, 130);
-    templateSheet.setColumnWidth(14, 110);
-    templateSheet.setColumnWidth(15, 200);
-
-    // เพิ่ม data validation สำหรับแถว 2-500
-    const issueRange = templateSheet.getRange('E2:E500');
-    const issueRule = SpreadsheetApp.newDataValidation()
-      .requireValueInList(options.issueTypes)
-      .setAllowInvalid(false)
-      .setHelpText('เลือกประเภทปัญหา')
-      .build();
-    issueRange.setDataValidation(issueRule);
-
-    const educationRange = templateSheet.getRange('I2:I500');
-    const educationRule = SpreadsheetApp.newDataValidation()
-      .requireValueInList(options.educationLevels)
-      .setAllowInvalid(false)
-      .setHelpText('เลือกระดับการศึกษา')
-      .build();
-    educationRange.setDataValidation(educationRule);
-
-    const channelRange = templateSheet.getRange('M2:M500');
-    const channelRule = SpreadsheetApp.newDataValidation()
-      .requireValueInList(options.channels)
-      .setAllowInvalid(false)
-      .setHelpText('เลือกช่องทาง')
-      .build();
-    channelRange.setDataValidation(channelRule);
-
-    const priorityRange = templateSheet.getRange('N2:N500');
-    const priorityRule = SpreadsheetApp.newDataValidation()
-      .requireValueInList(options.priorities)
-      .setAllowInvalid(false)
-      .setHelpText('เลือกลำดับความสำคัญ')
-      .build();
-    priorityRange.setDataValidation(priorityRule);
-
-    const url = ss.getUrl();
-    return { success:true, message:'สร้างเทมเพลตสำเร็จ', url:url };
-  } catch(e) { return { success:false, error:e.message }; }
 }
 
 // ============================================================
@@ -2752,8 +2373,7 @@ function setupTaskSheet() {
 function getTasks(filters) {
   // session check ผ่าน _autoRefreshSession อัตโนมัติ
   try {
-    const sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SH_TASKS);
-    if (!sh) return [];
+    const sh = setupTaskSheet();
     const lr = sh.getLastRow();
     if (lr < 2) return [];
     const sess = _sess();
@@ -3332,56 +2952,17 @@ function updateRecordFields(id, updates) {
     for (let i = 0; i < ids.length; i++) {
       if (String(ids[i][0]).trim() === String(id).trim()) {
         const row = i + 2;
-        // Column mapping based on field names (0-indexed in getRecords, 1-indexed in Sheets)
-        const fieldColMap = {
-          'date': 2,           // col 1 in sheets
-          'term': 3,           // col 2
-          'year': 4,           // col 3
-          'recType': 5,        // col 4
-          'parcelType': 6,     // col 5
-          'courseCode': 7,     // col 6
-          'studentId': 8,      // col 7
-          'prefix': 9,         // col 8
-          'firstName': 10,     // col 9
-          'lastName': 11,      // col 10
-          'houseNo': 12,       // col 11
-          'street': 13,        // col 12
-          'subDistrict': 14,   // col 13
-          'district': 15,      // col 14
-          'province': 16,      // col 15
-          'zipCode': 17,       // col 16
-          'phone': 18,         // col 17
-          'cause': 19,         // col 18
-          'contactStatus': 20, // col 19
-          'send1Track': 21,    // col 20
-          'send1Date': 22,     // col 21
-          'send2Track': 23,    // col 22
-          'send2Date': 24,     // col 23
-          'tags': 25,          // col 24
-          'remark': 26,        // col 25
-          'courses': 27,       // col 26
-          'status': 28         // col 27
-        };
-
-        // Update each field provided in updates
-        for (const [field, value] of Object.entries(updates)) {
-          const col = fieldColMap[field];
-          if (col) {
-            const cell = sheet.getRange(row, col);
-            if (field === 'phone' || field === 'zipCode') {
-              cell.setNumberFormat('@STRING@').setValue(String(value || ''));
-            } else {
-              cell.setValue(value || '');
-            }
-          }
-        }
-
-        // Update timestamp
-        sheet.getRange(row, 29).setValue(new Date());
-
-        // Log audit
-        const auditMsg = Object.entries(updates).map(([k,v]) => k + ': ' + (String(v)||'-').substring(0,30)).join(' | ');
-        logAudit('แก้ไขรายการ', id + ' | ' + auditMsg);
+        // column mapping (1-based): status=col26, remark=col27 (adjust to actual sheet)
+        // Read the header row to find column positions dynamically
+        const headers = sheet.getRange(1,1,1,sheet.getLastColumn()).getValues()[0];
+        const statusCol = headers.indexOf('status') + 1 || headers.indexOf('สถานะ') + 1;
+        const remarkCol = headers.indexOf('remark') + 1 || headers.indexOf('หมายเหตุ') + 1;
+        if (updates.status && statusCol > 0) sheet.getRange(row, statusCol).setValue(updates.status);
+        if (updates.remark !== undefined && remarkCol > 0) sheet.getRange(row, remarkCol).setValue(updates.remark);
+        // fallback: write to known columns if headers not found
+        if (statusCol === 0) { sheet.getRange(row, 26).setValue(updates.status || ''); }
+        if (remarkCol === 0) { sheet.getRange(row, 27).setValue(updates.remark || ''); }
+        logAudit('แก้ไขรายการ', id + ' | สถานะ: ' + (updates.status||'-') + ' | หมายเหตุ: ' + (updates.remark||'-').substring(0,50));
         return { success:true };
       }
     }
@@ -3414,8 +2995,6 @@ function registerExternalStaff(data) {
     const sh = _getExtSheet();
     const email = (data.email||'').toLowerCase().trim();
     if (!email || !data.name) return { success:false, error:'กรุณากรอกชื่อและอีเมล' };
-    if (!data.password || data.password.length < 8) return { success:false, error:'รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร' };
-
     // ตรวจซ้ำ
     const rows = sh.getDataRange().getValues();
     for (let i = 1; i < rows.length; i++) {
@@ -3423,32 +3002,7 @@ function registerExternalStaff(data) {
         return { success:false, error:'อีเมลนี้ลงทะเบียนไว้แล้ว' };
       }
     }
-
-    // Store temporary password during registration (will be replaced after admin approval)
-    const hashedPassword = hashPw(data.password);
-    sh.appendRow([email, data.name||'', data.org||'', data.phone||'', 'pending', hashedPassword, '', new Date(), '', '']);
-
-    // ส่งอีเมลยืนยันให้ผู้สมัคร
-    try {
-      GmailApp.sendEmail(email,
-        '✅ ได้รับคำขอลงทะเบียนสำเร็จแล้ว',
-        'สวัสดีค่ะ ' + (data.name||'') + '\n\n'
-        + 'ขอขอบคุณที่ลงทะเบียนเป็นเจ้าหน้าที่ภายนอกกับระบบจัดการรายไปรษณีย์ของมสธ.\n\n'
-        + '📋 ข้อมูลที่ลงทะเบียน:\n'
-        + '• ชื่อ: ' + (data.name||'-') + '\n'
-        + '• อีเมล: ' + email + '\n'
-        + '• หน่วยงาน: ' + (data.org||'-') + '\n'
-        + '• เบอร์โทร: ' + (data.phone||'-') + '\n\n'
-        + '⏳ ขั้นตอนต่อไป:\n'
-        + 'เจ้าหน้าที่ของระบบจะตรวจสอบและอนุมัติการลงทะเบียนของท่านโดยเร็วที่สุด\n'
-        + 'เมื่ออนุมัติแล้ว ท่านจะได้รับอีเมลยืนยันพร้อมกับลิงก์สำหรับตั้งรหัสผ่าน\n\n'
-        + 'หากมีข้อสงสัยติดต่อเจ้าหน้าที่ระบบได้ที่ 02 504 7623, 7626\n\n'
-        + 'ด้วยความเคารพ\n'
-        + 'ระบบจัดการเอกสารการสอน มสธ.');
-    } catch(e2) {
-      Logger.log('Failed to send registration confirmation: ' + e2.message);
-    }
-
+    sh.appendRow([email, data.name||'', data.org||'', data.phone||'', 'pending', '', '', new Date(), '', '']);
     // แจ้ง admin ทาง email (ถ้ามี admin email ใน settings)
     try {
       const settings = getSettings();
@@ -3456,12 +3010,9 @@ function registerExternalStaff(data) {
       if (adminEmail) {
         GmailApp.sendEmail(adminEmail,
           '[มสธ.] คำขอลงทะเบียนเจ้าหน้าที่ภายนอก: ' + data.name,
-          'มีคำขอลงทะเบียนใหม่จาก:\nชื่อ: ' + data.name + '\nอีเมล: ' + email + '\nหน่วยงาน: ' + (data.org||'-') + '\nเบอร์โทร: ' + (data.phone||'-') + '\n\nกรุณาเข้าระบบเพื่ออนุมัติการลงทะเบียน');
+          'มีคำขอลงทะเบียนใหม่จาก:\nชื่อ: ' + data.name + '\nอีเมล: ' + email + '\nหน่วยงาน: ' + (data.org||'-') + '\n\nกรุณาเข้าระบบเพื่ออนุมัติ');
       }
-    } catch(e2) {
-      Logger.log('Failed to send admin notification: ' + e2.message);
-    }
-
+    } catch(e2) {}
     return { success:true };
   } catch(e) { return { success:false, error:e.message }; }
 }
@@ -3474,31 +3025,23 @@ function approveExternalStaff(email) {
     for (let i = 1; i < rows.length; i++) {
       if ((rows[i][0]||'').toLowerCase().trim() === email.toLowerCase().trim()) {
         if (rows[i][4] === 'active') return { success:false, error:'อนุมัติไปแล้ว' };
+        // สร้าง token สำหรับตั้งรหัสผ่าน
+        const token = Utilities.getUuid();
         const sess = _sess();
-
-        // Generate password reset token
-        const resetToken = _generateRefreshToken();
-        sh.getRange(i+1, 5).setValue('approved'); // Set status to "approved" (not "active" yet)
-        sh.getRange(i+1, 7).setValue(resetToken);  // Store reset token in column 7
+        sh.getRange(i+1, 5).setValue('approved');
+        sh.getRange(i+1, 7).setValue(token);
         sh.getRange(i+1, 9).setValue(new Date());
         sh.getRange(i+1, 10).setValue(sess.name||sess.email||'admin');
-
-        // Send approval email with password reset link
+        // ส่งลิงก์ตั้งรหัสผ่าน
+        const scriptUrl = ScriptApp.getService().getUrl();
+        const setpwUrl = scriptUrl + '?page=ext_staff&token=' + token + '&email=' + encodeURIComponent(email);
         try {
-          const dashboardUrl = ScriptApp.getService().getUrl() + '?page=ext_staff&token=' + encodeURIComponent(resetToken) + '&email=' + encodeURIComponent(email);
           GmailApp.sendEmail(email,
-            '[มสธ.] ✅ อนุมัติการลงทะเบียนแล้ว - กรุณาตั้งรหัสผ่าน',
-            'สวัสดีค่ะ\n\nท่านได้รับการอนุมัติให้เข้าใช้ระบบ Dashboard เจ้าหน้าที่ภายนอก มสธ.\n\n'
-            + 'ขั้นตอนต่อไป: กรุณาคลิกลิงก์ด้านล่างเพื่อตั้งรหัสผ่านของท่าน\n'
-            + dashboardUrl + '\n\n'
-            + 'ลิงก์นี้จะใช้ได้ 7 วัน หากหมดอายุ กรุณาติดต่อผู้ดูแลระบบเพื่อขอลิงก์ใหม่\n\n'
-            + 'ขอแสดงความนับถือ\nผู้ดูแลระบบ มสธ.');
-        } catch(e2) {
-          Logger.log('Failed to send approval email: ' + e2.message);
-        }
-
+            '[มสธ.] อนุมัติการลงทะเบียนแล้ว — กรุณาตั้งรหัสผ่าน',
+            'ท่านได้รับการอนุมัติให้เข้าใช้ระบบ Dashboard เจ้าหน้าที่ภายนอก มสธ.\n\nกรุณาคลิกลิงก์ด้านล่างเพื่อตั้งรหัสผ่าน (ลิงก์ใช้ได้ 24 ชม.):\n\n' + setpwUrl + '\n\nหากท่านไม่ได้ลงทะเบียน กรุณาเพิกเฉยต่ออีเมลนี้');
+        } catch(e2) {}
         logAudit('อนุมัติเจ้าหน้าที่ภายนอก', email);
-        return { success:true };
+        return { success:true, token:token };
       }
     }
     return { success:false, error:'ไม่พบอีเมลนี้' };
@@ -3523,29 +3066,15 @@ function rejectExternalStaff(email) {
 
 function setExternalStaffPassword(email, token, newPassword) {
   try {
-    if (!newPassword || newPassword.length < 8) {
-      return { success:false, error:'รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร' };
-    }
-
     const sh = _getExtSheet();
     const rows = sh.getDataRange().getValues();
     for (let i = 1; i < rows.length; i++) {
       if ((rows[i][0]||'').toLowerCase().trim() === email.toLowerCase().trim()) {
-        const storedToken = (rows[i][6]||'').toString().trim();
-        const status = (rows[i][4]||'').toString().trim();
-
-        if (storedToken !== token) {
-          return { success:false, error:'token ไม่ถูกต้อง หรือหมดอายุ' };
-        }
-        if (!['pending','approved'].includes(status)) {
-          return { success:false, error:'บัญชีนี้ยังไม่ได้รับการอนุมัติ' };
-        }
-
-        // Update password and activate account
-        sh.getRange(i+1, 4).setValue('active');     // Set status to active (column 4, not 5)
-        sh.getRange(i+1, 5).setValue(hashPw(newPassword)); // Store hashed password in column 5
-        sh.getRange(i+1, 7).setValue(''); // Clear token in column 7
-
+        if (rows[i][6] !== token) return { success:false, error:'token ไม่ถูกต้อง' };
+        if (!['approved','active'].includes(rows[i][4])) return { success:false, error:'บัญชีนี้ยังไม่ได้รับการอนุมัติ' };
+        sh.getRange(i+1, 5).setValue('active');
+        sh.getRange(i+1, 6).setValue(hashPw(newPassword));
+        sh.getRange(i+1, 7).setValue(''); // clear token
         return { success:true };
       }
     }
@@ -3566,60 +3095,10 @@ function loginExternalStaff(email, password) {
         if (status !== 'active') return { success:false, error:'บัญชียังไม่ active' };
         if (!rows[i][5]) return { success:false, error:'ยังไม่ได้ตั้งรหัสผ่าน กรุณาตรวจสอบอีเมล' };
         if (hashPw(password) !== rows[i][5]) return { success:false, error:'รหัสผ่านไม่ถูกต้อง' };
-
-        // Generate refresh token for external staff
-        const refreshToken = _generateRefreshToken();
-        const sp = PropertiesService.getScriptProperties();
-        const extTokenData = {email:emailL, type:'external_staff', createdAt:Date.now()};
-        sp.setProperty('ext_rtoken_'+refreshToken, JSON.stringify(extTokenData));
-
-        return { success:true, user:{email:emailL, name:rows[i][1], org:rows[i][2], status:'active'}, refreshToken:refreshToken };
+        return { success:true, user:{email:emailL, name:rows[i][1], org:rows[i][2], status:'active'} };
       }
     }
     return { success:false, error:'ไม่พบอีเมลนี้ในระบบ' };
-  } catch(e) { return { success:false, error:e.message }; }
-}
-
-function refreshExternalStaffSession(refreshToken) {
-  try {
-    if (!refreshToken) return { success:false, error:'ไม่มี refresh token' };
-
-    const sp = PropertiesService.getScriptProperties();
-    const extTokenData = sp.getProperty('ext_rtoken_'+refreshToken);
-    if (!extTokenData) return { success:false, error:'Invalid refresh token' };
-
-    const extToken = JSON.parse(extTokenData);
-    if (!extToken.email) return { success:false, error:'Invalid refresh token' };
-
-    // ตรวจว่า refresh token ยังไม่หมดอายุ (7 วัน)
-    if (Date.now() - extToken.createdAt > 7*24*60*60*1000) {
-      sp.deleteProperty('ext_rtoken_'+refreshToken);
-      return { success:false, error:'Refresh token expired' };
-    }
-
-    // หา user info จาก External Staff sheet
-    const sh = _getExtSheet();
-    const rows = sh.getDataRange().getValues();
-    for (let i = 1; i < rows.length; i++) {
-      const rowEmail = (rows[i][0]||'').toLowerCase().trim();
-      if (rowEmail === extToken.email.toLowerCase()) {
-        const status = rows[i][4]||'pending';
-        if (status !== 'active') return { success:false, error:'บัญชีไม่ active' };
-
-        // สร้าง refresh token ใหม่
-        const newRefreshToken = _generateRefreshToken();
-        const newExtTokenData = {email:extToken.email, type:'external_staff', createdAt:Date.now()};
-        sp.setProperty('ext_rtoken_'+newRefreshToken, JSON.stringify(newExtTokenData));
-        sp.deleteProperty('ext_rtoken_'+refreshToken);
-
-        return {
-          success:true,
-          user:{email:extToken.email, name:rows[i][1], org:rows[i][2], status:'active'},
-          refreshToken:newRefreshToken
-        };
-      }
-    }
-    return { success:false, error:'User not found' };
   } catch(e) { return { success:false, error:e.message }; }
 }
 
@@ -3654,59 +3133,5 @@ function getPendingExternalRegistrations() {
     return { success:true, rows: rows.map(function(r){
       return { email:r[0], name:r[1], org:r[2], phone:r[3], status:r[4], registeredAt:r[7]?String(r[7]):'', approvedAt:r[8]?String(r[8]):'', approvedBy:r[9] };
     })};
-  } catch(e) { return { success:false, error:e.message }; }
-}
-
-function getExternalStaffDetail(email) {
-  if (!_autoRefreshSession()) return null;
-  try {
-    const sh = _getExtSheet();
-    const rows = sh.getDataRange().getValues();
-    for (let i = 1; i < rows.length; i++) {
-      if ((rows[i][0]||'').toLowerCase() === email.toLowerCase()) {
-        return {
-          email: rows[i][0],
-          name: rows[i][1],
-          org: rows[i][2],
-          phone: rows[i][3],
-          status: rows[i][4]
-        };
-      }
-    }
-    return null;
-  } catch(e) { return null; }
-}
-
-function updateExternalStaff(email, data) {
-  if (!_autoRefreshSession()) return { success:false, error:'SESSION_EXPIRED' };
-  try {
-    const sh = _getExtSheet();
-    const rows = sh.getDataRange().getValues();
-    for (let i = 1; i < rows.length; i++) {
-      if ((rows[i][0]||'').toLowerCase() === email.toLowerCase()) {
-        if (data.name) sh.getRange(i+1, 2).setValue(data.name);
-        if (data.org) sh.getRange(i+1, 3).setValue(data.org);
-        if (data.phone) sh.getRange(i+1, 4).setValue(data.phone);
-        logAudit('อัปเดตเจ้าหน้าที่ภายนอก', email + ' | ' + (data.name||rows[i][1]));
-        return { success:true };
-      }
-    }
-    return { success:false, error:'ไม่พบผู้ใช้' };
-  } catch(e) { return { success:false, error:e.message }; }
-}
-
-function deleteExternalStaff(email) {
-  if (!_autoRefreshSession()) return { success:false, error:'SESSION_EXPIRED' };
-  try {
-    const sh = _getExtSheet();
-    const rows = sh.getDataRange().getValues();
-    for (let i = 1; i < rows.length; i++) {
-      if ((rows[i][0]||'').toLowerCase() === email.toLowerCase()) {
-        sh.deleteRow(i+1);
-        logAudit('ลบเจ้าหน้าที่ภายนอก', email);
-        return { success:true };
-      }
-    }
-    return { success:false, error:'ไม่พบผู้ใช้' };
   } catch(e) { return { success:false, error:e.message }; }
 }
