@@ -2351,15 +2351,19 @@ tbody td{padding:12px;vertical-align:middle}
 
 <script>
 // ============================================================
-// SETPW PARAMS — injected from server via doGet template variables
+// SETPW PARAMS — read from URL parameters
 // ============================================================
-try {
-  var _SETPW_TOKEN = '<?= setpwToken ?>' || '';
-  var _SETPW_EMAIL = '<?= setpwEmail ?>' || '';
-} catch(e) {
-  var _SETPW_TOKEN = '';
-  var _SETPW_EMAIL = '';
-}
+var _SETPW_TOKEN = '';
+var _SETPW_EMAIL = '';
+
+// Read setpw parameters from URL if present
+(function() {
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('page') === 'setpw') {
+    _SETPW_TOKEN = params.get('token') || '';
+    _SETPW_EMAIL = params.get('email') || '';
+  }
+})();
 
 // ============================================================
 // STATE
