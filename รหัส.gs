@@ -1073,6 +1073,11 @@ function addRecord(data) {
     ];
     sheet.appendRow(row);
     const lr = sheet.getLastRow();
+    // ป้องกัน Sheets ลบ 0 ข้างหน้า - set เป็น TEXT format
+    sheet.getRange(lr, 18).setNumberFormat('@'); // phone (col 18)
+    sheet.getRange(lr, 17).setNumberFormat('@'); // zipCode (col 17)
+    sheet.getRange(lr, 21).setNumberFormat('@'); // send1Track (col 21)
+    sheet.getRange(lr, 23).setNumberFormat('@'); // send2Track (col 23)
     if (lr%2===0) sheet.getRange(lr,1,1,row.length).setBackground('#f0f4f8');
     logAudit('บันทึกพัสดุ', id+' | '+data.recType+' | นศ.'+data.studentId+' | '+data.courseCode);
     return { success:true, id:id };
@@ -1127,7 +1132,12 @@ function getRecords(filters) {
         district:    S(r[14]),
         province:    S(r[15]),
         zipCode:     S(r[16]),
-        phone:       S(r[17]),
+        phone:       (function(p){
+          var ph = S(p);
+          // Fix ข้อมูลเก่าที่สูญ 0 ข้างหน้า: ถ้า 9 หลัก เติม "0"
+          if (ph && /^\d{9}$/.test(ph)) ph = '0' + ph;
+          return ph;
+        })(r[17]),
         cause:       S(r[18]),
         contactStatus: S(r[19]),
         send1Track:  S(r[20]),
