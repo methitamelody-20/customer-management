@@ -414,7 +414,7 @@ tbody td{padding:12px;vertical-align:middle}
 }
 </style>
 
-<!-- Firebase SDK removed: ES module imports not supported in Google Apps Script sandbox -->
+<!-- Firebase: ปิด ES module เพราะ GAS sandbox ไม่รองรับ import statements -->
 
 </head>
 <body>
@@ -2348,7 +2348,7 @@ let settings={parcelTypes:[],returnCauses:[],prefixes:[],terms:[]};
 let allYears=[], allTags=[];
 let tagSelectedColor=0;
 let allRecords=[], allCrm=[];  // cache จาก Sheets
-let useFirebase = false; // Firebase SDK ไม่รองรับใน GAS sandbox — ใช้ Apps Script แทน
+let useFirebase = false; // ปิด Firebase — ใช้ Apps Script แทน (GAS sandbox ไม่รองรับ ES module)
 
 // ============================================================
 // FIREBASE WRAPPER
