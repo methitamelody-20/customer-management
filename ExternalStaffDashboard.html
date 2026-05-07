@@ -178,9 +178,9 @@ html,body{min-height:100%;font-family:var(--font);color:var(--text);background:v
           <input class="finput" id="regPhone" placeholder="08X-XXX-XXXX">
         </div>
         <div class="fg">
-          <label class="flbl">รหัสผ่าน <span class="req">*</span></label>
+          <label class="flbl">รหัสผ่านชั่วคราว <span class="req">*</span></label>
           <input class="finput" id="regPass1" type="password" placeholder="อย่างน้อย 8 ตัวอักษร">
-          <div class="tip">🔐 ตั้งรหัสผ่านตอนนี้ เมื่อ Admin อนุมัติแล้วท่านจะเข้าได้เลย</div>
+          <div class="tip">🔐 อย่างน้อย 8 ตัวอักษร - เมื่อ Admin อนุมัติ ท่านจะได้รับอีเมลสำหรับตั้งรหัสผ่านใหม่</div>
         </div>
         <div class="fg">
           <label class="flbl">ยืนยันรหัสผ่าน <span class="req">*</span></label>
@@ -358,16 +358,6 @@ window.addEventListener('load', function() {
       if (currentUser.status === 'active')  { loadDashboard(); return; }
     } catch(e) { sessionStorage.removeItem('ext_user'); }
   }
-  // โหลด remembered credentials ถ้ามี
-  const remembered = localStorage.getItem('ext_remembered');
-  if (remembered) {
-    try {
-      const creds = JSON.parse(remembered);
-      document.getElementById('loginEmail').value = creds.email || '';
-      document.getElementById('loginPassword').value = creds.password || '';
-      document.getElementById('rememberPassword').checked = true;
-    } catch(e) { localStorage.removeItem('ext_remembered'); }
-  }
   showPage('authPage');
 });
 
@@ -413,19 +403,20 @@ function doLogin() {
   const btn = document.getElementById('loginBtn');
   btn.disabled = true; btn.textContent = '⏳ กำลังเข้าสู่ระบบ...';
 
-  // save credentials ถ้า checkbox ถูก
-  if (remember) {
-    localStorage.setItem('ext_remembered', JSON.stringify({email:email, password:pw}));
-  } else {
-    localStorage.removeItem('ext_remembered');
-  }
-
   google.script.run
     .withSuccessHandler(function(res) {
       btn.disabled = false; btn.textContent = '🔑 เข้าสู่ระบบ';
       if (!res.success) { showAlert('loginAlert', res.error || 'เกิดข้อผิดพลาด', 'err'); return; }
       currentUser = res.user;
       sessionStorage.setItem('ext_user', JSON.stringify(currentUser));
+
+      // บันทึก refresh token เท่านั้น (ไม่บันทึก password)
+      if (remember && res.refreshToken) {
+        localStorage.setItem('ext_refresh_token', res.refreshToken);
+      } else {
+        localStorage.removeItem('ext_refresh_token');
+      }
+
       if (currentUser.status === 'pending') { showPage('pendingPage'); return; }
       loadDashboard();
     })
@@ -504,8 +495,11 @@ function doLogout() {
   sessionStorage.removeItem('ext_user');
   currentUser = null;
   allTickets = [];
-  // เลือกให้ clear remembered credentials เมื่อออกจากระบบ
-  localStorage.removeItem('ext_remembered');
+  // clear all login-related data
+  try {
+    localStorage.removeItem('ext_refresh_token');
+    localStorage.removeItem('ext_remembered');
+  } catch(err) {}
   showPage('authPage');
 }
 
