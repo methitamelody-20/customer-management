@@ -2225,6 +2225,44 @@ function resetAdminHash() {
   Logger.log('ALERT: '+'เสร็จแล้ว! Hash = ' + hash.substring(0,20) + '...');
 }
 
+function fixSuperAdminLogin() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(SH_USERS);
+  const data = sheet.getDataRange().getValues();
+  const email = 'methita.sap@stou.ac.th';
+  const newPassword = 'Stou@2024'; // รหัสผ่านชั่วคราว
+  const newHash = hashPw(newPassword);
+
+  Logger.log('🔍 กำลังค้นหาบัญชี: ' + email);
+
+  for (let i = 1; i < data.length; i++) {
+    const rowEmail = (data[i][0]||'').toString().trim().toLowerCase();
+    if (rowEmail === email.toLowerCase()) {
+      Logger.log('✅ พบบัญชี ที่ row: ' + (i+1));
+      Logger.log('  Email: ' + data[i][0]);
+      Logger.log('  Hash before: ' + (data[i][1]||'(ว่าง)'));
+      Logger.log('  Role: ' + data[i][2]);
+      Logger.log('  Name: ' + data[i][3]);
+      Logger.log('  Active before: ' + data[i][4]);
+
+      // แก้ไข: ตั้งรหัสผ่าน + ทำให้ active
+      sheet.getRange(i+1, 2).setValue(newHash);      // col B: password hash
+      sheet.getRange(i+1, 5).setValue(true);         // col E: active = true
+      sheet.getRange(i+1, 8).setValue('');           // col H: clear invite_token
+      sheet.getRange(i+1, 9).setValue('');           // col I: clear invite_expires
+
+      Logger.log('✅ แก้ไขเสร็จ:');
+      Logger.log('  Hash after: ' + newHash.substring(0,20) + '...');
+      Logger.log('  Active after: true');
+      Logger.log('  🔑 รหัสผ่านชั่วคราว: ' + newPassword);
+      Logger.log('  📝 ให้ผู้ใช้เข้าสู่ระบบแล้วเปลี่ยนรหัสผ่านเดี๋ยวนี้');
+      return {success: true, message: 'ตั้งค่าเสร็จ', password: newPassword};
+    }
+  }
+  Logger.log('❌ ไม่พบบัญชี ' + email);
+  return {success: false, error: 'ไม่พบบัญชี'};
+}
+
 // อัปเดตสาเหตุตีคืนใน Sheet ตั้งค่า (รันครั้งเดียว)
 // ดึง URL สำหรับ CRM Public (นศ. ใช้แจ้งปัญหา)
 function getPublicUrl() {
