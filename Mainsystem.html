@@ -2349,6 +2349,7 @@ let allYears=[], allTags=[];
 let tagSelectedColor=0;
 let allRecords=[], allCrm=[];  // cache จาก Sheets
 let useFirebase = false; // ปิด Firebase — ใช้ Apps Script แทน (GAS sandbox ไม่รองรับ ES module)
+let useFirebase = true; // ถ้า Firebase เปิด จะ set เป็น true
 
 // ============================================================
 // FIREBASE WRAPPER
@@ -4235,6 +4236,31 @@ function doSendReplyWithAttachment(id, text, sendEmail, fileUrl) {
     .withSuccessHandler(res=>{
       if(res.success){
         let msg = '✅ บันทึกและอัปโหลดไฟล์แล้ว';
+  google.script.run
+    .withSuccessHandler(res=>{
+      if(res.success){
+        let msg = '✅ บันทึกแล้ว';
+        if(sendEmail){
+          if(res.emailSent) msg = '✅ ส่งแล้ว + อีเมลถึง '+res.sentTo;
+          else if(res.emailError) msg = '⚠️ บันทึกแล้ว แต่ส่งอีเมลไม่ได้: '+res.emailError;
+        }
+        showToast(msg,'success');
+        clearReplyForm(id);
+        loadCrm();
+      } else {
+        showToast('❌ '+res.error,'error');
+      }
+    })
+    .withFailureHandler(showError)
+    .replyCrmTicket(id, text, currentUser, currentEmail, sendEmail);
+}
+
+function doSendReplyWithAttachment(id, text, sendEmail, fileUrl) {
+  const textWithLink = text + '\n\n📎 ไฟล์แนบ: ' + fileUrl;
+  google.script.run
+    .withSuccessHandler(res=>{
+      if(res.success){
+        let msg = '✅ บันทึกและอัปโหลดไฟล์แล้ว';
         if(sendEmail){
           if(res.emailSent) msg = '✅ ส่งแล้ว + อีเมลถึง '+res.sentTo;
           else if(res.emailError) msg = '⚠️ บันทึกแล้ว แต่ส่งอีเมลไม่ได้: '+res.emailError;
@@ -5138,6 +5164,7 @@ function saveUserEdit(email) {
   const perms = Array.from(document.querySelectorAll('.edit-perm-chk:checked')).map(c=>c.dataset.page).join(',');
   // ใช้ closest() เพื่อหา modal ที่มี editRole อยู่จริงๆ ไม่ใช่ modal อื่น
   const modalEl = document.getElementById('editRole').closest('.modal-overlay');
+  const modalEl = document.querySelector('.modal-overlay');
   const saveBtn = modalEl ? modalEl.querySelector('.btn-primary') : null;
   if(saveBtn) saveBtn.disabled = true;
 
@@ -5171,6 +5198,7 @@ function saveUserEdit(email) {
       if(saveBtn) saveBtn.disabled = false;
       showError(e);
     })
+    .withFailureHandler(showError)
     .updateUserRole(email, role, perms);
 }
 
