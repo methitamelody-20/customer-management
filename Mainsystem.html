@@ -4796,6 +4796,51 @@ function loadCrmDashboard() {
     .getCrmDashboardData(filters);
 }
 
+// Split course codes intelligently - handles both comma-separated and concatenated digit strings
+function splitCourseCodeIntelligently(codeStr) {
+  if (!codeStr) return [];
+
+  // Handle comma-separated codes
+  if (codeStr.includes(',')) {
+    return codeStr.split(',').map(c => c.trim()).filter(c => c);
+  }
+
+  // If not a digit-only string or less than 6 digits, return as-is
+  if (!/^\d{6,}$/.test(codeStr)) {
+    return [codeStr];
+  }
+
+  // Recursively find valid course code splits
+  function findOptimalSplit(str, accumulated = []) {
+    if (!str) {
+      return accumulated.length > 0 ? accumulated : null;
+    }
+    if (str.length < 3) {
+      return null; // Minimum 3 digits per code
+    }
+
+    // Try lengths from longest to shortest (7, 6, 5, 4, 3 digits)
+    for (let len = 7; len >= 3; len--) {
+      if (str.length >= len) {
+        const chunk = str.substring(0, len);
+        const rest = str.substring(len);
+
+        // Recursively try to split the rest
+        if (!rest) {
+          return [...accumulated, chunk];
+        } else if (rest.length >= 3) {
+          const result = findOptimalSplit(rest, [...accumulated, chunk]);
+          if (result) return result;
+        }
+      }
+    }
+    return null;
+  }
+
+  const split = findOptimalSplit(codeStr);
+  return split || [codeStr];
+}
+
 function renderCrmDashboard(tickets, stats) {
   // Update stats
   document.getElementById('crmd_total').textContent = stats.total;
@@ -4842,7 +4887,7 @@ function renderCrmDashboard(tickets, stats) {
     channelCount[t.channel] = (channelCount[t.channel] || 0) + 1;
     priorityCount[t.priority] = (priorityCount[t.priority] || 0) + 1;
     if (t.courses) {
-      t.courses.split(',').forEach(c => {
+      splitCourseCodeIntelligently(t.courses).forEach(c => {
         const code = c.trim();
         if (code) courseCount[code] = (courseCount[code] || 0) + 1;
       });
