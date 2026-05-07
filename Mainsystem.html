@@ -3974,8 +3974,37 @@ function loadCrm() {
     .getCrmTickets(filters);
 }
 
+function expandCrmByCourses(items) {
+  var expanded = [];
+  items.forEach(function(crm) {
+    var courses = [];
+    try {
+      var parsed = JSON.parse(crm.courses || '[]');
+      if (Array.isArray(parsed)) courses = parsed;
+    } catch(e) {}
+
+    if (!courses.length) {
+      expanded.push(crm);
+    } else {
+      courses.forEach(function(course, idx) {
+        var expandedCrm = Object.assign({}, crm);
+        expandedCrm.courseCode = course.code || '';
+        expandedCrm.courseB1 = course.b1 || '';
+        expandedCrm.courseB2 = course.b2 || '';
+        expandedCrm.courseTrack = course.track || '';
+        expandedCrm.courseDate = course.date || '';
+        expandedCrm._courseIndex = idx;
+        expandedCrm._totalCourses = courses.length;
+        expanded.push(expandedCrm);
+      });
+    }
+  });
+  return expanded;
+}
+
 function renderCrmList(items) {
   if(!items||items.error){showError(items&&items.error||'เกิดข้อผิดพลาด');return;}
+  var expandedItems = expandCrmByCourses(items);
   allCrm=items;
   var pending=items.filter(function(c){return c.status==='open'||c.status==='inprogress';}).length;
   var badge=document.getElementById('crmBadge');
@@ -3990,9 +4019,9 @@ function renderCrmList(items) {
     return;
   }
 
-  document.getElementById('crmList').innerHTML=items.map(function(c){
+  document.getElementById('crmList').innerHTML=expandedItems.map(function(c){
     var tags=c.tags?c.tags.split(',').filter(Boolean):[];
-    var courses=c.courses?c.courses.split(',').filter(Boolean):[];
+    var courses=c.courseCode?[c.courseCode]:[];
     var replies=[];
     try{replies=JSON.parse(c.replies||'[]');}catch(e){}
     var recFreq=allRecords.filter(function(r){return r.studentId===c.studentId;}).length;
