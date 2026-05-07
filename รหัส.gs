@@ -1959,23 +1959,12 @@ function fixSuperAdminLogin() {
     const rowEmail = (data[i][0]||'').toString().trim().toLowerCase();
     if (rowEmail === email.toLowerCase()) {
       Logger.log('✅ พบบัญชี ที่ row: ' + (i+1));
-      Logger.log('  Email: ' + data[i][0]);
-      Logger.log('  Hash before: ' + (data[i][1]||'(ว่าง)'));
-      Logger.log('  Role: ' + data[i][2]);
-      Logger.log('  Name: ' + data[i][3]);
-      Logger.log('  Active before: ' + data[i][4]);
-
       sheet.getRange(i+1, 2).setValue(newHash);
       sheet.getRange(i+1, 5).setValue(true);
-
-      Logger.log('✅ แก้ไขเสร็จ:');
-      Logger.log('  Hash after: ' + newHash.substring(0,20) + '...');
-      Logger.log('  Active after: true');
-      Logger.log('  🔑 รหัสผ่านชั่วคราว: ' + newPassword);
-      return {success: true, message: 'ตั้งค่าเสร็จ', password: newPassword};
+      Logger.log('✅ แก้ไขเสร็จ - Password: ' + newPassword);
+      return {success: true};
     }
   }
-  Logger.log('❌ ไม่พบบัญชี ' + email);
   return {success: false, error: 'ไม่พบบัญชี'};
 }
 
