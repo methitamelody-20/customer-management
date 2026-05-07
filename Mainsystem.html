@@ -4843,10 +4843,16 @@ function renderCrmDashboard(tickets, stats) {
     channelCount[t.channel] = (channelCount[t.channel] || 0) + 1;
     priorityCount[t.priority] = (priorityCount[t.priority] || 0) + 1;
     if (t.courses) {
-      t.courses.split(',').forEach(c => {
-        const code = c.trim();
-        if (code) courseCount[code] = (courseCount[code] || 0) + 1;
-      });
+      var courseStr = String(t.courses).trim();
+      if (courseStr) {
+        var coursesArr = courseStr.split(',').map(function(c){ return c.trim(); });
+        if (coursesArr.length === 1 && coursesArr[0].length > 5) {
+          coursesArr = coursesArr[0].match(/\d{5}/g) || coursesArr;
+        }
+        coursesArr.forEach(function(code) {
+          if (code && code.length > 0) courseCount[code] = (courseCount[code] || 0) + 1;
+        });
+      }
     }
   });
 
