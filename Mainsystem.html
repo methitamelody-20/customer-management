@@ -6,7 +6,20 @@
 <title>ระบบจัดการและติดตามเอกสารการสอน มสธ.</title>
 <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&family=Prompt:wght@500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/css/tom-select.min.css">
+<script src="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/js/tom-select.complete.min.js"></script>
 <style>
+/* Tom Select overrides */
+.ts-wrapper.single .ts-control{border:1.5px solid var(--outline,#c5cfe0);border-radius:8px;padding:8px 32px 8px 12px;font-family:inherit;font-size:13px;background:#fff;min-height:unset;box-shadow:none}
+.ts-wrapper.single.focus .ts-control{border-color:var(--primary,#2196F3);box-shadow:0 0 0 3px rgba(33,150,243,.12)}
+.ts-wrapper .ts-dropdown{border:1.5px solid var(--primary,#2196F3);border-radius:8px;margin-top:2px;font-family:inherit;font-size:13px}
+.ts-wrapper .ts-dropdown .option{padding:8px 12px}
+.ts-wrapper .ts-dropdown .option.active{background:var(--primary-container,#DBEAFE);color:var(--on-primary-container,#0B47A5)}
+.ts-wrapper .ts-dropdown-content{max-height:220px}
+.ts-wrapper .ts-control input{font-family:inherit;font-size:13px}
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
   /* Material Design 3 - Material Blue Palette */
@@ -130,7 +143,7 @@ html,body{height:100%;font-family:var(--font);color:var(--on-surface);background
 
 /* STATS - Material Design 3 */
 .stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:16px;margin-bottom:20px}
-.stat{background:var(--primary-container);border-radius:12px;padding:16px;border-left:none;display:flex;flex-direction:column;align-items:flex-start;gap:10px;box-shadow:var(--shadow-1);transition:all 0.2s;border:1px solid rgba(33,150,243,0.12)}
+.stat{background:var(--primary-container);border-radius:12px;padding:16px;border-left:none;display:flex;flex-direction:column;align-items:flex-start;gap:10px;box-shadow:var(--shadow-1);transition:all 0.2s;border:1px solid rgba(33,150,243,0.12);min-height:130px;justify-content:space-between}
 .stat:hover{box-shadow:var(--shadow-2);transform:translateY(-2px)}
 .stat.or{background:linear-gradient(135deg,#FFE0B2,#FFCC80);border:1px solid rgba(245,124,0,0.12)}
 .stat.re{background:linear-gradient(135deg,#FFCDD2,#EF9A9A);border:1px solid rgba(179,38,30,0.12)}
@@ -138,8 +151,8 @@ html,body{height:100%;font-family:var(--font);color:var(--on-surface);background
 .stat.te{background:linear-gradient(135deg,#B2DFDB,#80CBC4);border:1px solid rgba(0,137,123,0.12)}
 .stat.pu{background:linear-gradient(135deg,#E1BEE7,#CE93D8);border:1px solid rgba(69,39,160,0.12)}
 .stat.pi{background:linear-gradient(135deg,#F8BBD0,#F48FB1);border:1px solid rgba(194,24,91,0.12)}
-.stat-num{font-family:var(--font-h);font-size:28px;font-weight:700;color:var(--on-primary-container);line-height:1}
-.stat-lbl{font-size:12px;color:var(--on-primary-container);margin-top:2px;font-weight:500}
+.stat-num{font-family:var(--font-h);font-size:28px;font-weight:700;color:var(--on-primary-container);line-height:1;min-height:32px;display:flex;align-items:center}
+.stat-lbl{font-size:12px;color:var(--on-primary-container);margin-top:2px;font-weight:500;line-height:1.3;min-height:26px;display:flex;align-items:center}
 .stat-ic{font-size:24px;flex-shrink:0;opacity:0.8}
 
 /* CHARTS */
@@ -494,6 +507,12 @@ tbody td{padding:12px;vertical-align:middle}
         <span class="ic">💬</span>รายการรวมแจ้งปัญหา CRM
         <span class="cnt red" id="crmBadge2" style="display:none">0</span>
       </button>
+      <button class="nav-btn" onclick="go('crm-dashboard',this)" data-page="crm-dashboard">
+        <span class="ic">📊</span>Dashboard CRM
+      </button>
+      <button class="nav-btn" onclick="showExtDashLink()" style="color:var(--sky);font-size:11px;padding:6px 10px">
+        <span class="ic">🔗</span>ลิ้งค์ Dashboard ภายนอก
+      </button>
       <button class="nav-btn" onclick="go('list',this)" data-page="list"><span class="ic">📋</span>รายการทั้งหมด</button>
       <button class="nav-btn" onclick="go('labels',this)" data-page="labels"><span class="ic">🖨️</span>พิมพ์ใบจ่าหน้า</button>
       <button class="nav-btn" onclick="go('invest',this)" data-page="invest"><span class="ic">🔎</span>สอบสวนไปรษณีย์</button>
@@ -507,6 +526,7 @@ tbody td{padding:12px;vertical-align:middle}
       </button>
       <button class="nav-btn nav-superadmin" onclick="go('admin-report',this)" data-page="admin-report"><span class="ic">📊</span>สรุปงานเจ้าหน้าที่</button>
       <button class="nav-btn" onclick="go('stats',this)" data-page="stats"><span class="ic">📈</span>สถิติของฉัน</button>
+      <button class="nav-btn nav-superadmin" onclick="go('task-assign',this)" data-page="task-assign"><span class="ic">✏️</span>มอบหมายงานใหม่</button>
       <button class="nav-btn" onclick="go('tasks',this)" data-page="tasks">
         <span class="ic">✅</span>งานที่ได้รับ
         <span id="taskBadge" style="display:none;background:var(--red);color:#fff;border-radius:12px;font-size:10px;padding:1px 6px;margin-left:4px"></span>
@@ -615,7 +635,7 @@ tbody td{padding:12px;vertical-align:middle}
                 <td><input class="finput" id="rt_c1_b3" placeholder="ชื่อ/เลขเล่ม 3" style="width:100%"></td>
                 <td><input class="finput" id="rt_c1_ex" placeholder="แบบฝึก/เพิ่มเติม" style="width:100%;font-size:11px"></td>
                 <td><input class="finput" id="rt_c1_track" placeholder="EY123456789TH" style="width:100%"></td>
-                <td><input class="finput" id="rt_c1_date" type="date" style="width:100%"></td>
+                <td><input class="finput datepickr" id="rt_c1_date" type="text" placeholder="dd/mm/yyyy" style="width:100%"></td>
               </tr>
               <tr>
                 <td><span class="course-num-badge" style="background:var(--gray3)">2</span></td>
@@ -625,7 +645,7 @@ tbody td{padding:12px;vertical-align:middle}
                 <td><input class="finput" id="rt_c2_b3" placeholder="ชื่อ/เลขเล่ม 3" style="width:100%"></td>
                 <td><input class="finput" id="rt_c2_ex" placeholder="แบบฝึก/เพิ่มเติม" style="width:100%;font-size:11px"></td>
                 <td><input class="finput" id="rt_c2_track" placeholder="EY123456789TH" style="width:100%"></td>
-                <td><input class="finput" id="rt_c2_date" type="date" style="width:100%"></td>
+                <td><input class="finput datepickr" id="rt_c2_date" type="text" placeholder="dd/mm/yyyy" style="width:100%"></td>
               </tr>
               <tr>
                 <td><span class="course-num-badge" style="background:var(--gray3)">3</span></td>
@@ -635,7 +655,7 @@ tbody td{padding:12px;vertical-align:middle}
                 <td><input class="finput" id="rt_c3_b3" placeholder="ชื่อ/เลขเล่ม 3" style="width:100%"></td>
                 <td><input class="finput" id="rt_c3_ex" placeholder="แบบฝึก/เพิ่มเติม" style="width:100%;font-size:11px"></td>
                 <td><input class="finput" id="rt_c3_track" placeholder="EY123456789TH" style="width:100%"></td>
-                <td><input class="finput" id="rt_c3_date" type="date" style="width:100%"></td>
+                <td><input class="finput datepickr" id="rt_c3_date" type="text" placeholder="dd/mm/yyyy" style="width:100%"></td>
               </tr>
             </tbody>
           </table>
@@ -703,7 +723,7 @@ tbody td{padding:12px;vertical-align:middle}
           </div>
 
           <div class="btn-row">
-            <button class="btn btn-primary" onclick="submitRecord('return')">💾 บันทึกพัสดุตีคืน</button>
+            <button class="btn btn-primary" onclick="submitRecord('return',this)">💾 บันทึกพัสดุตีคืน</button>
             <button class="btn btn-outline" onclick="clearRecord('return')">🗑️ ล้างฟอร์ม</button>
             <button class="btn btn-outline" onclick="showToast('กำลังพัฒนา — เดี๋ยวมีตัวอย่างจดหมาย','info')" title="ออกจดหมายภายนอก (กำลังพัฒนา)" style="opacity:.7">🖨️ ออกจดหมายภายนอก</button>
           </div>
@@ -743,7 +763,7 @@ tbody td{padding:12px;vertical-align:middle}
                 <td><input class="finput" id="ld_c1_b3" placeholder="ชื่อ/เลขเล่ม 3" style="width:100%"></td>
                 <td><input class="finput" id="ld_c1_ex" placeholder="แบบฝึก/เพิ่มเติม" style="width:100%;font-size:11px"></td>
                 <td><input class="finput" id="ld_c1_track" placeholder="EY123456789TH" style="width:100%"></td>
-                <td><input class="finput" id="ld_c1_date" type="date" style="width:100%"></td>
+                <td><input class="finput datepickr" id="ld_c1_date" type="text" placeholder="dd/mm/yyyy" style="width:100%"></td>
               </tr>
               <tr>
                 <td><span class="course-num-badge" style="background:var(--gray3)">2</span></td>
@@ -753,7 +773,7 @@ tbody td{padding:12px;vertical-align:middle}
                 <td><input class="finput" id="ld_c2_b3" placeholder="ชื่อ/เลขเล่ม 3" style="width:100%"></td>
                 <td><input class="finput" id="ld_c2_ex" placeholder="แบบฝึก/เพิ่มเติม" style="width:100%;font-size:11px"></td>
                 <td><input class="finput" id="ld_c2_track" placeholder="EY123456789TH" style="width:100%"></td>
-                <td><input class="finput" id="ld_c2_date" type="date" style="width:100%"></td>
+                <td><input class="finput datepickr" id="ld_c2_date" type="text" placeholder="dd/mm/yyyy" style="width:100%"></td>
               </tr>
               <tr>
                 <td><span class="course-num-badge" style="background:var(--gray3)">3</span></td>
@@ -763,7 +783,7 @@ tbody td{padding:12px;vertical-align:middle}
                 <td><input class="finput" id="ld_c3_b3" placeholder="ชื่อ/เลขเล่ม 3" style="width:100%"></td>
                 <td><input class="finput" id="ld_c3_ex" placeholder="แบบฝึก/เพิ่มเติม" style="width:100%;font-size:11px"></td>
                 <td><input class="finput" id="ld_c3_track" placeholder="EY123456789TH" style="width:100%"></td>
-                <td><input class="finput" id="ld_c3_date" type="date" style="width:100%"></td>
+                <td><input class="finput datepickr" id="ld_c3_date" type="text" placeholder="dd/mm/yyyy" style="width:100%"></td>
               </tr>
             </tbody>
           </table>
@@ -836,7 +856,7 @@ tbody td{padding:12px;vertical-align:middle}
             <div class="fg full"><label class="flbl">หมายเหตุ</label><textarea class="ftextarea" id="ld_remark" placeholder="หมายเหตุเพิ่มเติม"></textarea></div>
           </div>
           <div class="btn-row">
-            <button class="btn btn-primary" onclick="submitRecord('lend')">💾 บันทึกให้ยืม</button>
+            <button class="btn btn-primary" onclick="submitRecord('lend',this)">💾 บันทึกให้ยืม</button>
             <button class="btn btn-outline" onclick="clearRecord('lend')">🗑️ ล้างฟอร์ม</button>
             <button class="btn btn-outline" onclick="showToast('กำลังพัฒนา — เดี๋ยวมีตัวอย่างจดหมาย','info')" title="ออกจดหมายภายนอก (กำลังพัฒนา)" style="opacity:.7">🖨️ ออกจดหมายภายนอก</button>
           </div>
@@ -874,7 +894,7 @@ tbody td{padding:12px;vertical-align:middle}
                 <td><input class="finput" id="sp_c1_b3" placeholder="ชื่อ/เลขเล่ม 3" style="width:100%"></td>
                 <td><input class="finput" id="sp_c1_ex" placeholder="แบบฝึก/เพิ่มเติม" style="width:100%;font-size:11px"></td>
                 <td><input class="finput" id="sp_c1_track" placeholder="EY123456789TH" style="width:100%"></td>
-                <td><input class="finput" id="sp_c1_date" type="date" style="width:100%"></td>
+                <td><input class="finput datepickr" id="sp_c1_date" type="text" placeholder="dd/mm/yyyy" style="width:100%"></td>
               </tr>
               <tr>
                 <td><span class="course-num-badge" style="background:var(--gray3)">2</span></td>
@@ -884,7 +904,7 @@ tbody td{padding:12px;vertical-align:middle}
                 <td><input class="finput" id="sp_c2_b3" placeholder="ชื่อ/เลขเล่ม 3" style="width:100%"></td>
                 <td><input class="finput" id="sp_c2_ex" placeholder="แบบฝึก/เพิ่มเติม" style="width:100%;font-size:11px"></td>
                 <td><input class="finput" id="sp_c2_track" placeholder="EY123456789TH" style="width:100%"></td>
-                <td><input class="finput" id="sp_c2_date" type="date" style="width:100%"></td>
+                <td><input class="finput datepickr" id="sp_c2_date" type="text" placeholder="dd/mm/yyyy" style="width:100%"></td>
               </tr>
               <tr>
                 <td><span class="course-num-badge" style="background:var(--gray3)">3</span></td>
@@ -894,7 +914,7 @@ tbody td{padding:12px;vertical-align:middle}
                 <td><input class="finput" id="sp_c3_b3" placeholder="ชื่อ/เลขเล่ม 3" style="width:100%"></td>
                 <td><input class="finput" id="sp_c3_ex" placeholder="แบบฝึก/เพิ่มเติม" style="width:100%;font-size:11px"></td>
                 <td><input class="finput" id="sp_c3_track" placeholder="EY123456789TH" style="width:100%"></td>
-                <td><input class="finput" id="sp_c3_date" type="date" style="width:100%"></td>
+                <td><input class="finput datepickr" id="sp_c3_date" type="text" placeholder="dd/mm/yyyy" style="width:100%"></td>
               </tr>
             </tbody>
           </table>
@@ -926,7 +946,8 @@ tbody td{padding:12px;vertical-align:middle}
                 <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px"><input type="radio" name="sp_cause" value="ส่งซ้ำชุดวิชา"> ส่งซ้ำชุดวิชา</label>
                 <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px"><input type="radio" name="sp_cause" value="ส่งผิดชุดวิชา"> ส่งผิดชุดวิชา</label>
                 <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px"><input type="radio" name="sp_cause" value="เอกสารชำรุด"> เอกสารชำรุด</label>
-                <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;grid-column:1/-1"><input type="radio" name="sp_cause" value="เปลี่ยนที่อยู่ด่วน"> 🚨 เปลี่ยนที่อยู่ด่วน</label>
+                <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px"><input type="radio" name="sp_cause" value="เปลี่ยนที่อยู่ด่วน"> 🚨 เปลี่ยนที่อยู่ด่วน</label>
+                <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;grid-column:1/-1"><input type="radio" name="sp_cause" value="เคสส่งเร่งด่วน (ครั้งที่ 1)"> ⚡ เคสส่งเร่งด่วน (ครั้งที่ 1)</label>
               </div>
             </div>
             <div class="fg"><label class="flbl">สถานะการติดต่อ</label>
@@ -961,7 +982,7 @@ tbody td{padding:12px;vertical-align:middle}
             <div class="fg full"><label class="flbl">หมายเหตุ</label><textarea class="ftextarea" id="sp_remark" placeholder="หมายเหตุ"></textarea></div>
           </div>
           <div class="btn-row">
-            <button class="btn btn-primary" onclick="submitRecord('special')">💾 บันทึกส่งใหม่กรณีพิเศษ</button>
+            <button class="btn btn-primary" onclick="submitRecord('special',this)">💾 บันทึกส่งใหม่กรณีพิเศษ</button>
             <button class="btn btn-outline" onclick="clearRecord('special')">🗑️ ล้างฟอร์ม</button>
             <button class="btn btn-outline" onclick="showToast('กำลังพัฒนา — เดี๋ยวมีตัวอย่างจดหมาย','info')" title="ออกจดหมายภายนอก (กำลังพัฒนา)" style="opacity:.7">🖨️ ออกจดหมายภายนอก</button>
           </div>
@@ -1105,7 +1126,7 @@ tbody td{padding:12px;vertical-align:middle}
     </div>
     <div class="fg">
       <label class="flbl">วันที่ส่ง (ครั้งแรกที่มีปัญหา)</label>
-      <input class="finput" id="iup_sent_date" type="date">
+      <input class="finput datepickr" id="iup_sent_date" type="text" placeholder="dd/mm/yyyy">
     </div>
     <div class="fg">
       <label class="flbl">ประเภทพัสดุ</label>
@@ -1131,7 +1152,7 @@ tbody td{padding:12px;vertical-align:middle}
       <div class="form-grid g2">
         <div class="fg">
           <label class="flbl">วันที่แจ้งไปรษณีย์</label>
-          <input class="finput" id="iup_notify_date" type="date" onchange="calcInvestDays()">
+          <input class="finput datepickr" id="iup_notify_date" type="text" placeholder="dd/mm/yyyy" onchange="calcInvestDays()">
         </div>
         <div class="fg">
           <label class="flbl">อีเมลที่แจ้ง</label>
@@ -1143,7 +1164,7 @@ tbody td{padding:12px;vertical-align:middle}
         </div>
         <div class="fg">
           <label class="flbl">วันที่ได้รับผลตอบ</label>
-          <input class="finput" id="iup_reply_date" type="date" onchange="calcInvestDays()">
+          <input class="finput datepickr" id="iup_reply_date" type="text" placeholder="dd/mm/yyyy" onchange="calcInvestDays()">
         </div>
         <div class="fg">
           <label class="flbl">จำนวนวันตอบ</label>
@@ -1213,7 +1234,7 @@ tbody td{padding:12px;vertical-align:middle}
     </div>
     
     <div class="btn-row">
-      <button class="btn btn-primary" onclick="submitInvestUpdate()">💾 บันทึก</button>
+      <button class="btn btn-primary" id="investSaveBtn" onclick="submitInvestUpdate(this)">💾 บันทึก</button>
       <button class="btn btn-outline" onclick="document.getElementById('investUpdateModal').classList.add('hidden')">ยกเลิก</button>
     </div>
   </div>
@@ -1301,8 +1322,11 @@ tbody td{padding:12px;vertical-align:middle}
       <div id="page-crm" class="page">
         <div class="sec-head">
           <div><h2>บันทึกข้อมูลรับแจ้งปัญหา CRM</h2><div class="sub">กรอกข้อมูลจาก นศ./หน่วยงาน</div></div>
-          <div style="display:flex;gap:8px">
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
             <button class="btn btn-outline btn-sm" onclick="showCrmPublicLink()">🔗 ลิ้งค์แจ้งปัญหาสำหรับภายนอก</button>
+            <button class="btn btn-outline btn-sm" onclick="createCrmTemplate()">📋 สร้างเทมเพลตใน Sheet</button>
+            <button class="btn btn-outline btn-sm" onclick="downloadCrmTemplate()">📥 ดาวน์โหลดเทมเพลต Excel</button>
+            <button class="btn btn-primary btn-sm" onclick="openCrmImportModal()">📥 นำเข้า Excel</button>
           </div>
         </div>
 
@@ -1434,7 +1458,7 @@ tbody td{padding:12px;vertical-align:middle}
                   </div>
                 </div>
                 <div class="btn-row" style="margin-top:14px">
-                  <button class="btn btn-primary" onclick="submitCrmTicket()">💾 รับเรื่องและบันทึก</button>
+                  <button class="btn btn-primary" onclick="submitCrmTicket(this)">💾 รับเรื่องและบันทึก</button>
                   <button class="btn btn-outline" onclick="toggleCrmForm()">ยกเลิก</button>
                 </div>
               </div>
@@ -1479,6 +1503,123 @@ tbody td{padding:12px;vertical-align:middle}
         </div>
         <div class="crm-list" id="crmList">
           <div style="text-align:center;padding:30px;color:var(--gray3)">กำลังโหลด...</div>
+        </div>
+      </div>
+
+      <!-- ===== CRM DASHBOARD ===== -->
+      <div id="page-crm-dashboard" class="page">
+        <div class="sec-head">
+          <div><h2>📊 Dashboard แจ้งปัญหา CRM</h2><div class="sub">วิเคราะห์ปัญหาและติดตามสถานะ</div></div>
+          <button class="btn btn-outline btn-sm" onclick="loadCrmDashboard()">🔄 รีเฟรช</button>
+        </div>
+
+        <!-- Filter Bar -->
+        <div class="card" style="background:var(--light);padding:16px;margin-bottom:14px">
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;align-items:end">
+            <div>
+              <label class="flbl" style="display:block;margin-bottom:4px;font-size:12px">ช่องทางติดต่อ</label>
+              <select class="fsel" id="crmd_channel" style="font-size:13px" onchange="loadCrmDashboard()">
+                <option value="">ทั้งหมด</option>
+                <option value="online">ออนไลน์</option>
+                <option value="phone">โทรศัพท์</option>
+                <option value="line">LINE</option>
+                <option value="letter">จดหมาย</option>
+                <option value="walkin">มาด้วยตนเอง</option>
+              </select>
+            </div>
+            <div>
+              <label class="flbl" style="display:block;margin-bottom:4px;font-size:12px">ประเภทปัญหา</label>
+              <select class="fsel" id="crmd_issuetype" style="font-size:13px" onchange="loadCrmDashboard()">
+                <option value="">ทั้งหมด</option>
+              </select>
+            </div>
+            <div>
+              <label class="flbl" style="display:block;margin-bottom:4px;font-size:12px">ภาคการศึกษา</label>
+              <select class="fsel" id="crmd_term" style="font-size:13px" onchange="loadCrmDashboard()">
+                <option value="">ทั้งหมด</option>
+              </select>
+            </div>
+            <div>
+              <label class="flbl" style="display:block;margin-bottom:4px;font-size:12px">แผนการศึกษา</label>
+              <select class="fsel" id="crmd_plan" style="font-size:13px" onchange="loadCrmDashboard()">
+                <option value="">ทั้งหมด</option>
+              </select>
+            </div>
+            <div>
+              <label class="flbl" style="display:block;margin-bottom:4px;font-size:12px">ชุดวิชา</label>
+              <input class="finput" id="crmd_course" placeholder="รหัสชุดวิชา" style="font-size:13px" onchange="loadCrmDashboard()">
+            </div>
+            <div>
+              <label class="flbl" style="display:block;margin-bottom:4px;font-size:12px">ลำดับความสำคัญ</label>
+              <select class="fsel" id="crmd_priority" style="font-size:13px" onchange="loadCrmDashboard()">
+                <option value="">ทั้งหมด</option>
+                <option value="normal">ปกติ</option>
+                <option value="high">สูง</option>
+                <option value="urgent">เร่งด่วน</option>
+              </select>
+            </div>
+            <div>
+              <label class="flbl" style="display:block;margin-bottom:4px;font-size:12px">📅 วันที่แจ้ง (จาก)</label>
+              <input class="finput" id="crmd_date_from" type="text" placeholder="dd/mm/yyyy" style="font-size:13px;width:120px" oninput="loadCrmDashboard()">
+            </div>
+            <div>
+              <label class="flbl" style="display:block;margin-bottom:4px;font-size:12px">📅 วันที่แจ้ง (ถึง)</label>
+              <input class="finput" id="crmd_date_to" type="text" placeholder="dd/mm/yyyy" style="font-size:13px;width:120px" oninput="loadCrmDashboard()">
+            </div>
+          </div>
+        </div>
+
+        <!-- Stats Cards -->
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:14px">
+          <div class="card" style="text-align:center;padding:16px">
+            <div style="font-size:28px;font-weight:700;color:var(--blue)" id="crmd_total">0</div>
+            <div style="font-size:12px;color:var(--gray3);margin-top:4px">เรื่องทั้งหมด</div>
+          </div>
+          <div class="card" style="text-align:center;padding:16px">
+            <div style="font-size:28px;font-weight:700;color:var(--red)" id="crmd_open">0</div>
+            <div style="font-size:12px;color:var(--gray3);margin-top:4px">รอรับเรื่อง</div>
+          </div>
+          <div class="card" style="text-align:center;padding:16px">
+            <div style="font-size:28px;font-weight:700;color:var(--orange)" id="crmd_inprogress">0</div>
+            <div style="font-size:12px;color:var(--gray3);margin-top:4px">กำลังดำเนินการ</div>
+          </div>
+          <div class="card" style="text-align:center;padding:16px">
+            <div style="font-size:28px;font-weight:700;color:var(--green)" id="crmd_resolved">0</div>
+            <div style="font-size:12px;color:var(--gray3);margin-top:4px">แก้ไขแล้ว</div>
+          </div>
+        </div>
+
+        <!-- Charts -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
+          <div class="card" style="padding:16px">
+            <div class="card-title" style="margin-bottom:12px">สถานะเรื่อง</div>
+            <canvas id="chartStatus" style="max-height:300px"></canvas>
+          </div>
+          <div class="card" style="padding:16px">
+            <div class="card-title" style="margin-bottom:12px">ประเภทปัญหา</div>
+            <canvas id="chartIssueType" style="max-height:300px"></canvas>
+          </div>
+          <div class="card" style="padding:16px">
+            <div class="card-title" style="margin-bottom:12px">ช่องทางติดต่อ</div>
+            <canvas id="chartChannel" style="max-height:300px"></canvas>
+          </div>
+          <div class="card" style="padding:16px">
+            <div class="card-title" style="margin-bottom:12px">ลำดับความสำคัญ</div>
+            <canvas id="chartPriority" style="max-height:300px"></canvas>
+          </div>
+        </div>
+
+        <!-- Top Issues -->
+        <div class="card" style="padding:16px">
+          <div class="card-title" style="margin-bottom:12px">ชุดวิชาที่มีปัญหามากที่สุด</div>
+          <div style="overflow-x:auto">
+            <table style="width:100%;border-collapse:collapse;font-size:13px">
+              <thead style="background:var(--gray1)">
+                <tr><th style="padding:8px;text-align:left">ชุดวิชา</th><th style="padding:8px;text-align:center">จำนวน</th></tr>
+              </thead>
+              <tbody id="crmTopCourses"></tbody>
+            </table>
+          </div>
         </div>
       </div>
 
@@ -1615,12 +1756,11 @@ tbody td{padding:12px;vertical-align:middle}
         <div class="sec-head">
           <div>
             <h2>📋 งานที่ได้รับมอบหมาย
-              <span id="taskBadge" style="display:none;background:var(--red);color:#fff;font-size:11px;padding:2px 8px;border-radius:12px;margin-left:8px">0</span>
+              <span id="taskPageBadge" style="display:none;background:var(--red);color:#fff;font-size:11px;padding:2px 8px;border-radius:12px;margin-left:8px">0</span>
             </h2>
             <div class="sub">ติดตามงานที่ได้รับ และอนุมัติก่อนโพส/ส่ง</div>
           </div>
           <div style="display:flex;gap:8px" id="taskActionBtns">
-            <button class="btn btn-primary btn-sm nav-superadmin" onclick="openAddTaskForm()">➕ มอบหมายงาน</button>
           </div>
         </div>
 
@@ -1652,20 +1792,22 @@ tbody td{padding:12px;vertical-align:middle}
                 <div class="form-grid g2">
                   <div class="fg full"><label class="flbl">หัวข้องาน<span class="req">*</span></label><input class="finput" id="task_title" placeholder="เช่น โพสภาพ Facebook, แจ้งไปรษณีย์ไทย"></div>
                   <div class="fg"><label class="flbl">ประเภทงาน</label>
-                    <select class="fsel" id="task_type">
+                    <select class="fsel" id="task_type" onchange="onTaskTypeChange('task_type','task_type_custom')">
                       <option value="ทั่วไป">ทั่วไป</option>
                       <option value="โพสโซเชียลมีเดีย">โพสโซเชียลมีเดีย</option>
                       <option value="แจ้งไปรษณีย์ไทย">แจ้งไปรษณีย์ไทย</option>
                       <option value="จัดทำเอกสาร">จัดทำเอกสาร</option>
                       <option value="ประสานงาน">ประสานงาน</option>
+                      <option value="__custom__">อื่นๆ (ระบุเอง)</option>
                     </select>
+                    <input class="finput" id="task_type_custom" type="text" placeholder="ระบุประเภทงาน..." style="display:none;margin-top:6px">
                   </div>
                   <div class="fg"><label class="flbl">มอบหมายให้</label>
                     <select class="fsel" id="task_assignee">
                       <option value="">-- เลือก --</option>
                     </select>
                   </div>
-                  <div class="fg"><label class="flbl">กำหนดส่ง</label><input class="finput" id="task_due" type="date"></div>
+                  <div class="fg"><label class="flbl" style="display:flex;align-items:center;justify-content:space-between">กำหนดส่ง<label style="font-weight:400;font-size:12px;color:var(--gray3);cursor:pointer;display:flex;align-items:center;gap:4px"><input type="checkbox" id="task_due_none" onchange="toggleDueDate('task_due','task_due_none')"> ไม่ระบุ</label></label><input class="finput datepickr" id="task_due" type="text" placeholder="dd/mm/yyyy"></div>
                 </div>
                 <div class="fg" style="margin-top:10px">
                   <label class="flbl">รายละเอียด</label>
@@ -1696,6 +1838,73 @@ tbody td{padding:12px;vertical-align:middle}
         <!-- รายการงาน -->
         <div id="taskList" style="display:grid;gap:12px">
           <div style="text-align:center;padding:40px;color:var(--gray3)">⏳ กำลังโหลด...</div>
+        </div>
+      </div>
+
+      <!-- ===== TASK ASSIGN (SUPER ADMIN ONLY) ===== -->
+      <div id="page-task-assign" class="page">
+        <div class="sec-head">
+          <div>
+            <h2>✏️ มอบหมายงานใหม่</h2>
+            <div class="sub">สร้างและมอบหมายงานให้เจ้าหน้าที่ (Super Admin เท่านั้น)</div>
+          </div>
+        </div>
+
+        <!-- ฟอร์มมอบหมายงาน -->
+        <div id="assignTaskFormPage" style="margin-bottom:16px">
+          <div class="card">
+            <div class="card-title">➕ มอบหมายงานใหม่</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+              <div>
+                <div class="form-grid g2">
+                  <div class="fg full"><label class="flbl">หัวข้องาน<span class="req">*</span></label><input class="finput" id="task_title_new" placeholder="เช่น โพสภาพ Facebook, แจ้งไปรษณีย์ไทย"></div>
+                  <div class="fg"><label class="flbl">ประเภทงาน</label>
+                    <select class="fsel" id="task_type_new" onchange="onTaskTypeChange('task_type_new','task_type_new_custom')">
+                      <option value="">-- เลือก --</option>
+                      <option value="โพสสื่อสาร">โพสสื่อสาร</option>
+                      <option value="สำนักพิมพ์">สำนักพิมพ์</option>
+                      <option value="ประสานงาน">ประสานงาน</option>
+                      <option value="__custom__">อื่นๆ (ระบุเอง)</option>
+                    </select>
+                    <input class="finput" id="task_type_new_custom" type="text" placeholder="ระบุประเภทงาน..." style="display:none;margin-top:6px">
+                  </div>
+                  <div class="fg"><label class="flbl">มอบหมายให้</label>
+                    <select class="fsel" id="task_assignee_new">
+                      <option value="">-- เลือก --</option>
+                    </select>
+                  </div>
+                  <div class="fg"><label class="flbl" style="display:flex;align-items:center;justify-content:space-between">กำหนดส่ง<label style="font-weight:400;font-size:12px;color:var(--gray3);cursor:pointer;display:flex;align-items:center;gap:4px"><input type="checkbox" id="task_due_new_none" onchange="toggleDueDate('task_due_new','task_due_new_none')"> ไม่ระบุ</label></label><input class="finput datepickr" id="task_due_new" type="text" placeholder="dd/mm/yyyy"></div>
+                </div>
+              </div>
+              <div>
+                <label class="flbl" style="display:block;margin-bottom:6px">รายละเอียดงาน</label>
+                <textarea class="ftextarea" id="task_detail_new" placeholder="อธิบายงานโดยละเอียด..." style="min-height:150px"></textarea>
+              </div>
+            </div>
+            <div style="display:flex;gap:8px;margin-top:14px">
+              <button class="btn btn-primary btn-sm" onclick="submitNewTask()">💾 มอบหมาย</button>
+              <button class="btn btn-outline btn-sm" onclick="clearNewTaskForm()">ล้าง</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- รายการงานที่มอบหมาย -->
+        <div class="card">
+          <div class="card-title">📋 งานที่มอบหมายไป</div>
+          <div style="overflow-x:auto">
+            <table style="width:100%;border-collapse:collapse;font-size:13px">
+              <thead style="background:var(--gray1)">
+                <tr>
+                  <th style="padding:10px;text-align:left">หัวข้องาน</th>
+                  <th style="padding:10px;text-align:left">ผู้รับ</th>
+                  <th style="padding:10px;text-align:left">ประเภท</th>
+                  <th style="padding:10px;text-align:left">กำหนดส่ง</th>
+                  <th style="padding:10px;text-align:center">สถานะ</th>
+                </tr>
+              </thead>
+              <tbody id="assignedTasksList" style="color:var(--gray3);text-align:center"><tr><td colspan="5" style="padding:20px">ไม่มีงาน</td></tr></tbody>
+            </table>
+          </div>
         </div>
       </div>
 
@@ -1969,7 +2178,7 @@ tbody td{padding:12px;vertical-align:middle}
     </div><!-- /grid -->
 
     <div class="btn-row" style="margin-top:14px">
-      <button class="btn btn-primary" onclick="submitCrmTicket()">💾 รับเรื่องและบันทึก</button>
+      <button class="btn btn-primary" onclick="submitCrmTicket(this)">💾 รับเรื่องและบันทึก</button>
       <button class="btn btn-outline" onclick="document.getElementById('crmModal').classList.add('hidden')">ยกเลิก</button>
     </div>
   </div>
@@ -2120,7 +2329,33 @@ tbody td{padding:12px;vertical-align:middle}
   </div>
 </div>
 
+<div class="modal-overlay hidden" id="crmImportModal">
+  <div class="modal" style="max-width:600px">
+    <div class="modal-title">📥 นำเข้าข้อมูล CRM จาก Excel
+      <button onclick="this.closest('.modal-overlay').classList.add('hidden')" style="float:right;border:none;background:none;font-size:20px;cursor:pointer">✕</button>
+    </div>
+    <div style="margin-bottom:16px">
+      <div style="background:#e8f4ff;border-radius:var(--rsm);padding:10px 14px;margin-bottom:14px;font-size:12px;color:#1a4a8a">
+        💡 อัปโหลดไฟล์ Excel ที่มีคอลัมน์: ชื่อ, อีเมล, เบอร์โทร, ประเภทปัญหา, รายละเอียด, ชุดวิชา (ค่าเหล่านี้เป็นไป (อันดับที่นี้)
+      </div>
+      <label class="flbl" style="display:block;margin-bottom:8px">📄 เลือกไฟล์ Excel</label>
+      <input type="file" id="crmExcelFile" accept=".xlsx,.xls,.csv" style="padding:8px;border:1.5px solid var(--gray2);border-radius:var(--rsm);width:100%;cursor:pointer">
+      <div id="crmImportPreview" style="margin-top:14px"></div>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:20px">
+      <button class="btn btn-primary btn-sm" id="crmImportBtn" onclick="parseAndImportCrmExcel()">✅ นำเข้า</button>
+      <button class="btn btn-outline btn-sm" onclick="document.getElementById('crmImportModal').classList.add('hidden')">ยกเลิก</button>
+    </div>
+  </div>
+</div>
+
 <script>
+// ============================================================
+// SETPW PARAMS — injected from server via doGet template variables
+// ============================================================
+var _SETPW_TOKEN = '<?= setpwToken ?>';
+var _SETPW_EMAIL = '<?= setpwEmail ?>';
+
 // ============================================================
 // STATE
 // ============================================================
@@ -2291,17 +2526,11 @@ async function waitForFirebase(maxWait = 5000) {
 // INIT — ตรวจ session จาก Apps Script / Firebase
 // ============================================================
 window.onload = function() {
-  // ตรวจสอบ URL params สำหรับ set-password flow
-  try {
-    var urlParams = new URLSearchParams(window.location.search);
-    var spPage  = urlParams.get('page');
-    var spToken = urlParams.get('token');
-    var spEmail = urlParams.get('email');
-    if (spPage === 'setpw' && spToken && spEmail) {
-      showSetPasswordScreen(decodeURIComponent(spEmail), spToken);
-      return;
-    }
-  } catch(e) {}
+  // ตรวจสอบ setpw params — injected via template variables จาก doGet
+  if (_SETPW_TOKEN && _SETPW_EMAIL) {
+    showSetPasswordScreen(decodeURIComponent(_SETPW_EMAIL), _SETPW_TOKEN);
+    return;
+  }
 
   // โหลด saved credentials ถ้าเคยติ๊ก "จดจำรหัสผ่าน"
   try {
@@ -2316,6 +2545,9 @@ window.onload = function() {
 
   // เริ่มโหลดข้อมูลที่อยู่ไทย + attach autocomplete
   try { initThaiAddressAutocomplete(); } catch(e) { console.warn('ThaiAddress init:', e); }
+
+  // เริ่มต้น date pickers (dd/mm/yyyy)
+  try { initDatePickers(); } catch(e) { console.warn('DatePicker init:', e); }
 
   // ลอง checkSession — ถ้า timeout 5 วิ ให้แสดง login เลย
   let sessionChecked = false;
@@ -2597,43 +2829,91 @@ function applySession() {
 // ============================================================
 function loadSettings() {
   google.script.run
-    .withSuccessHandler(function(s) {
-      settings=s;
+    .withSuccessHandler(function(data) {
+      if (!data.success) { showError('โหลดข้อมูลไม่สำเร็จ'); return; }
+      settings = data.settings;
+      allYears = data.years;
+      allTags = data.tags;
       populateDropdowns();
-      loadYears();
-      loadTagsFromSheet();
+      populateYearDropdowns(data.years);
+      populateTagsList(data.tags);
+      updateTaskBadgeDisplay(data.taskStats);
       loadDash();
       // เริ่มโหลด Thailand DB เบื้องหลัง
       setTimeout(function(){ loadThailandDB(); }, 1000);
       // init barcode scanner support
       setTimeout(initBarcodeFields, 800);
+      // init searchable filter dropdowns
+      setTimeout(initDashFilterSelects, 200);
     })
     .withFailureHandler(showError)
-    .getSettings();
+    .getInitData();
+}
+
+function populateYearDropdowns(years) {
+  ['dYear','lt_year','lb_year'].forEach(id=>{
+    const el=document.getElementById(id); if(!el)return;
+    const cur=el.value;
+    el.innerHTML='<option value="">ทั้งหมด</option>';
+    years.forEach(y=>el.innerHTML+=`<option>${y}</option>`);
+    if(cur) el.value=cur;
+  });
+}
+
+function populateTagsList(tags) {
+  loadTagsPage();
+  refreshTagDropdowns();
+}
+
+// init Tom Select บน dashboard filter selects
+function initDashFilterSelects() {
+  var opts = {
+    placeholder: 'ทั้งหมด',
+    allowEmptyOption: true,
+    maxOptions: 200,
+    onChange: function(){ loadDash(); }
+  };
+  ['dTerm','dYear','dProvince','dDistrict','dTag'].forEach(function(id){
+    var el = document.getElementById(id);
+    if(el && !el.tomselect) {
+      // ถอด onchange inline ออกก่อน แล้วให้ Tom Select จัดการ
+      el.removeAttribute('onchange');
+      new TomSelect(el, opts);
+    }
+  });
+  // dType (ประเภทรายการ) — ไม่จำเป็นต้องค้นหา แต่ใส่ให้ consistent
+  var dType = document.getElementById('dType');
+  if(dType && !dType.tomselect) {
+    dType.removeAttribute('onchange');
+    new TomSelect(dType, {allowEmptyOption:true, onChange:function(){loadDash();}});
+  }
+}
+
+function updateTaskBadgeDisplay(taskStats) {
+  var badge = document.getElementById('taskBadge');
+  if(badge && taskStats.pending > 0){
+    badge.textContent = taskStats.pending;
+    badge.style.display = 'inline';
+  }
 }
 
 function loadYears() {
+  // Legacy function — kept for backwards compatibility
   google.script.run
     .withSuccessHandler(function(years) {
       allYears=years;
-      ['dYear','lt_year','lb_year'].forEach(id=>{
-        const el=document.getElementById(id); if(!el)return;
-        const cur=el.value;
-        el.innerHTML='<option value="">ทั้งหมด</option>';
-        years.forEach(y=>el.innerHTML+=`<option>${y}</option>`);
-        if(cur) el.value=cur;
-      });
+      populateYearDropdowns(years);
     })
     .getUniqueYears();
 }
 
 function loadTagsFromSheet() {
+  // Legacy function — kept for backwards compatibility
   google.script.run
     .withSuccessHandler(function(tags) {
       if(tags&&!tags.error) {
         allTags=tags;
-        loadTagsPage();
-        refreshTagDropdowns();
+        populateTagsList(tags);
       }
     })
     .getTags();
@@ -2666,7 +2946,7 @@ function populateDropdowns() {
   // CRM dropdowns — ใช้ค่า default ถ้า settings ว่าง
   var DEFAULT_BRANCHES = ['สาขาศิลปศาสตร์','สาขาศึกษาศาสตร์','สาขาวิทยาการจัดการ','สาขานิติศาสตร์','สาขาวิทยาศาสตร์สุขภาพ','สาขาเศรษฐศาสตร์','สาขามนุษยนิเวศศาสตร์','สาขารัฐศาสตร์','สาขาเกษตรศาสตร์และสหกรณ์','สาขานิเทศศาสตร์','สาขาวิทยาศาสตร์และเทคโนโลยี','สาขาพยาบาลศาสตร์'];
   var DEFAULT_PLANS    = ['แผน ก1','แผน ก2','แผน ก3'];
-  var DEFAULT_ISSUES   = ['พิมพ์เพิ่ม','ชุดปรับปรุง','ชุดผลิตใหม่','ปัญหาทวงถามหนังสือ (ไม่ได้สั่งซื้อ/แผน ก2-ก3)','สอบถามทะเบียนและวัดผล (ลงทะเบียน/สอบ)','สอบถามกิจกรรมประจำชุดวิชา','สอบถามอบรมเข้มเสริมประสบการณ์วิชาชีพ','สอบถามสอนเสริมออนไลน์','สอบถามโครงการสัมฤทธิบัตร','ไม่ได้รับเอกสาร','เอกสารชำรุด','ส่งผิดวิชา','อื่นๆ (ระบุเอง)'];
+  var DEFAULT_ISSUES   = ['พิมพ์เพิ่ม','ชุดปรับปรุง','ชุดผลิตใหม่','ปัญหาทวงถามหนังสือ (ไม่ได้สั่งซื้อ/แผน ก2-ก3)','สอบถามทะเบียนและวัดผล (ลงทะเบียน/สอบ)','สอบถามกิจกรรมประจำชุดวิชา','สอบถามเลือกแผนการศึกษา','สอบถามอบรมเข้มเสริมประสบการณ์วิชาชีพ','สอบถามสอนเสริมออนไลน์','สอบถามโครงการสัมฤทธิบัตร','ไม่ได้รับเอกสาร','เอกสารชำรุด','ส่งผิดวิชา','อื่นๆ (ระบุเอง)'];
   var DEFAULT_ASSIGNEES= ['หทัย เริงเกษตรกิจ','วรรณี รัตนากร','สุพรรษา ช่อปทุมมา','เมธิตา สาไพรวัน'];
 
   var cmBranch=document.getElementById('cm_branch');
@@ -2724,7 +3004,7 @@ function populateDropdowns() {
 }
 
 function loadIssueTypesUI() {
-  var DEFAULT_ISSUES = ['พิมพ์เพิ่ม','ชุดปรับปรุง','ชุดผลิตใหม่','ปัญหาทวงถามหนังสือ (ไม่ได้สั่งซื้อ/แผน ก2-ก3)','สอบถามทะเบียนและวัดผล (ลงทะเบียน/สอบ)','สอบถามกิจกรรมประจำชุดวิชา','สอบถามอบรมเข้มเสริมประสบการณ์วิชาชีพ','สอบถามสอนเสริมออนไลน์','สอบถามโครงการสัมฤทธิบัตร','ไม่ได้รับเอกสาร','เอกสารชำรุด','ส่งผิดวิชา','อื่นๆ (ระบุเอง)'];
+  var DEFAULT_ISSUES = ['พิมพ์เพิ่ม','ชุดปรับปรุง','ชุดผลิตใหม่','ปัญหาทวงถามหนังสือ (ไม่ได้สั่งซื้อ/แผน ก2-ก3)','สอบถามทะเบียนและวัดผล (ลงทะเบียน/สอบ)','สอบถามกิจกรรมประจำชุดวิชา','สอบถามเลือกแผนการศึกษา','สอบถามอบรมเข้มเสริมประสบการณ์วิชาชีพ','สอบถามสอนเสริมออนไลน์','สอบถามโครงการสัมฤทธิบัตร','ไม่ได้รับเอกสาร','เอกสารชำรุด','ส่งผิดวิชา','อื่นๆ (ระบุเอง)'];
   var issues = (settings.issueTypes && settings.issueTypes.length) ? settings.issueTypes : DEFAULT_ISSUES;
   var container = document.getElementById('issueTypesList');
   if(!container) return;
@@ -2744,7 +3024,7 @@ function addIssueType() {
     return;
   }
   var newType = input.value.trim();
-  var DEFAULT_ISSUES = ['พิมพ์เพิ่ม','ชุดปรับปรุง','ชุดผลิตใหม่','ปัญหาทวงถามหนังสือ (ไม่ได้สั่งซื้อ/แผน ก2-ก3)','สอบถามทะเบียนและวัดผล (ลงทะเบียน/สอบ)','สอบถามกิจกรรมประจำชุดวิชา','สอบถามอบรมเข้มเสริมประสบการณ์วิชาชีพ','สอบถามสอนเสริมออนไลน์','สอบถามโครงการสัมฤทธิบัตร','ไม่ได้รับเอกสาร','เอกสารชำรุด','ส่งผิดวิชา','อื่นๆ (ระบุเอง)'];
+  var DEFAULT_ISSUES = ['พิมพ์เพิ่ม','ชุดปรับปรุง','ชุดผลิตใหม่','ปัญหาทวงถามหนังสือ (ไม่ได้สั่งซื้อ/แผน ก2-ก3)','สอบถามทะเบียนและวัดผล (ลงทะเบียน/สอบ)','สอบถามกิจกรรมประจำชุดวิชา','สอบถามเลือกแผนการศึกษา','สอบถามอบรมเข้มเสริมประสบการณ์วิชาชีพ','สอบถามสอนเสริมออนไลน์','สอบถามโครงการสัมฤทธิบัตร','ไม่ได้รับเอกสาร','เอกสารชำรุด','ส่งผิดวิชา','อื่นๆ (ระบุเอง)'];
   var issues = (settings.issueTypes && settings.issueTypes.length) ? settings.issueTypes : DEFAULT_ISSUES;
 
   if(issues.includes(newType)) {
@@ -2771,9 +3051,9 @@ function addIssueType() {
 }
 
 function removeIssueType(idx) {
-  var DEFAULT_ISSUES = ['พิมพ์เพิ่ม','ชุดปรับปรุง','ชุดผลิตใหม่','ปัญหาทวงถามหนังสือ (ไม่ได้สั่งซื้อ/แผน ก2-ก3)','สอบถามทะเบียนและวัดผล (ลงทะเบียน/สอบ)','สอบถามกิจกรรมประจำชุดวิชา','สอบถามอบรมเข้มเสริมประสบการณ์วิชาชีพ','สอบถามสอนเสริมออนไลน์','สอบถามโครงการสัมฤทธิบัตร','ไม่ได้รับเอกสาร','เอกสารชำรุด','ส่งผิดวิชา','อื่นๆ (ระบุเอง)'];
+  var DEFAULT_ISSUES = ['พิมพ์เพิ่ม','ชุดปรับปรุง','ชุดผลิตใหม่','ปัญหาทวงถามหนังสือ (ไม่ได้สั่งซื้อ/แผน ก2-ก3)','สอบถามทะเบียนและวัดผล (ลงทะเบียน/สอบ)','สอบถามกิจกรรมประจำชุดวิชา','สอบถามเลือกแผนการศึกษา','สอบถามอบรมเข้มเสริมประสบการณ์วิชาชีพ','สอบถามสอนเสริมออนไลน์','สอบถามโครงการสัมฤทธิบัตร','ไม่ได้รับเอกสาร','เอกสารชำรุด','ส่งผิดวิชา','อื่นๆ (ระบุเอง)'];
   var issues = (settings.issueTypes && settings.issueTypes.length) ? settings.issueTypes : DEFAULT_ISSUES;
-  if(idx < 13) {
+  if(idx < 14) {
     showToast('ไม่สามารถลบประเภทมาตรฐาน','error');
     return;
   }
@@ -2817,8 +3097,11 @@ const pageTitles={
   labels:'🖨️ <span>พิมพ์</span>ใบจ่าหน้า',
   crm:'📝 <span>บันทึกข้อมูล</span>รับแจ้งปัญหา CRM',
   'crm-list':'💬 <span>รายการรวม</span>แจ้งปัญหา CRM',
+  'crm-dashboard':'📊 <span>Dashboard</span>แจ้งปัญหา CRM',
   tags:'🏷️ <span>จัดการ</span>Tag',
   users:'👥 <span>จัดการ</span>ผู้ใช้งาน',
+  'task-assign':'✏️ <span>มอบหมาย</span>งานใหม่',
+  tasks:'✅ <span>งาน</span>ที่ได้รับ',
   'ext-staff':'🏢 <span>เจ้าหน้าที่</span>ภายนอก',
 };
 function go(id,btn) {
@@ -2837,9 +3120,11 @@ function go(id,btn) {
   if(id==='audit') loadAuditLog();
   if(id==='settings') { loadSettings_page(); setTimeout(initBarcodeFields, 500); }
   if(id==='stats') loadPersonalStats();
+  if(id==='task-assign') showAssignTaskForm();
   if(id==='tasks') loadTasks();
   if(id==='crm')       loadCrm();
   if(id==='crm-list')  loadCrm();
+  if(id==='crm-dashboard') loadCrmDashboard();
   if(id==='users')     loadUsersTable();
   if(id==='ext-staff') loadExtStaff();
 }
@@ -2847,22 +3132,21 @@ function go(id,btn) {
 // ============================================================
 // DASHBOARD — ดึงจาก Sheets จริง
 // ============================================================
+function getSelVal(id) {
+  var el = document.getElementById(id);
+  if (!el) return '';
+  return el.tomselect ? el.tomselect.getValue() : el.value;
+}
+
 function loadDash() {
-  var dTerm = document.getElementById('dTerm'); 
-  var dYear = document.getElementById('dYear');
-  var dType = document.getElementById('dType');
-  var dProv = document.getElementById('dProvince');
-  var dDist = document.getElementById('dDistrict');
-  var dZip  = document.getElementById('dZip');
-  var dTag  = document.getElementById('dTag');
   var filters = {
-    term:     dTerm ? dTerm.value : '',
-    year:     dYear ? dYear.value : '',
-    recType:  dType ? dType.value : '',
-    province: dProv ? dProv.value : '',
-    district: dDist ? dDist.value : '',
-    zipCode:  dZip  ? dZip.value.trim() : '',
-    tag:      dTag  ? dTag.value : '',
+    term:     getSelVal('dTerm'),
+    year:     getSelVal('dYear'),
+    recType:  getSelVal('dType'),
+    province: getSelVal('dProvince'),
+    district: getSelVal('dDistrict'),
+    zipCode:  (document.getElementById('dZip')||{}).value ? document.getElementById('dZip').value.trim() : '',
+    tag:      getSelVal('dTag'),
   };
   google.script.run
     .withSuccessHandler(function(d) {
@@ -2923,10 +3207,38 @@ function renderDash(d, filters) {
 function updateGeoDropdowns(records) {
   const provs=[...new Set(records.map(r=>r.province).filter(Boolean))].sort();
   const dists=[...new Set(records.map(r=>r.district).filter(Boolean))].sort();
-  const dp=document.getElementById('dProvince');
-  if(dp){const c=dp.value;dp.innerHTML='<option value="">ทั้งหมด</option>';provs.forEach(p=>dp.innerHTML+=`<option>${p}</option>`);dp.value=c;}
-  const dd=document.getElementById('dDistrict');
-  if(dd){const c=dd.value;dd.innerHTML='<option value="">ทั้งหมด</option>';dists.forEach(d=>dd.innerHTML+=`<option>${d}</option>`);dd.value=c;}
+
+  // อัปเดต Tom Select province
+  var tsP = document.getElementById('dProvince');
+  if(tsP && tsP.tomselect) {
+    var curP = tsP.tomselect.getValue();
+    tsP.tomselect.clearOptions();
+    tsP.tomselect.addOption({value:'',text:'ทั้งหมด'});
+    provs.forEach(function(p){tsP.tomselect.addOption({value:p,text:p});});
+    tsP.tomselect.refreshOptions(false);
+    tsP.tomselect.setValue(curP, true);
+  } else if(tsP) {
+    var c=tsP.value;
+    tsP.innerHTML='<option value="">ทั้งหมด</option>';
+    provs.forEach(p=>tsP.innerHTML+=`<option>${p}</option>`);
+    tsP.value=c;
+  }
+
+  // อัปเดต Tom Select district
+  var tsD = document.getElementById('dDistrict');
+  if(tsD && tsD.tomselect) {
+    var curD = tsD.tomselect.getValue();
+    tsD.tomselect.clearOptions();
+    tsD.tomselect.addOption({value:'',text:'ทั้งหมด'});
+    dists.forEach(function(d){tsD.tomselect.addOption({value:d,text:d});});
+    tsD.tomselect.refreshOptions(false);
+    tsD.tomselect.setValue(curD, true);
+  } else if(tsD) {
+    var c=tsD.value;
+    tsD.innerHTML='<option value="">ทั้งหมด</option>';
+    dists.forEach(d=>tsD.innerHTML+=`<option>${d}</option>`);
+    tsD.value=c;
+  }
 }
 
 function countBy(data,key){
@@ -3002,24 +3314,34 @@ function renderSearchResults(res) {
           ${data.crm.map(c=>`<div class="freq-item"><span>💬 ${c.date||''} · ${c.issueType||''}</span><span style="color:var(--gray3)">${statusMap[c.status]||''}</span></div>`).join('')}
         </div>`:''}
         ${data.records.length?`<div class="table-wrap" style="margin-top:10px"><table>
-          <thead><tr><th>ประเภท</th><th>วันที่</th><th>ชุดวิชา</th><th>สาเหตุ</th><th>ติดต่อ</th><th>Tag</th><th>สถานะ</th><th>หมายเหตุ</th><th></th></tr></thead>
+          <thead><tr><th>ประเภท</th><th>วันที่</th><th>ชุดวิชา</th><th>เลขพัสดุ / วันที่ส่ง</th><th>สาเหตุ</th><th>ติดต่อ</th><th>Tag</th><th>สถานะ</th><th></th></tr></thead>
           <tbody>${data.records.map(r=>{
             var courseTxt = r.courseCode||'-';
-            try { var cs=JSON.parse(r.courses||'[]'); if(cs.length) courseTxt=cs.map(function(c){return c.code;}).join(', '); } catch(e){}
+            var trackHtml = '<span style="color:var(--gray3);font-size:11px">—</span>';
+            try {
+              var cs=JSON.parse(r.courses||'[]');
+              if(cs.length) courseTxt=cs.map(function(c){return c.code;}).join(', ');
+              var withTrack=cs.filter(function(c){return c.track;});
+              if(withTrack.length){
+                trackHtml=withTrack.map(function(c){
+                  return '<div style="margin-bottom:2px"><a href="https://track.thailandpost.co.th/?trackNumber='+c.track+'" target="_blank" style="font-family:monospace;font-size:11px;color:var(--blue);text-decoration:none;font-weight:600">'+c.track+'</a>'
+                    +(c.date?'<br><span style="font-size:10px;color:var(--gray3)">'+c.date+'</span>':'')+'</div>';
+                }).join('');
+              }
+            } catch(e){}
             var typeTxt = r.recType==='lend'?'<span style="color:#e57c00;font-size:11px">📤 ให้ยืม</span>'
                         : r.recType==='return'?'<span style="color:#185FA5;font-size:11px">↩️ ตีคืน</span>'
                         : '<span style="color:#3B6D11;font-size:11px">⭐ พิเศษ</span>';
-            var remarkShort=(r.remark||'').slice(0,40)+(r.remark&&r.remark.length>40?'…':'');
             _recordMap[r.id] = r;
             return '<tr>'
               +'<td>'+typeTxt+'</td>'
               +'<td style="font-size:11px;white-space:nowrap">'+(r.date||'')+'</td>'
               +'<td style="font-family:monospace;font-size:11px;color:var(--blue)">'+courseTxt+'</td>'
+              +'<td style="font-size:11px">'+trackHtml+'</td>'
               +'<td style="color:var(--red);font-size:11px">'+(r.cause||'')+'</td>'
               +'<td>'+contactIcon(r.contactStatus)+'</td>'
               +'<td>'+renderTagChips(r.tags?r.tags.split(',').filter(Boolean):[])+'</td>'
               +'<td style="font-size:11px">'+(r.status||'')+'</td>'
-              +'<td style="font-size:11px;color:var(--gray3)" title="'+(r.remark||'')+'">'+remarkShort+'</td>'
               +'<td><button class="btn btn-outline btn-xs" onclick="openRecordDetail(\''+r.id+'\')" title="ดูรายละเอียด/แก้ไข" style="font-size:11px;padding:3px 8px">✏️ ดูรายละเอียด</button></td>'
               +'</tr>';
           }).join('')}</tbody></table></div>`:''}
@@ -3071,7 +3393,7 @@ function collectForm(prefix) {
   };
 }
 
-function submitRecord(type) {
+function submitRecord(type, btnEl) {
   const prefix={return:'rt_',lend:'ld_',special:'sp_'}[type];
   const data=collectForm(prefix);
   data.recType=type;
@@ -3086,10 +3408,16 @@ function submitRecord(type) {
   if(!data.courseCode){showToast('กรุณากรอกรหัสชุดวิชาอย่างน้อย 1 ชุด','error');return;}
 
   const typeLabel={return:'พัสดุตีคืน',lend:'ให้ยืม',special:'ส่งใหม่กรณีพิเศษ'}[type];
+  const origLabel = btnEl ? btnEl.textContent : '';
+  if(btnEl){btnEl.disabled=true;btnEl.textContent='⏳ กำลังบันทึก...';}
   showToast('⏳ กำลังบันทึก...','');
+  // auto-reset ถ้า 60 วิยังไม่ตอบ
+  const _resetBtn=function(){if(btnEl){btnEl.disabled=false;btnEl.textContent=origLabel||'💾 บันทึก';}};
+  const _timeout=setTimeout(_resetBtn, 60000);
 
   google.script.run
     .withSuccessHandler(function(res) {
+      clearTimeout(_timeout); _resetBtn();
       if(res.success){
         showToast(`✅ บันทึก${typeLabel}สำเร็จ! รหัส: ${res.id}`,'success');
         // บันทึก cache ข้อมูล นศ.
@@ -3131,7 +3459,7 @@ function submitRecord(type) {
         showToast('❌ '+res.error,'error');
       }
     })
-    .withFailureHandler(showError)
+    .withFailureHandler(function(e){clearTimeout(_timeout);_resetBtn();showError(e);})
     .addRecord(data);
 }
 
@@ -3333,57 +3661,154 @@ function quickUpdateStatus(id, status) {
 
 function openRecordDetail(idOrObj) {
   var r = (typeof idOrObj === 'string') ? (_recordMap[idOrObj] || {id:idOrObj}) : idOrObj;
+  _currentEditingRecord = r; // Store globally for saving
   var coursesTxt = r.courseCode||'-';
   try { var cs=JSON.parse(r.courses||'[]'); if(cs.length) coursesTxt=cs.map(function(c){return c.code+(c.name?' ('+c.name+')':'');}).join(', '); } catch(e){}
-  var html = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px 20px;font-size:13px">'
+
+  var html = '<div style="max-height:75vh;overflow-y:auto">'
+    // ===== Section 1: Read-only info =====
+    +'<div style="background:var(--light);padding:14px;border-radius:8px;margin-bottom:14px;font-size:13px">'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px 20px">'
     +'<div><span style="color:var(--gray3)">รหัส:</span> <strong>'+esc(r.id||'')+'</strong></div>'
     +'<div><span style="color:var(--gray3)">ประเภท:</span> '+typeBadge(r.recType||'')+'</div>'
-    +'<div><span style="color:var(--gray3)">วันที่:</span> '+esc(r.date||'')+'</div>'
-    +'<div><span style="color:var(--gray3)">ภาค/ปี:</span> '+(r.term||'')+' / '+(r.year||'')+'</div>'
-    +'<div><span style="color:var(--gray3)">รหัสนักศึกษา:</span> '+esc(r.studentId||'')+'</div>'
-    +'<div><span style="color:var(--gray3)">ชื่อ-สกุล:</span> '+esc((r.prefix||'')+(r.firstName||'')+' '+(r.lastName||''))+'</div>'
-    +'<div class="full" style="grid-column:1/-1"><span style="color:var(--gray3)">ชุดวิชา:</span> '+esc(coursesTxt)+'</div>'
-    +'<div><span style="color:var(--gray3)">จังหวัด:</span> '+esc(r.province||'')+'</div>'
-    +'<div><span style="color:var(--gray3)">อำเภอ:</span> '+esc(r.district||'')+'</div>'
-    +'<div><span style="color:var(--gray3)">สาเหตุ:</span> <span style="color:var(--red)">'+esc(r.cause||'')+'</span></div>'
-    +'<div><span style="color:var(--gray3)">ติดต่อ:</span> '+contactIcon(r.contactStatus)+'</div>'
     +'<div><span style="color:var(--gray3)">ผู้บันทึก:</span> '+esc(r.recorder||'')+'</div>'
-    +'<div><span style="color:var(--gray3)">วันที่อัปเดต:</span> '+esc(r.updatedAt||'')+'</div>'
+    +'<div><span style="color:var(--gray3)">อัปเดตล่าสุด:</span> '+esc(r.updatedAt||'')+'</div>'
     +'</div>'
-    +'<hr style="margin:14px 0;border-color:var(--gray1)">'
-    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:13px">'
-    +'<div class="fg"><label class="flbl">สถานะ</label>'
-    +'<select class="fsel" id="rd_status"><option>ส่งใหม่แล้ว</option><option>รอดำเนินการ</option><option>อื่นๆ</option></select></div>'
-    +'<div class="fg"><label class="flbl">หมายเหตุ</label>'
-    +'<input class="finput" id="rd_remark" value="'+esc(r.remark||'')+'" placeholder="หมายเหตุ..."></div>'
     +'</div>'
-    +'<div style="margin-top:14px;display:flex;gap:8px">'
-    +'<button class="btn btn-primary btn-sm" onclick="saveRecordDetail(\''+esc(r.id||'')+'\')">💾 บันทึก</button>'
-    +'<button class="btn btn-outline btn-sm" onclick="document.getElementById(\'recordDetailModal\').classList.add(\'hidden\')">ปิด</button>'
+
+    // ===== Section 2: Editable fields =====
+    +'<div class="card">'
+    +'<div class="card-title">✏️ แก้ไขข้อมูล</div>'
+    +'<div class="form-grid g2">'
+    // Row 1: Date, Term, Year
+    +'<div class="fg"><label class="flbl">วันที่</label><input class="finput" id="rd_date" value="'+esc(r.date||'')+'" placeholder="dd/mm/yyyy HH:mm"></div>'
+    +'<div class="fg"><label class="flbl">ภาคการศึกษา</label><input class="finput" id="rd_term" value="'+esc(r.term||'')+'" placeholder="เช่น 1 หรือ 2"></div>'
+    +'<div class="fg"><label class="flbl">ปีการศึกษา</label><input class="finput" id="rd_year" value="'+esc(r.year||'')+'" placeholder="เช่น 2568"></div>'
+
+    // Row 2: Student ID, Prefix, First name, Last name
+    +'<div class="fg"><label class="flbl">รหัสนักศึกษา</label><input class="finput" id="rd_studentId" value="'+esc(r.studentId||'')+'" placeholder="เลขประจำตัว"></div>'
+    +'<div class="fg"><label class="flbl">คำนำหน้า</label><input class="finput" id="rd_prefix" value="'+esc(r.prefix||'')+'" placeholder="นาย/นางสาว/etc."></div>'
+    +'<div class="fg"><label class="flbl">ชื่อ</label><input class="finput" id="rd_firstName" value="'+esc(r.firstName||'')+'" placeholder="ชื่อจริง"></div>'
+    +'<div class="fg"><label class="flbl">นามสกุล</label><input class="finput" id="rd_lastName" value="'+esc(r.lastName||'')+'" placeholder="นามสกุล"></div>'
+
+    // Row 3: Course code, Phone
+    +'<div class="fg full"><label class="flbl">ชุดวิชา</label><input class="finput" id="rd_courseCode" value="'+esc(r.courseCode||'')+'" placeholder="เช่น 10101"></div>'
+    +'<div class="fg"><label class="flbl">เบอร์โทร</label><input class="finput" id="rd_phone" value="'+esc(r.phone||'')+'" placeholder="0x-xxx-xxxx"></div>'
+
+    // Row 4: Address
+    +'<div class="fg"><label class="flbl">เลขที่</label><input class="finput" id="rd_houseNo" value="'+esc(r.houseNo||'')+'" placeholder="123"></div>'
+    +'<div class="fg"><label class="flbl">ถนน</label><input class="finput" id="rd_street" value="'+esc(r.street||'')+'" placeholder="ถ.อนุสรณ์"></div>'
+    +'<div class="fg"><label class="flbl">ตำบล</label><input class="finput" id="rd_subDistrict" value="'+esc(r.subDistrict||'')+'" placeholder="ต.ประตูน้อย"></div>'
+    +'<div class="fg"><label class="flbl">อำเภอ</label><input class="finput" id="rd_district" value="'+esc(r.district||'')+'" placeholder="อ.ป้อมปราณ"></div>'
+    +'<div class="fg"><label class="flbl">จังหวัด</label><input class="finput" id="rd_province" value="'+esc(r.province||'')+'" placeholder="กรุงเทพ"></div>'
+    +'<div class="fg"><label class="flbl">รหัสไปรษณีย์</label><input class="finput" id="rd_zipCode" value="'+esc(r.zipCode||'')+'" placeholder="10100"></div>'
+
+    // Row 5: Status, Remark, Contact
+    +'<div class="fg"><label class="flbl">สถานะ</label><select class="fsel" id="rd_status"><option value="">-- เลือก --</option><option value="ส่งใหม่แล้ว">ส่งใหม่แล้ว</option><option value="รอดำเนินการ">รอดำเนินการ</option><option value="อื่นๆ">อื่นๆ</option></select></div>'
+    +'<div class="fg"><label class="flbl">สาเหตุ</label><input class="finput" id="rd_cause" value="'+esc(r.cause||'')+'" placeholder="สาเหตุการส่ง"></div>'
+    +'<div class="fg"><label class="flbl">ติดต่อสำเร็จ</label><select class="fsel" id="rd_contactStatus"><option value="">-- เลือก --</option><option value="สำเร็จ">✅ สำเร็จ</option><option value="ไม่สำเร็จ">❌ ไม่สำเร็จ</option><option value="อื่นๆ">อื่นๆ</option></select></div>'
+
+    +'<div class="fg full"><label class="flbl">หมายเหตุ</label><textarea class="ftextarea" id="rd_remark" placeholder="หมายเหตุเพิ่มเติม..." style="min-height:60px">'+esc(r.remark||'')+'</textarea></div>'
+    +'</div>'
+    +'</div>'
+
+    // ===== Section 3: Attached images/files =====
+    +'<div class="card" style="margin-top:14px">'
+    +'<div class="card-title">📸 รูปภาพและเอกสารแนบ</div>'
+    +'<div id="recordImages" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;min-height:80px;padding:10px;background:var(--light);border-radius:8px;align-content:start">'
+    +'<div style="padding:20px;text-align:center;color:var(--gray3);grid-column:1/-1">ไม่มีรูปภาพแนบ</div>'
+    +'</div>'
+    +'</div>'
+
+    // ===== Section 4: Parcel Tracking =====
+    +'<div class="card" style="margin-top:14px">'
+    +'<div class="card-title">📦 เลขพัสดุและวันที่ส่ง</div>'
+    +(function(){
+      var rows = '';
+      try {
+        var cs = JSON.parse(r.courses||'[]');
+        var withTrack = cs.filter(function(c){ return c.track; });
+        if (withTrack.length) {
+          withTrack.forEach(function(c){
+            var trackLink = c.track
+              ? '<a href="https://track.thailandpost.co.th/?trackNumber='+esc(c.track)+'" target="_blank" style="font-family:monospace;font-size:13px;color:var(--blue);text-decoration:none;font-weight:700">'+esc(c.track)+' 🔗</a>'
+              : '<span style="color:var(--gray3)">—</span>';
+            rows += '<div style="display:flex;align-items:center;gap:12px;padding:10px;background:var(--light);border-radius:6px;margin-bottom:8px;flex-wrap:wrap">'
+              +'<span style="font-family:monospace;font-size:12px;background:#e8f0fe;color:var(--blue);padding:2px 8px;border-radius:4px;flex-shrink:0">'+esc(c.code||'')+'</span>'
+              +'<span style="flex:1">'+trackLink+'</span>'
+              +'<span style="font-size:12px;color:var(--gray3);white-space:nowrap">📅 '+esc(c.date||'—')+'</span>'
+              +'</div>';
+          });
+        } else {
+          rows = '<div style="color:var(--gray3);padding:16px;text-align:center;font-size:13px">ยังไม่มีเลขพัสดุบันทึกไว้</div>';
+        }
+      } catch(e) {
+        if (r.send1Track) rows += '<div style="display:flex;align-items:center;gap:12px;padding:10px;background:var(--light);border-radius:6px;margin-bottom:8px"><span style="font-size:12px;color:var(--gray3)">ครั้งที่ 1</span><a href="https://track.thailandpost.co.th/?trackNumber='+esc(r.send1Track)+'" target="_blank" style="font-family:monospace;font-size:13px;color:var(--blue);text-decoration:none;font-weight:700">'+esc(r.send1Track)+' 🔗</a><span style="font-size:12px;color:var(--gray3)">📅 '+esc(r.send1Date||'—')+'</span></div>';
+        if (r.send2Track) rows += '<div style="display:flex;align-items:center;gap:12px;padding:10px;background:var(--light);border-radius:6px;margin-bottom:8px"><span style="font-size:12px;color:var(--gray3)">ครั้งที่ 2</span><a href="https://track.thailandpost.co.th/?trackNumber='+esc(r.send2Track)+'" target="_blank" style="font-family:monospace;font-size:13px;color:var(--blue);text-decoration:none;font-weight:700">'+esc(r.send2Track)+' 🔗</a><span style="font-size:12px;color:var(--gray3)">📅 '+esc(r.send2Date||'—')+'</span></div>';
+        if (!r.send1Track && !r.send2Track) rows = '<div style="color:var(--gray3);padding:16px;text-align:center;font-size:13px">ยังไม่มีเลขพัสดุบันทึกไว้</div>';
+      }
+      return rows;
+    })()
+    +'</div>'
     +'</div>';
+
   var modal = document.getElementById('recordDetailModal');
   if (!modal) {
     modal = document.createElement('div');
     modal.id = 'recordDetailModal';
-    modal.className = 'modal-overlay';
-    modal.innerHTML = '<div class="modal-box" style="max-width:640px"><div class="modal-title">📋 รายละเอียดรายการ <button onclick="this.closest(\'.modal-overlay\').classList.add(\'hidden\')" style="float:right;border:none;background:none;font-size:18px;cursor:pointer">✕</button></div><div id="recordDetailBody"></div></div>';
+    modal.className = 'modal-overlay hidden';
+    modal.innerHTML = '<div class="modal" style="max-width:800px;width:100%"><div class="modal-title" style="font-size:18px;margin-bottom:16px">📋 รายละเอียดรายการ <button onclick="this.closest(\'.modal-overlay\').classList.add(\'hidden\')" style="float:right;border:none;background:none;font-size:20px;cursor:pointer;line-height:1">✕</button></div><div id="recordDetailBody"></div><div style="margin-top:20px;display:flex;gap:8px;border-top:1px solid var(--gray1);padding-top:16px"><button class="btn btn-primary btn-sm" onclick="saveRecordDetail(\''+esc(r.id||'')+'\')">💾 บันทึกการเปลี่ยนแปลง</button><button class="btn btn-outline btn-sm" onclick="document.getElementById(\'recordDetailModal\').classList.add(\'hidden\')">ปิด</button></div></div>';
     document.body.appendChild(modal);
   }
   document.getElementById('recordDetailBody').innerHTML = html;
   modal.classList.remove('hidden');
-  setTimeout(function(){ var s=document.getElementById('rd_status'); if(s && r.status) s.value=r.status; },50);
+
+  // Set select values
+  setTimeout(function(){
+    if(document.getElementById('rd_status') && r.status) document.getElementById('rd_status').value=r.status;
+    if(document.getElementById('rd_contactStatus') && r.contactStatus) document.getElementById('rd_contactStatus').value=r.contactStatus;
+  },50);
 }
 
 function saveRecordDetail(id) {
-  var status = document.getElementById('rd_status')?.value || '';
-  var remark = document.getElementById('rd_remark')?.value || '';
+  var updates = {
+    date: document.getElementById('rd_date')?.value || '',
+    term: document.getElementById('rd_term')?.value || '',
+    year: document.getElementById('rd_year')?.value || '',
+    studentId: document.getElementById('rd_studentId')?.value || '',
+    prefix: document.getElementById('rd_prefix')?.value || '',
+    firstName: document.getElementById('rd_firstName')?.value || '',
+    lastName: document.getElementById('rd_lastName')?.value || '',
+    courseCode: document.getElementById('rd_courseCode')?.value || '',
+    phone: document.getElementById('rd_phone')?.value || '',
+    houseNo: document.getElementById('rd_houseNo')?.value || '',
+    street: document.getElementById('rd_street')?.value || '',
+    subDistrict: document.getElementById('rd_subDistrict')?.value || '',
+    district: document.getElementById('rd_district')?.value || '',
+    province: document.getElementById('rd_province')?.value || '',
+    zipCode: document.getElementById('rd_zipCode')?.value || '',
+    status: document.getElementById('rd_status')?.value || '',
+    cause: document.getElementById('rd_cause')?.value || '',
+    contactStatus: document.getElementById('rd_contactStatus')?.value || '',
+    remark: document.getElementById('rd_remark')?.value || ''
+  };
+
+  // Validate required fields
+  if(!updates.studentId){showToast('กรุณากรอกรหัสนักศึกษา','error');return;}
+  if(!updates.firstName && !updates.lastName){showToast('กรุณากรอกชื่อจริง','error');return;}
+
+  showToast('⏳ กำลังบันทึก...','');
   google.script.run
     .withSuccessHandler(function(res){
-      if(res.success){ showToast('บันทึกแล้ว','success'); loadList(); document.getElementById('recordDetailModal').classList.add('hidden'); }
+      if(res.success){
+        showToast('✅ บันทึกการเปลี่ยนแปลงแล้ว','success');
+        loadList();
+        document.getElementById('recordDetailModal').classList.add('hidden');
+      }
       else showToast('❌ '+res.error,'error');
     })
     .withFailureHandler(showError)
-    .updateRecordFields(id, {status:status, remark:remark});
+    .updateRecordFields(id, updates);
 }
 
 // ============================================================
@@ -3636,6 +4061,21 @@ function renderCrmList(items) {
     var emailBtn=c.reporterEmail
       ?('<button class="btn btn-outline btn-xs" data-crm-id="'+cid+'" onclick="sendCrmEmail(this.dataset.crmId)" style="color:var(--green)">📧 แจ้งผล</button>'):'';
 
+    var contactInfo='';
+    if(c.reporterEmail||c.reporterPhone){
+      contactInfo+='<div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:6px;font-size:12px">';
+      if(c.reporterPhone) contactInfo+='<span>📞 '+c.reporterPhone+'</span>';
+      if(c.reporterEmail) contactInfo+='<span>📧 '+c.reporterEmail+'</span>';
+      contactInfo+='</div>';
+    }
+    var deptInfo = (c.department||c.educationLevel)
+      ? '<div style="font-size:12px;color:var(--gray3);margin-top:4px">'
+        +(c.department?'🎓 '+c.department:'')
+        +(c.educationLevel?' · '+c.educationLevel:'')
+        +(c.term&&c.year?' · ภาค '+c.term+'/'+c.year:'')
+        +'</div>'
+      : '';
+
     return '<div class="crm-card '+c.status+'">'
       +'<div class="crm-head">'
         +'<div class="crm-avatar">'+( (c.assigneeName||'?')[0])+'</div>'
@@ -3643,18 +4083,21 @@ function renderCrmList(items) {
           +'<div class="crm-title" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">'+(c.reporterName||'—')
             +(c.studentId?'<span style="font-family:monospace;font-weight:400;font-size:12px;color:var(--gray3)">('+c.studentId+')</span>':'')
             +(total>0?freqBadge(total):'')
+            +'<span style="font-size:10px;background:var(--gray1);color:var(--gray3);padding:1px 6px;border-radius:10px">#'+cid+'</span>'
           +'</div>'
           +'<div class="crm-meta">'+(c.issueType||'')+' · '+(c.date||'')+' · '+(pMap[c.priority]||'')
             +(c.source==='external'?'<span style="margin-left:6px;font-size:10px;background:#e3f2fd;color:#1565c0;padding:1px 6px;border-radius:10px;font-weight:600">🌐 ภายนอก'+(c.org?' · '+c.org:'')+'</span>':'<span style="margin-left:6px;font-size:10px;background:#e8f5e9;color:#2e7d32;padding:1px 6px;border-radius:10px;font-weight:600">🏢 admin</span>')
           +'</div>'
+          +contactInfo
+          +deptInfo
         +'</div>'
         +'<div class="crm-status '+sm.cls+'">'+sm.label+'</div>'
       +'</div>'
-      +'<div class="crm-body">'+(c.detail||'')+'</div>'
+      +'<div class="crm-body" style="white-space:pre-wrap">'+(c.detail||'')+'</div>'
+      +(courseChips?'<div style="margin:6px 0">'+courseChips+'</div>':'')
       +histHtml
       +'<div class="crm-footer">'
         +'<span class="crm-channel">'+(chLabels[c.channel]||c.channel||'')+'</span>'
-        +courseChips
         +'<div class="crm-tags">'+renderTagChips(tags)+'</div>'
         +assigneeHtml
       +'</div>'
@@ -3916,23 +4359,46 @@ function copyCrmLink() {
 }
 
 function showExtDashLink() {
+  // สร้าง modal ถ้ายังไม่มี
+  var m = document.getElementById('extDashLinkModal');
+  if (!m) {
+    m = document.createElement('div');
+    m.id = 'extDashLinkModal';
+    m.className = 'modal-overlay hidden';
+    m.innerHTML = '<div class="modal" style="max-width:560px;width:100%">'
+      +'<div class="modal-title" style="font-size:16px;margin-bottom:12px">🏢 Dashboard ติดตามปัญหา สำหรับหน่วยงานภายนอก'
+        +'<button onclick="document.getElementById(\'extDashLinkModal\').classList.add(\'hidden\')" style="float:right;border:none;background:none;font-size:20px;cursor:pointer">✕</button>'
+      +'</div>'
+      +'<p style="font-size:13px;color:var(--gray3);margin-bottom:10px">ส่งลิ้งค์นี้ให้หน่วยงานภายนอก เพื่อให้เจ้าหน้าที่สมัครบัญชีและติดตามปัญหาที่แจ้งไว้</p>'
+      +'<div style="display:flex;gap:8px;align-items:center">'
+        +'<input id="extDashUrl" class="finput" readonly style="flex:1;font-family:monospace;font-size:11px" value="กำลังโหลด...">'
+        +'<button class="btn btn-primary btn-sm" onclick="copyExtDashUrl()">📋 คัดลอก</button>'
+      +'</div>'
+      +'<div style="margin-top:14px;background:#e8f4fd;border-radius:8px;padding:10px 14px;font-size:12px;color:#1565c0">'
+        +'<strong>วิธีใช้:</strong> หน่วยงานภายนอกเปิดลิ้งค์ → ลงทะเบียน → รอ Admin อนุมัติ → รับอีเมลตั้งรหัสผ่าน → เข้าดู Dashboard ติดตามปัญหา'
+      +'</div>'
+    +'</div>';
+    document.body.appendChild(m);
+  }
+  m.classList.remove('hidden');
+  var urlEl = document.getElementById('extDashUrl');
+  if (urlEl) urlEl.value = 'กำลังโหลด...';
   google.script.run
     .withSuccessHandler(function(res) {
-      if (!res.success) { showToast('ไม่พบ URL — กรุณา Deploy ใหม่','error'); return; }
+      if (!res.success) { if(urlEl) urlEl.value='ไม่พบ URL — กรุณา Deploy ใหม่'; return; }
       var url = res.url.replace('?page=crm', '?page=ext_staff');
-      var msg = 'ลิ้งค์ Dashboard สำหรับหน่วยงานภายนอก:\n\n' + url
-        + '\n\nหน่วยงานภายนอกสามารถสมัครบัญชีและติดตามปัญหาผ่านลิ้งค์นี้';
-      var area = document.createElement('textarea');
-      area.style.cssText = 'position:fixed;top:-999px';
-      area.value = url;
-      document.body.appendChild(area);
-      area.select();
-      try { document.execCommand('copy'); showToast('✅ คัดลอก URL แล้ว','success'); } catch(e) {}
-      document.body.removeChild(area);
-      alert(msg);
+      if (urlEl) urlEl.value = url;
     })
-    .withFailureHandler(function(){ showToast('เกิดข้อผิดพลาด','error'); })
+    .withFailureHandler(function(){ if(urlEl) urlEl.value='เกิดข้อผิดพลาด'; })
     .getPublicUrl();
+}
+function copyExtDashUrl() {
+  var el = document.getElementById('extDashUrl');
+  if (!el) return;
+  el.select();
+  try { document.execCommand('copy'); } catch(e) {}
+  navigator.clipboard.writeText(el.value).catch(function(){});
+  showToast('✅ คัดลอก URL แล้ว','success');
 }
 
 // ===== STUDENT HISTORY LOOKUP (CRM Modal) =====
@@ -4048,7 +4514,7 @@ function toggleCrmForm() {
 
 function openCrmModal() { toggleCrmForm(); }
 
-function submitCrmTicket() {
+function submitCrmTicket(btnEl) {
   var name     = document.getElementById('cm_name').value.trim();
   var sid      = document.getElementById('cm_sid').value.trim();
   var ptypeEl  = document.getElementById('cm_ptype');
@@ -4080,20 +4546,25 @@ function submitCrmTicket() {
   }).filter(Boolean);
   var tags = document.getElementById('cm_tags_val')?document.getElementById('cm_tags_val').value:'';
 
+  const _crmOrigLabel = btnEl ? btnEl.textContent : '';
+  if(btnEl){btnEl.disabled=true;btnEl.textContent='⏳ กำลังบันทึก...';}
+  const _crmReset=function(){if(btnEl){btnEl.disabled=false;btnEl.textContent=_crmOrigLabel||'💾 รับเรื่องและบันทึก';}};
+  const _crmTimeout=setTimeout(_crmReset, 60000);
   showToast('⏳ กำลังบันทึก...','');
   google.script.run
     .withSuccessHandler(function(res){
+      clearTimeout(_crmTimeout); _crmReset();
       if(res.success){
         showToast('✅ รับเรื่องสำเร็จ! '+res.id,'success');
-        // ปิด inline form
-        var form = document.getElementById('crmInlineForm');
-        var btn  = document.getElementById('btnToggleCrmForm');
-        if(form) form.style.display='none';
-        if(btn)  btn.textContent='➕ รับแจ้งด้วยตนเอง';
         loadCrm();
 
         // prefill ข้อมูลไปหน้าที่เลือก
         if(nextPage) {
+          // ปิด inline form ก่อนไปหน้าถัดไป
+          var form = document.getElementById('crmInlineForm');
+          var btn  = document.getElementById('btnToggleCrmForm');
+          if(form) form.style.display='none';
+          if(btn)  btn.textContent='➕ รับแจ้งด้วยตนเอง';
           var pfx = {return:'rt_',lend:'ld_',special:'sp_'}[nextPage];
           if(pfx) {
             setTimeout(function(){
@@ -4143,15 +4614,330 @@ function submitCrmTicket() {
         if(tagState['cmtags']){tagState['cmtags'].tags=[];renderTagInput('cmtags');syncTagHidden('cmtags');}
       } else showToast('❌ '+res.error,'error');
     })
-    .withFailureHandler(showError)
+    .withFailureHandler(function(e){clearTimeout(_crmTimeout);_crmReset();showError(e);})
     .addCrmTicket({
       reporterName:name, studentId:sid, reporterEmail:email, reporterPhone:phone,
-      department:branch+(plan?' / '+plan:''),
+      department:branch,
       educationLevel:document.getElementById('cm_edu')?.value||'',
       issueType:ptype, detail:detail, channel:ch, term:term, year:year, priority:priority,
       courses:courses.join(','), tags:tags, recorderName:currentUser,
-      assigneeName:assignee,
+      assigneeName:assignee, plan:plan,
     });
+}
+
+function openCrmImportModal() {
+  document.getElementById('crmImportModal').classList.remove('hidden');
+  document.getElementById('crmExcelFile').value='';
+  document.getElementById('crmImportPreview').innerHTML='';
+}
+
+function parseAndImportCrmExcel() {
+  const fileInput = document.getElementById('crmExcelFile');
+  const file = fileInput.files[0];
+  if (!file) { showToast('กรุณาเลือกไฟล์','error'); return; }
+
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const data = new Uint8Array(e.target.result);
+      const workbook = XLSX.read(data, {type: 'array'});
+      const sheet = workbook.Sheets[workbook.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(sheet);
+
+      if (!rows || rows.length === 0) {
+        showToast('ไฟล์ Excel ว่างเปล่า','error');
+        return;
+      }
+
+      const preview = rows.slice(0, 3).map((r,i) =>
+        `<div style="padding:8px;border-bottom:1px solid var(--gray1);font-size:12px">
+          <strong>${i+1}.</strong> ${r['ชื่อ'] || r['Name'] || ''} | ${r['อีเมล'] || r['Email'] || ''} | ${r['เบอร์โทร'] || r['Phone'] || ''}
+        </div>`
+      ).join('');
+
+      document.getElementById('crmImportPreview').innerHTML =
+        `<div style="background:var(--gray1);border-radius:var(--rsm);padding:10px">
+          <div style="font-size:12px;color:var(--gray3);margin-bottom:8px">📊 ${rows.length} รายการ</div>
+          ${preview}
+          ${rows.length > 3 ? `<div style="padding:8px;color:var(--gray3);font-size:11px">...และอีก ${rows.length-3} รายการ</div>` : ''}
+        </div>`;
+
+      window._crmImportData = rows;
+      showToast('✅ โหลดไฟล์เรียบร้อย','success');
+    } catch(err) {
+      showToast('❌ ผิดพลาด: '+err.message,'error');
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function importCrmExcel() {
+  const rows = window._crmImportData;
+  if (!rows || !Array.isArray(rows)) {
+    showToast('กรุณาโหลดไฟล์ก่อน','error');
+    return;
+  }
+
+  const btn = document.getElementById('crmImportBtn');
+  const origText = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = '⏳ กำลังนำเข้า...';
+
+  const importData = rows.map(r => ({
+    reporterName: r['ชื่อ'] || r['Name'] || '',
+    reporterEmail: r['อีเมล'] || r['Email'] || '',
+    reporterPhone: r['เบอร์โทร'] || r['Phone'] || '',
+    issueType: r['ประเภทปัญหา'] || r['Issue Type'] || '',
+    detail: r['รายละเอียด'] || r['Detail'] || '',
+    courses: r['ชุดวิชา'] || r['Courses'] || '',
+    studentId: r['รหัสนักศึกษา'] || r['Student ID'] || '',
+    term: r['ภาค'] || r['Term'] || '',
+    year: r['ปี'] || r['Year'] || '',
+    priority: r['ลำดับความสำคัญ'] || r['Priority'] || 'normal',
+  }));
+
+  google.script.run
+    .withSuccessHandler(res => {
+      btn.disabled = false;
+      btn.textContent = origText;
+      if (res.success) {
+        showToast('✅ นำเข้า ' + res.count + ' รายการสำเร็จ','success');
+        document.getElementById('crmImportModal').classList.add('hidden');
+        loadCrm();
+      } else {
+        showToast('❌ ' + (res.error || 'เกิดข้อผิดพลาด'),'error');
+      }
+    })
+    .withFailureHandler(e => {
+      btn.disabled = false;
+      btn.textContent = origText;
+      showError(e);
+    })
+    .bulkImportCrmTickets(importData);
+}
+
+function createCrmTemplate() {
+  document.body.style.pointerEvents = 'none';
+  google.script.run
+    .withSuccessHandler(function(res) {
+      document.body.style.pointerEvents = 'auto';
+      if (res.success) {
+        showToast('✅ สร้างเทมเพลตสำเร็จ มีช่องสำหรับเลือก (dropdown) พร้อมใช้งาน','success');
+        setTimeout(() => window.open(res.url, '_blank'), 500);
+      } else {
+        showToast('❌ ' + (res.error || 'เกิดข้อผิดพลาด'), 'error');
+      }
+    })
+    .withFailureHandler(function(e) {
+      document.body.style.pointerEvents = 'auto';
+      showError(e);
+    })
+    .createCrmImportTemplate();
+}
+
+function downloadCrmTemplate() {
+  const DEFAULT_ISSUES = ['พิมพ์เพิ่ม','ชุดปรับปรุง','ชุดผลิตใหม่','ปัญหาทวงถามหนังสือ (ไม่ได้สั่งซื้อ/แผน ก2-ก3)','สอบถามทะเบียนและวัดผล (ลงทะเบียน/สอบ)','สอบถามกิจกรรมประจำชุดวิชา','สอบถามเลือกแผนการศึกษา','สอบถามอบรมเข้มเสริมประสบการณ์วิชาชีพ','สอบถามสอนเสริมออนไลน์','สอบถามโครงการสัมฤทธิบัตร','ไม่ได้รับเอกสาร','เอกสารชำรุด','ส่งผิดวิชา','อื่นๆ (ระบุเอง)'];
+  const issues = (settings.issueTypes && settings.issueTypes.length) ? settings.issueTypes : DEFAULT_ISSUES;
+
+  const headers = ['ชื่อ', 'อีเมล', 'เบอร์โทร', 'รหัสนักศึกษา', 'ประเภทปัญหา', 'รายละเอียด', 'ชุดวิชา', 'หน่วยงาน/สาขา', 'ระดับการศึกษา', 'ภาค', 'ปี', 'แผนการศึกษา', 'ช่องทาง', 'ลำดับความสำคัญ', 'หมายเหตุ'];
+  const example = [
+    ['สมชาย สมสีวงค์', 'somchai@mail.com', '0812345678', '123456', 'ไม่ได้รับเอกสาร', 'ไม่ได้รับหนังสือการศึกษา', '1100101', 'หน่วยงาน A', 'ปริญญาตรี', '1', '2567', 'หลักสูตร A', 'อีเมล', 'normal', 'หมายเหตุตัวอย่าง'],
+    ['อนันท์ อนันต์สกุล', 'anan@mail.com', '0898765432', '654321', 'ชำรุด', 'เอกสารชำรุดจากการขนส่ง', '1100102,1100103', 'หน่วยงาน B', 'ปริญญาตรี', '2', '2567', 'หลักสูตร B', 'โทรศัพท์', 'high', ''],
+  ];
+
+  const ws = XLSX.utils.aoa_to_sheet([headers, ...example]);
+  ws['!cols'] = [
+    {wch: 18}, {wch: 20}, {wch: 15}, {wch: 12},
+    {wch: 25}, {wch: 30}, {wch: 15}, {wch: 18}, {wch: 16}, {wch: 8}, {wch: 8}, {wch: 18}, {wch: 15}, {wch: 12}, {wch: 25}
+  ];
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'CRM Template');
+
+  // สร้าง sheet สำหรับ reference data (ซ่อนไว้)
+  const refData = [
+    ['ประเภทปัญหา', ...issues],
+    ['ระดับการศึกษา', 'ปริญญาตรี', 'ปริญญาโท', 'ปริญญาเอก', 'หนังสือหมายเหตุ', 'อื่นๆ'],
+    ['ช่องทาง', 'อีเมล', 'โทรศัพท์', 'Line', 'Facebook', 'อื่นๆ'],
+    ['ลำดับความสำคัญ', 'normal', 'high', 'urgent'],
+  ];
+  const refWs = XLSX.utils.aoa_to_sheet(refData);
+  XLSX.utils.book_append_sheet(wb, refWs, '_Reference');
+
+  XLSX.writeFile(wb, 'CRM_Import_Template_' + new Date().toLocaleDateString('th-TH') + '.xlsx');
+  showToast('✅ ดาวน์โหลดเทมเพลตเสร็จสิ้น (รวมข้อมูล reference ในแท็บ _Reference)','success');
+}
+
+// ============================================================
+// CRM DASHBOARD
+// ============================================================
+var crmDashCharts = {};
+
+function loadCrmDashboard() {
+  const filters = {
+    channel: document.getElementById('crmd_channel').value,
+    issueType: document.getElementById('crmd_issuetype').value,
+    term: document.getElementById('crmd_term').value,
+    plan: document.getElementById('crmd_plan').value,
+    course: document.getElementById('crmd_course').value.trim(),
+    priority: document.getElementById('crmd_priority').value,
+    dateFrom: (document.getElementById('crmd_date_from')?.value||'').trim(),
+    dateTo:   (document.getElementById('crmd_date_to')?.value||'').trim(),
+  };
+
+  google.script.run
+    .withSuccessHandler(function(res) {
+      if (res.success) {
+        renderCrmDashboard(res.data, res.stats);
+      } else {
+        showToast('❌ ' + (res.error || 'เกิดข้อผิดพลาด'), 'error');
+      }
+    })
+    .withFailureHandler(showError)
+    .getCrmDashboardData(filters);
+}
+
+function renderCrmDashboard(tickets, stats) {
+  // Update stats
+  document.getElementById('crmd_total').textContent = stats.total;
+  document.getElementById('crmd_open').textContent = stats.open;
+  document.getElementById('crmd_inprogress').textContent = stats.inprogress;
+  document.getElementById('crmd_resolved').textContent = stats.resolved;
+
+  // Update filter options (issue types, terms, plans)
+  const issueTypes = [...new Set(tickets.map(t => t.issueType).filter(Boolean))].sort();
+  const terms = [...new Set(tickets.map(t => t.term).filter(Boolean))].sort();
+  // รวม plan จาก ticket data + settings.plans เพื่อให้มีตัวเลือกครบแม้ไม่มีข้อมูล
+  const settingsPlans = (typeof settings !== 'undefined' && settings && settings.plans) ? settings.plans : ['แผน ก.1','แผน ก.2','แผน ก.3'];
+  const planFromTickets = tickets.map(t => t.plan).filter(Boolean);
+  const plans = [...new Set([...settingsPlans, ...planFromTickets])].sort();
+
+  const issueSelect = document.getElementById('crmd_issuetype');
+  const currentIssue = issueSelect.value;
+  issueSelect.innerHTML = '<option value="">ทั้งหมด</option>' +
+    issueTypes.map(t => `<option value="${t}">${t}</option>`).join('');
+  issueSelect.value = currentIssue;
+
+  const termSelect = document.getElementById('crmd_term');
+  const currentTerm = termSelect.value;
+  termSelect.innerHTML = '<option value="">ทั้งหมด</option>' +
+    terms.map(t => `<option value="${t}">${t}</option>`).join('');
+  termSelect.value = currentTerm;
+
+  const planSelect = document.getElementById('crmd_plan');
+  const currentPlan = planSelect.value;
+  planSelect.innerHTML = '<option value="">ทั้งหมด</option>' +
+    plans.map(p => `<option value="${p}">${p}</option>`).join('');
+  planSelect.value = currentPlan;
+
+  // Prepare chart data
+  const statusCount = {open:0, inprogress:0, resolved:0, closed:0};
+  const issueTypeCount = {};
+  const channelCount = {online:0, phone:0, line:0, letter:0, walkin:0};
+  const priorityCount = {normal:0, high:0, urgent:0};
+  const courseCount = {};
+
+  tickets.forEach(t => {
+    statusCount[t.status] = (statusCount[t.status] || 0) + 1;
+    issueTypeCount[t.issueType] = (issueTypeCount[t.issueType] || 0) + 1;
+    channelCount[t.channel] = (channelCount[t.channel] || 0) + 1;
+    priorityCount[t.priority] = (priorityCount[t.priority] || 0) + 1;
+    if (t.courses) {
+      var courseStr = String(t.courses).trim();
+      if (courseStr) {
+        var coursesArr = courseStr.split(',').map(function(c){ return c.trim(); });
+        if (coursesArr.length === 1 && coursesArr[0].length > 5) {
+          coursesArr = coursesArr[0].match(/\d{5}/g) || coursesArr;
+        }
+        coursesArr.forEach(function(code) {
+          if (code && code.length > 0) courseCount[code] = (courseCount[code] || 0) + 1;
+        });
+      }
+    }
+  });
+
+  // Destroy old charts if exist
+  Object.values(crmDashCharts).forEach(chart => chart.destroy && chart.destroy());
+  crmDashCharts = {};
+
+  // Status Chart
+  const statusCtx = document.getElementById('chartStatus').getContext('2d');
+  crmDashCharts.status = new Chart(statusCtx, {
+    type: 'doughnut',
+    data: {
+      labels: ['รอรับเรื่อง', 'กำลังดำเนินการ', 'แก้ไขแล้ว', 'ปิดแล้ว'],
+      datasets: [{
+        data: [statusCount.open, statusCount.inprogress, statusCount.resolved, statusCount.closed],
+        backgroundColor: ['#ff9800', '#2196F3', '#4caf50', '#9e9e9e'],
+      }]
+    },
+    options: { responsive: true, plugins: { legend: { position: 'bottom' } } }
+  });
+
+  // Issue Type Chart
+  const issueCtx = document.getElementById('chartIssueType').getContext('2d');
+  const issueLabels = Object.keys(issueTypeCount).sort((a,b) => issueTypeCount[b] - issueTypeCount[a]).slice(0, 8);
+  const issueData = issueLabels.map(l => issueTypeCount[l]);
+  crmDashCharts.issue = new Chart(issueCtx, {
+    type: 'bar',
+    data: {
+      labels: issueLabels,
+      datasets: [{
+        label: 'จำนวน',
+        data: issueData,
+        backgroundColor: '#2196F3',
+      }]
+    },
+    options: {
+      responsive: true,
+      indexAxis: 'y',
+      plugins: { legend: { display: false } },
+      scales: { x: { beginAtZero: true } }
+    }
+  });
+
+  // Channel Chart
+  const channelCtx = document.getElementById('chartChannel').getContext('2d');
+  const channelLabels = ['ออนไลน์', 'โทรศัพท์', 'LINE', 'จดหมาย', 'มาด้วยตนเอง'];
+  crmDashCharts.channel = new Chart(channelCtx, {
+    type: 'pie',
+    data: {
+      labels: channelLabels,
+      datasets: [{
+        data: [channelCount.online, channelCount.phone, channelCount.line, channelCount.letter, channelCount.walkin],
+        backgroundColor: ['#3f51b5', '#009688', '#ff5722', '#673ab7', '#00bcd4'],
+      }]
+    },
+    options: { responsive: true, plugins: { legend: { position: 'bottom' } } }
+  });
+
+  // Priority Chart
+  const priorityCtx = document.getElementById('chartPriority').getContext('2d');
+  crmDashCharts.priority = new Chart(priorityCtx, {
+    type: 'bar',
+    data: {
+      labels: ['ปกติ', 'สูง', 'เร่งด่วน'],
+      datasets: [{
+        label: 'จำนวน',
+        data: [priorityCount.normal, priorityCount.high, priorityCount.urgent],
+        backgroundColor: ['#4caf50', '#ff9800', '#f44336'],
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { display: false } },
+      scales: { y: { beginAtZero: true } }
+    }
+  });
+
+  // Top Courses
+  const topCourses = Object.entries(courseCount)
+    .sort((a,b) => b[1] - a[1])
+    .slice(0, 10);
+  const courseHtml = topCourses.map(([code, count]) =>
+    `<tr><td style="padding:8px">${code}</td><td style="padding:8px;text-align:center;font-weight:600">${count}</td></tr>`
+  ).join('');
+  document.getElementById('crmTopCourses').innerHTML = courseHtml || '<tr><td colspan="2" style="padding:8px;text-align:center;color:var(--gray3)">ไม่มีข้อมูล</td></tr>';
 }
 
 // ============================================================
@@ -4259,6 +5045,7 @@ function loadUsersTable() {
         <td>${u.active?'<span style="color:var(--green);font-weight:600;font-size:12px">✅ ใช้งาน</span>':'<span style="color:var(--red);font-size:12px">🚫 ระงับ</span>'}</td>
         <td style="font-size:11px;color:var(--gray3)">${u.lastLogin||'-'}</td>
         <td class="no-print" style="display:flex;gap:5px;flex-wrap:wrap">
+          <button class="btn btn-outline btn-sm" onclick="editUserModal('${u.email}','${(u.name||'').replace(/'/g,'')}','${u.role||''}','${(u.perms||'').replace(/'/g,'')}')" title="แก้ไข role และ permissions">✏️ แก้ไข</button>
           <button class="btn btn-outline btn-sm" onclick="sendUserInvite('${u.email}','${(u.name||'').replace(/'/g,'')}')" title="ส่งลิ้งค์ตั้งรหัสผ่านใหม่ทางอีเมล">📨 คำเชิญ</button>
           ${u.active
             ?`<button class="btn btn-sm" style="background:var(--red);color:#fff" onclick="toggleActive('${u.email}',false)">🚫</button>`
@@ -4297,6 +5084,110 @@ function toggleActive(email, active) {
     .withSuccessHandler(res=>{res.success?(showToast('อัปเดตแล้ว','success'),loadUsersTable()):showToast('❌ '+res.error,'error');})
     .withFailureHandler(showError)
     .toggleUserActive(email, active);
+}
+
+function editUserModal(email, name, role, perms) {
+  const ALL_PAGES=[
+    {id:'dash',label:'📊 Dashboard'},{id:'search',label:'🔍 ค้นหาข้อมูล นศ.'},
+    {id:'rec-return',label:'↩️ บันทึกพัสดุตีคืน'},{id:'rec-lend',label:'📤 บันทึกให้ยืม'},
+    {id:'rec-special',label:'⭐ ส่งใหม่กรณีพิเศษ'},{id:'list',label:'📋 รายการทั้งหมด'},
+    {id:'labels',label:'🖨️ พิมพ์ใบจ่าหน้า'},{id:'invest',label:'🔎 สอบสวนไปรษณีย์'},{id:'crm',label:'💬 CRM แจ้งปัญหา'},
+    {id:'admin-report',label:'📊 สรุปงานเจ้าหน้าที่'},{id:'audit',label:'📋 Audit Log'},{id:'settings',label:'⚙️ ตั้งค่าระบบ'},{id:'stats',label:'📈 สถิติของฉัน'},{id:'tasks',label:'✅ งานที่ได้รับมอบหมาย'},
+    {id:'tags',label:'🏷️ จัดการ Tag'},{id:'users',label:'👥 จัดการผู้ใช้งาน'},
+  ];
+  const currentPerms = (perms||'').split(',').map(p=>p.trim()).filter(Boolean);
+  const defaults={viewer:['dash','search','list','crm'],staff:['dash','search','rec-return','rec-lend','rec-special','list','labels','crm','tasks'],superadmin:ALL_PAGES.map(p=>p.id)};
+
+  const checkboxHtml = ALL_PAGES.map(p=>`
+    <label style="display:flex;align-items:center;gap:8px;padding:8px 12px;border:1.5px solid var(--gray1);border-radius:var(--rsm);cursor:pointer;font-size:13px;background:#fff">
+      <input type="checkbox" class="edit-perm-chk" data-page="${p.id}" ${currentPerms.includes(p.id)?'checked':''} style="accent-color:var(--sky);width:15px;height:15px">
+      ${p.label}
+    </label>`).join('');
+
+  const modal = document.createElement('div');
+  modal.className = 'modal-overlay';
+  modal.innerHTML = `<div class="modal" style="max-width:640px">
+    <div class="modal-title" style="margin-bottom:20px">✏️ แก้ไขผู้ใช้ <button onclick="this.closest('.modal-overlay').remove()" style="float:right;border:none;background:none;font-size:20px;cursor:pointer">✕</button></div>
+    <div style="margin-bottom:16px">
+      <div style="font-size:13px;color:var(--gray3);margin-bottom:4px">ชื่อ</div>
+      <div style="font-weight:600;padding:10px;background:var(--gray1);border-radius:8px">${name||email}</div>
+    </div>
+    <div style="margin-bottom:16px">
+      <div style="font-size:13px;color:var(--gray3);margin-bottom:4px">อีเมล</div>
+      <div style="font-weight:600;padding:10px;background:var(--gray1);border-radius:8px;font-family:monospace;font-size:12px">${email}</div>
+    </div>
+    <div style="margin-bottom:16px">
+      <label style="font-size:13px;color:var(--navy);font-weight:600;display:block;margin-bottom:6px">บทบาท</label>
+      <select id="editRole" onchange="editRoleAutoFill(this.value)" style="padding:10px;border:1.5px solid var(--gray2);border-radius:8px;width:100%;font-family:inherit">
+        <option value="superadmin" ${role==='superadmin'?'selected':''}>Super Admin</option>
+        <option value="staff" ${role==='staff'?'selected':''}>Staff</option>
+        <option value="viewer" ${role==='viewer'?'selected':''}>Viewer</option>
+      </select>
+    </div>
+    <div style="margin-bottom:20px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <label style="font-size:13px;color:var(--navy);font-weight:600">🔒 กำหนดสิทธิ์การเข้าถึงหน้าต่างๆ</label>
+        <button type="button" onclick="editRoleAutoFill(document.getElementById('editRole').value)" style="font-size:11px;color:var(--sky);background:none;border:none;cursor:pointer">↺ รีเซตตามบทบาท</button>
+      </div>
+      <div id="editPermGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px">${checkboxHtml}</div>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-primary btn-sm" onclick="saveUserEdit('${email}')">💾 บันทึก</button>
+      <button class="btn btn-outline btn-sm" onclick="this.closest('.modal-overlay').remove()">ยกเลิก</button>
+    </div>
+    <div style="font-size:11px;color:var(--gray3);margin-top:12px;text-align:center">กรุณารอสักครู่...</div>
+  </div>`;
+  document.body.appendChild(modal);
+}
+
+function editRoleAutoFill(role) {
+  const ALL_PAGES=['dash','search','rec-return','rec-lend','rec-special','list','labels','invest','crm','admin-report','audit','settings','stats','tasks','tags','users'];
+  const defaults={viewer:['dash','search','list','crm'],staff:['dash','search','rec-return','rec-lend','rec-special','list','labels','crm','tasks'],superadmin:ALL_PAGES};
+  const def = defaults[role] || [];
+  document.querySelectorAll('.edit-perm-chk').forEach(function(chk){
+    chk.checked = def.includes(chk.dataset.page);
+  });
+}
+
+function saveUserEdit(email) {
+  const role = document.getElementById('editRole').value;
+  const perms = Array.from(document.querySelectorAll('.edit-perm-chk:checked')).map(c=>c.dataset.page).join(',');
+  const modalEl = document.querySelector('.modal-overlay');
+  const saveBtn = modalEl ? modalEl.querySelector('.btn-primary') : null;
+  if(saveBtn) saveBtn.disabled = true;
+
+  let done = false;
+  const timeoutId = setTimeout(() => {
+    if (!done) {
+      done = true;
+      showToast('⏱️ หมดเวลา กรุณาลองใหม่','error');
+      if(saveBtn) saveBtn.disabled = false;
+    }
+  }, 10000);
+
+  google.script.run
+    .withSuccessHandler(res=>{
+      if(done) return;
+      done = true;
+      clearTimeout(timeoutId);
+      if(saveBtn) saveBtn.disabled = false;
+      if(res.success){
+        showToast('✅ อัปเดตแล้ว','success');
+        if(modalEl) modalEl.remove();
+        loadUsersTable();
+      } else {
+        showToast('❌ '+res.error,'error');
+      }
+    })
+    .withFailureHandler(e=>{
+      if(done) return;
+      done = true;
+      clearTimeout(timeoutId);
+      if(saveBtn) saveBtn.disabled = false;
+      showError(e);
+    })
+    .withFailureHandler(showError)
+    .updateUserRole(email, role, perms);
 }
 
 // ============================================================
@@ -4412,6 +5303,7 @@ function removeCourseRow(btn){
 // ============================================================
 // HELPERS
 // ============================================================
+function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 function typeBadge(t){const m={return:'<span class="badge b-return">↩️ ตีคืน</span>',lend:'<span class="badge b-lend">📤 ให้ยืม</span>',special:'<span class="badge b-special">⭐ พิเศษ</span>'};return m[t]||t||'—';}
 function contactIcon(c){
   if(c==='yes')return'<span class="status-dot"><span class="dot green"></span><span style="color:var(--green);font-size:11px">ติดต่อได้</span></span>';
@@ -4634,8 +5526,8 @@ function calcPostDays() {
   const daysEl    = document.getElementById('ld_reply_days');
   if (!daysEl) return;
   if (postDate && replyDate) {
-    const d1 = new Date(postDate);
-    const d2 = new Date(replyDate);
+    const d1 = parseDdMmYyyy(postDate) || new Date(postDate);
+    const d2 = parseDdMmYyyy(replyDate) || new Date(replyDate);
     const diff = Math.round((d2 - d1) / (1000*60*60*24));
     daysEl.value = diff >= 0 ? diff : '—';
   } else {
@@ -4861,30 +5753,47 @@ function openInvestUpdate(r) {
   _investPendingUploads = [];
   
   document.getElementById('investUpdateModal').classList.remove('hidden');
+  setTimeout(initDatePickers, 50);
 }
 
-// แปลงค่าวันที่ → รูปแบบ yyyy-MM-dd สำหรับ <input type="date">
+// แปลงค่าวันที่ → รูปแบบ dd/mm/yyyy สำหรับ flatpickr text input
 function toDateInput(v) {
   if (!v) return '';
   var s = String(v).trim();
-  // รูปแบบ dd/MM/yyyy HH:mm
+  // รูปแบบ dd/MM/yyyy หรือ dd/MM/yyyy HH:mm อยู่แล้ว
   var m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
-  if (m) {
-    var dd = m[1].padStart(2,'0');
-    var mm = m[2].padStart(2,'0');
-    return m[3]+'-'+mm+'-'+dd;
-  }
-  // ลอง parse เป็น Date
+  if (m) return m[1].padStart(2,'0')+'/'+m[2].padStart(2,'0')+'/'+m[3];
+  // รูปแบบ yyyy-MM-dd (ISO)
+  var iso = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (iso) return iso[3]+'/'+iso[2]+'/'+iso[1];
+  // ลอง parse เป็น Date object
   try {
     var d = new Date(s);
     if (!isNaN(d.getTime())) {
-      var y = d.getFullYear();
-      var mn = String(d.getMonth()+1).padStart(2,'0');
-      var dy = String(d.getDate()).padStart(2,'0');
-      return y+'-'+mn+'-'+dy;
+      return String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')+'/'+d.getFullYear();
     }
   } catch(e) {}
   return '';
+}
+
+// แปลง dd/mm/yyyy → Date object (สำหรับคำนวณวัน)
+function parseDdMmYyyy(s) {
+  if (!s) return null;
+  var m = String(s).trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if (!m) return null;
+  return new Date(parseInt(m[3]), parseInt(m[2])-1, parseInt(m[1]));
+}
+
+// เริ่มต้น flatpickr บน .datepickr ทุกอัน
+function initDatePickers() {
+  document.querySelectorAll('.datepickr').forEach(function(el) {
+    if (el._flatpickr) return;
+    flatpickr(el, {
+      dateFormat: 'd/m/Y',
+      allowInput: true,
+      locale: { firstDayOfWeek: 1 }
+    });
+  });
 }
 
 function renderExistingInvestFiles(resultDetail) {
@@ -4974,12 +5883,14 @@ function calcInvestDays() {
   const d1 = document.getElementById('iup_notify_date').value;
   const d2 = document.getElementById('iup_reply_date').value;
   if (d1 && d2) {
-    const diff = Math.round((new Date(d2)-new Date(d1))/(1000*60*60*24));
+    const date1 = parseDdMmYyyy(d1) || new Date(d1);
+    const date2 = parseDdMmYyyy(d2) || new Date(d2);
+    const diff = Math.round((date2 - date1)/(1000*60*60*24));
     document.getElementById('iup_reply_days').value = diff>=0?diff:'';
   }
 }
 
-function submitInvestUpdate() {
+function submitInvestUpdate(btnEl) {
   const id = document.getElementById('iup_invest_id').value;
   if (!id) return;
   
@@ -5006,27 +5917,32 @@ function submitInvestUpdate() {
   if (updates.result === 'ชดเชยแล้ว') updates.status = 'ปิดแล้ว';
   else if (updates.replyDate && updates.status === 'ส่งแล้ว') updates.status = 'มีผลตอบ';
   
+  const _invOrigLabel = btnEl ? btnEl.textContent : '';
+  if(btnEl){btnEl.disabled=true;btnEl.textContent='⏳ กำลังบันทึก...';}
+  const _invReset=function(){clearTimeout(_invTimeout);if(btnEl){btnEl.disabled=false;btnEl.textContent=_invOrigLabel||'💾 บันทึก';}};
+  const _invTimeout=setTimeout(_invReset, 60000);
   showToast('⏳ กำลังบันทึก...','');
-  
+
   // ถ้ามีไฟล์รออัปโหลด → อัปก่อน แล้วค่อย save updates
   if (_investPendingUploads.length > 0) {
     uploadInvestFilesSerial(id, function(urls) {
       if (urls.length) {
-        // รวม URLs เข้า resultDetail
         urls.forEach(function(u) {
           updates.resultDetail += '\n[ไฟล์แนบ: ' + u + ']';
         });
       }
-      saveInvestUpdate(id, updates);
+      saveInvestUpdate(id, updates, _invReset);
     });
   } else {
-    saveInvestUpdate(id, updates);
+    saveInvestUpdate(id, updates, _invReset);
   }
 }
 
-function saveInvestUpdate(id, updates) {
+function saveInvestUpdate(id, updates, onDone) {
+  const _done = onDone || function(){};
   google.script.run
     .withSuccessHandler(function(res) {
+      _done();
       if (res.success) {
         showToast('✅ บันทึกสำเร็จ','success');
         document.getElementById('investUpdateModal').classList.add('hidden');
@@ -5035,7 +5951,7 @@ function saveInvestUpdate(id, updates) {
         showToast('❌ '+res.error,'error');
       }
     })
-    .withFailureHandler(showError)
+    .withFailureHandler(function(e){_done();showError(e);})
     .updateInvestigation(id, updates);
 }
 
@@ -5139,13 +6055,16 @@ function sendBatchEmail() {
         badge.style.display = 'inline-block';
         // อัปเดต status ของรายการที่เลือก
         ids.forEach(function(id) {
-          google.script.run.updateInvestigation(id, {
-            notifyDate: today,
-            notifyEmail: email,
-            notifyQty: ids.length,
-            status: 'ส่งแล้ว',
-            result: 'กำลังติดตาม'
-          });
+          google.script.run
+            .withSuccessHandler(function(){})
+            .withFailureHandler(function(){})
+            .updateInvestigation(id, {
+              notifyDate: today,
+              notifyEmail: email,
+              notifyQty: ids.length,
+              status: 'ส่งแล้ว',
+              result: 'กำลังติดตาม'
+            });
         });
         setTimeout(function(){
           document.getElementById('batchEmailModal').classList.add('hidden');
@@ -5853,6 +6772,7 @@ function loadSettings_page() {
     .withSuccessHandler(function(url){
       if(url){ document.getElementById('logo_url_input').value=url; updateLogoPreview(url); }
     })
+    .withFailureHandler(function(){})
     .getOrgLogoUrlPublic();
 }
 
@@ -6158,6 +7078,7 @@ function openTaskUpdate(taskId) {
   document.getElementById('tup_file').value   = t.fileUrl||'';
   document.getElementById('tup_approve_wrap').style.display = (t.needApprove&&currentRole==='superadmin') ? 'block':'none';
   document.getElementById('taskUpdateModal').classList.remove('hidden');
+  setTimeout(initDatePickers, 50);
 }
 
 function submitTaskUpdate() {
@@ -6223,8 +7144,8 @@ function loadTasks() {
       var pending = rows.filter(function(r){return r.status==='รอดำเนินการ'||r.status==='รออนุมัติ';}).length;
       var badge = document.getElementById('taskBadge');
       if(badge){badge.textContent=pending;badge.style.display=pending?'inline':'none';}
-      var navBadge = document.getElementById('taskNavBadge');
-      if(navBadge){navBadge.textContent=pending;navBadge.style.display=pending?'inline':'none';}
+      var pageBadge = document.getElementById('taskPageBadge');
+      if(pageBadge){pageBadge.textContent=pending;pageBadge.style.display=pending?'inline':'none';}
       // เติม assignee filter
       var assignees=[...new Set(rows.map(function(r){return r.assignee;}).filter(Boolean))];
       var asel=document.getElementById('task_filter_assignee');
@@ -6281,17 +7202,58 @@ function renderTaskList(tasks) {
   }).join('');
 }
 
+// แสดง/ซ่อน text input เมื่อเลือก "อื่นๆ (ระบุเอง)"
+function onTaskTypeChange(selectId, customId) {
+  var sel = document.getElementById(selectId);
+  var inp = document.getElementById(customId);
+  if (!sel || !inp) return;
+  inp.style.display = sel.value === '__custom__' ? 'block' : 'none';
+  if (sel.value === '__custom__') inp.focus();
+}
+
+// คืนค่าประเภทงานจริง (ถ้าเลือก custom ให้ใช้จาก text input)
+function getTaskTypeValue(selectId, customId) {
+  var sel = document.getElementById(selectId);
+  if (!sel) return '';
+  if (sel.value === '__custom__') {
+    var inp = document.getElementById(customId);
+    return inp ? inp.value.trim() : '';
+  }
+  return sel.value;
+}
+
+// toggle กำหนดส่ง ไม่ระบุ
+function toggleDueDate(inputId, checkboxId) {
+  var inp = document.getElementById(inputId);
+  var chk = document.getElementById(checkboxId);
+  if (!inp || !chk) return;
+  if (chk.checked) {
+    inp.dataset.prevVal = inp.value;
+    if (inp._flatpickr) inp._flatpickr.clear();
+    else inp.value = '';
+    inp.disabled = true;
+    inp.style.opacity = '0.4';
+  } else {
+    inp.disabled = false;
+    inp.style.opacity = '1';
+    if (inp.dataset.prevVal && inp._flatpickr) inp._flatpickr.setDate(inp.dataset.prevVal, false, 'd/m/Y');
+  }
+}
+
 function openAddTaskForm() {
   var form = document.getElementById('addTaskForm');
-  if(form) form.style.display = form.style.display==='none'?'block':'none';
+  if(form) {
+    form.style.display = form.style.display==='none'?'block':'none';
+    if(form.style.display==='block') setTimeout(initDatePickers, 50);
+  }
 }
 
 function submitAddTask() {
   var title    = document.getElementById('task_title')?.value.trim();
   var assignee = document.getElementById('task_assignee')?.value;
   var detail   = document.getElementById('task_detail')?.value.trim();
-  var dueDate  = document.getElementById('task_due')?.value;
-  var taskType = document.getElementById('task_type')?.value;
+  var dueDate  = document.getElementById('task_due_none')?.checked ? '' : document.getElementById('task_due')?.value;
+  var taskType = getTaskTypeValue('task_type','task_type_custom');
   var fileUrl  = document.getElementById('task_file_url')?.value.trim();
   var needApproval = document.getElementById('task_need_approval')?.checked||false;
   if(!title){showToast('กรุณากรอกหัวข้องาน','error');return;}
@@ -6333,6 +7295,84 @@ function approveTask(taskId, approve) {
     })
     .withFailureHandler(showError)
     .updateTask(taskId, {approve:approve});
+}
+
+// TASK ASSIGNMENT (NEW MENU - SUPER ADMIN ONLY)
+function showAssignTaskForm() {
+  // Load assignees and populate dropdown
+  var assigneeSelect = document.getElementById('task_assignee_new');
+  if(assigneeSelect && assigneeSelect.options.length <= 1) {
+    var DEFAULT_ASSIGNEES=['หทัย เริงเกษตรกิจ','วรรณี รัตนากร','สุพรรษา ช่อปทุมมา','เมธิตา สาไพรวัน'];
+    var alist=(settings.assignees&&settings.assignees.length)?settings.assignees:DEFAULT_ASSIGNEES;
+    assigneeSelect.innerHTML='<option value="">-- เลือก --</option>'+alist.map(function(a){return '<option>'+a+'</option>';}).join('');
+  }
+  // Load and display assigned tasks
+  loadAssignedTasksList();
+}
+
+function loadAssignedTasksList() {
+  document.getElementById('assignedTasksList').innerHTML='<tr><td colspan="5" style="padding:20px;text-align:center;color:var(--gray3)">⏳ กำลังโหลด...</td></tr>';
+  google.script.run
+    .withSuccessHandler(function(tasks){
+      if(!tasks||tasks.error){
+        document.getElementById('assignedTasksList').innerHTML='<tr><td colspan="5" style="padding:20px;text-align:center;color:var(--red)">❌ เกิดข้อผิดพลาด</td></tr>';
+        return;
+      }
+      renderAssignedTasksTable(tasks);
+    })
+    .withFailureHandler(function(err){
+      document.getElementById('assignedTasksList').innerHTML='<tr><td colspan="5" style="padding:20px;text-align:center;color:var(--red)">❌ '+err+'</td></tr>';
+    })
+    .getTasks({});
+}
+
+function renderAssignedTasksTable(tasks) {
+  var tbody = document.getElementById('assignedTasksList');
+  if(!tasks||!tasks.length){
+    tbody.innerHTML='<tr><td colspan="5" style="padding:20px;text-align:center;color:var(--gray3)">ไม่มีงาน</td></tr>';
+    return;
+  }
+  var statusColor = {'รอดำเนินการ':'#e57c00','กำลังดำเนินการ':'#185FA5','รออนุมัติ':'#856404','อนุมัติแล้ว — พร้อมโพส':'#16a34a','เสร็จสิ้น':'#5F5E5A','ไม่อนุมัติ':'#a32d2d'};
+  tbody.innerHTML = tasks.map(function(t){
+    var color = statusColor[t.status]||'#5F5E5A';
+    return '<tr style="border-bottom:1px solid var(--gray1)">'
+      +'<td style="padding:12px">'+t.title+'</td>'
+      +'<td style="padding:12px">'+t.assignee+'</td>'
+      +'<td style="padding:12px">'+t.taskType+'</td>'
+      +'<td style="padding:12px">'+t.dueDate+'</td>'
+      +'<td style="padding:12px;text-align:center"><span style="background:'+color+';color:#fff;font-size:11px;padding:3px 8px;border-radius:12px;display:inline-block">'+t.status+'</span></td>'
+      +'</tr>';
+  }).join('');
+}
+
+function submitNewTask() {
+  var title    = document.getElementById('task_title_new')?.value.trim();
+  var assignee = document.getElementById('task_assignee_new')?.value;
+  var detail   = document.getElementById('task_detail_new')?.value.trim();
+  var dueDate  = document.getElementById('task_due_new_none')?.checked ? '' : document.getElementById('task_due_new')?.value;
+  var taskType = getTaskTypeValue('task_type_new','task_type_new_custom');
+
+  if(!title){showToast('กรุณากรอกหัวข้องาน','error');return;}
+  if(!assignee){showToast('กรุณาเลือกผู้รับผิดชอบ','error');return;}
+
+  showToast('⏳ กำลังบันทึก...','');
+  google.script.run
+    .withSuccessHandler(function(res){
+      if(res.success){
+        showToast('✅ มอบหมายงาน '+res.id+' แล้ว','success');
+        clearNewTaskForm();
+        loadAssignedTasksList();
+      } else showToast('❌ '+res.error,'error');
+    })
+    .withFailureHandler(showError)
+    .addTask({title:title,assignee:assignee,detail:detail,dueDate:dueDate,taskType:taskType||'ทั่วไป',fileUrl:''});
+}
+
+function clearNewTaskForm() {
+  ['task_title_new','task_type_new','task_assignee_new','task_due_new','task_detail_new'].forEach(function(id){
+    var el=document.getElementById(id);
+    if(el) el.value='';
+  });
 }
 
 
@@ -6448,8 +7488,9 @@ function renderExtStaff(rows) {
     const actBtn = r.status === 'pending'
       ? '<button class="btn btn-primary btn-xs" onclick="approveExt(\''+esc(r.email)+'\')">✅ อนุมัติ</button> '
         + '<button class="btn btn-sm" style="background:var(--red);color:#fff;font-size:11px;padding:3px 8px" onclick="rejectExt(\''+esc(r.email)+'\')">❌ ปฏิเสธ</button>'
-      : r.status === 'active'
-        ? '<span style="font-size:11px;color:var(--gray3)">ใช้งานได้แล้ว</span>'
+      : (r.status === 'active' || r.status === 'approved')
+        ? '<button class="btn btn-outline btn-xs" style="font-size:11px;padding:3px 8px;margin-right:4px" onclick="editExtStaff(\''+esc(r.email)+'\')">✏️ แก้ไข</button>'
+          + '<button class="btn btn-sm" style="background:#dc3545;color:#fff;font-size:11px;padding:3px 8px" onclick="deleteExtStaff(\''+esc(r.email)+'\',\''+esc(r.name)+'\')">🗑️ ลบ</button>'
         : '<span style="font-size:11px;color:var(--gray3)">—</span>';
     return '<tr style="border-bottom:1px solid var(--gray1)">'
       + '<td style="padding:10px 12px;font-weight:600">'+esc(r.name||'')+'</td>'
@@ -6464,10 +7505,17 @@ function renderExtStaff(rows) {
 }
 
 function approveExt(email) {
-  if (!confirm('อนุมัติ ' + email + ' ? ระบบจะส่งลิงก์ตั้งรหัสผ่านทางอีเมล')) return;
+  if (!confirm('อนุมัติ ' + email + ' ? ระบบจะส่งอีเมลแจ้งสิทธิ์เข้าถึงระบบ')) return;
   google.script.run
     .withSuccessHandler(function(res) {
-      if (res.success) { showToast('✅ อนุมัติแล้ว ส่งลิงก์ตั้งรหัสผ่านทางอีเมล', 'success'); loadExtStaff(); }
+      if (res.success) {
+        const dashboardUrl = 'https://script.google.com/a/g.stou.ac.th/macros/s/AKfycbxTikZrZ7YxPPNg5fKr2-nOopI2axcUT7SCvvrDT3r1R7qZrxwEyy8WyoRRY1v9-gNpIg/exec?page=ext_staff';
+        const modal = document.createElement('div');
+        modal.className = 'modal-overlay';
+        modal.innerHTML = '<div class="modal" style="max-width:600px"><div class="modal-title">✅ อนุมัติแล้ว</div><div style="padding:20px"><div style="font-size:13px;line-height:1.6;color:var(--navy)">ได้อนุมัติการลงทะเบียนสำเร็จ และส่งข้อความแจ้งทางอีเมลไปที่ ' + esc(email) + ' แล้ว</div><div style="margin-top:16px;padding:12px;background:#f0f7ff;border-radius:6px;border-left:4px solid var(--blue)"><strong>🔗 Dashboard:</strong><br><a href="' + dashboardUrl + '" target="_blank" style="color:var(--blue);text-decoration:none;word-break:break-all">เข้าสู่ระบบ Dashboard เจ้าหน้าที่ภายนอก</a></div></div><div style="display:flex;gap:8px;border-top:1px solid var(--gray1);padding-top:16px;margin-top:16px"><button class="btn btn-primary btn-sm" onclick="this.closest(\'.modal-overlay\').remove();loadExtStaff()">✓ ปิด</button></div></div>';
+        document.body.appendChild(modal);
+        showToast('✅ อนุมัติแล้ว ส่งอีเมลแจ้งไปยัง ' + email, 'success');
+      }
       else showToast('❌ ' + (res.error||'เกิดข้อผิดพลาด'), 'error');
     })
     .withFailureHandler(showError)
@@ -6483,6 +7531,77 @@ function rejectExt(email) {
     })
     .withFailureHandler(showError)
     .rejectExternalStaff(email);
+}
+
+function editExtStaff(email) {
+  google.script.run
+    .withSuccessHandler(function(staff) {
+      if (!staff) { showToast('ไม่พบข้อมูล', 'error'); return; }
+      const modal = document.createElement('div');
+      modal.className = 'modal-overlay';
+      modal.innerHTML = `<div class="modal" style="max-width:500px">
+        <div class="modal-title">✏️ แก้ไขข้อมูลเจ้าหน้าที่ <button onclick="this.closest('.modal-overlay').remove()" style="float:right;border:none;background:none;font-size:20px;cursor:pointer">✕</button></div>
+        <div style="margin-bottom:14px">
+          <label class="flbl">ชื่อ</label>
+          <input class="finput" id="est_name" value="${esc(staff.name||'')}" style="width:100%">
+        </div>
+        <div style="margin-bottom:14px">
+          <label class="flbl">อีเมล</label>
+          <input class="finput" type="email" value="${esc(staff.email||'')}" readonly style="width:100%;background:var(--gray1)">
+        </div>
+        <div style="margin-bottom:14px">
+          <label class="flbl">หน่วยงาน</label>
+          <input class="finput" id="est_org" value="${esc(staff.org||'')}" style="width:100%">
+        </div>
+        <div style="margin-bottom:14px">
+          <label class="flbl">เบอร์โทร</label>
+          <input class="finput" id="est_phone" value="${esc(staff.phone||'')}" style="width:100%">
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-primary btn-sm" onclick="saveExtStaffEdit('${esc(email)}')">💾 บันทึก</button>
+          <button class="btn btn-outline btn-sm" onclick="this.closest('.modal-overlay').remove()">ยกเลิก</button>
+        </div>
+      </div>`;
+      document.body.appendChild(modal);
+    })
+    .withFailureHandler(showError)
+    .getExternalStaffDetail(email);
+}
+
+function saveExtStaffEdit(email) {
+  const name = document.getElementById('est_name').value.trim();
+  const org = document.getElementById('est_org').value.trim();
+  const phone = document.getElementById('est_phone').value.trim();
+
+  if (!name) { showToast('กรุณากรอกชื่อ', 'error'); return; }
+
+  google.script.run
+    .withSuccessHandler(function(res) {
+      if (res.success) {
+        showToast('✅ บันทึกแล้ว', 'success');
+        document.querySelector('.modal-overlay').remove();
+        loadExtStaff();
+      } else {
+        showToast('❌ ' + (res.error||'เกิดข้อผิดพลาด'), 'error');
+      }
+    })
+    .withFailureHandler(showError)
+    .updateExternalStaff(email, {name: name, org: org, phone: phone});
+}
+
+function deleteExtStaff(email, name) {
+  if (!confirm('ลบ ' + name + ' (' + email + ') ?')) return;
+  google.script.run
+    .withSuccessHandler(function(res) {
+      if (res.success) {
+        showToast('✅ ลบแล้ว', 'success');
+        loadExtStaff();
+      } else {
+        showToast('❌ ' + (res.error||'เกิดข้อผิดพลาด'), 'error');
+      }
+    })
+    .withFailureHandler(showError)
+    .deleteExternalStaff(email);
 }
 </script>
 </body>
