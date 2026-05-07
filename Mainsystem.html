@@ -414,32 +414,7 @@ tbody td{padding:12px;vertical-align:middle}
 }
 </style>
 
-<!-- Firebase SDK -->
-<script type="module">
-  // Firebase Web SDK Configuration
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
-  import { getDatabase, ref, get, push, set, update, query, orderByChild, equalTo } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-database.js";
-  import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js";
-
-  // Firebase configuration
-  const firebaseConfig = {
-    apiKey: "AIzaSyDpRytR1M8rLsckJXdJb3HTaHxP2S53HWc",
-    authDomain: "management-crm-stoupost.firebaseapp.com",
-    projectId: "management-crm-stoupost",
-    databaseURL: "https://management-crm-stoupost-default-rtdb.asia-southeast1.firebasedatabase.app",
-    storageBucket: "management-crm-stoupost.firebasestorage.app",
-    messagingSenderId: "766285421505",
-    appId: "1:766285421505:web:6fe74c474b386a6433ad40"
-  };
-
-  // Initialize Firebase
-  const app = initializeApp(firebaseConfig);
-  const auth = getAuth(app);
-  const db = getDatabase(app);
-
-  // Expose to global window for use in HTML
-  window.firebase = { app, auth, db, getDatabase, ref, get, push, set, update, query, orderByChild, equalTo };
-</script>
+<!-- Firebase: ปิด ES module เพราะ GAS sandbox ไม่รองรับ import statements -->
 
 </head>
 <body>
@@ -2373,6 +2348,7 @@ let settings={parcelTypes:[],returnCauses:[],prefixes:[],terms:[]};
 let allYears=[], allTags=[];
 let tagSelectedColor=0;
 let allRecords=[], allCrm=[];  // cache จาก Sheets
+let useFirebase = false; // ปิด Firebase — ใช้ Apps Script แทน (GAS sandbox ไม่รองรับ ES module)
 let useFirebase = true; // ถ้า Firebase เปิด จะ set เป็น true
 
 // ============================================================
@@ -4260,6 +4236,31 @@ function doSendReplyWithAttachment(id, text, sendEmail, fileUrl) {
     .withSuccessHandler(res=>{
       if(res.success){
         let msg = '✅ บันทึกและอัปโหลดไฟล์แล้ว';
+  google.script.run
+    .withSuccessHandler(res=>{
+      if(res.success){
+        let msg = '✅ บันทึกแล้ว';
+        if(sendEmail){
+          if(res.emailSent) msg = '✅ ส่งแล้ว + อีเมลถึง '+res.sentTo;
+          else if(res.emailError) msg = '⚠️ บันทึกแล้ว แต่ส่งอีเมลไม่ได้: '+res.emailError;
+        }
+        showToast(msg,'success');
+        clearReplyForm(id);
+        loadCrm();
+      } else {
+        showToast('❌ '+res.error,'error');
+      }
+    })
+    .withFailureHandler(showError)
+    .replyCrmTicket(id, text, currentUser, currentEmail, sendEmail);
+}
+
+function doSendReplyWithAttachment(id, text, sendEmail, fileUrl) {
+  const textWithLink = text + '\n\n📎 ไฟล์แนบ: ' + fileUrl;
+  google.script.run
+    .withSuccessHandler(res=>{
+      if(res.success){
+        let msg = '✅ บันทึกและอัปโหลดไฟล์แล้ว';
         if(sendEmail){
           if(res.emailSent) msg = '✅ ส่งแล้ว + อีเมลถึง '+res.sentTo;
           else if(res.emailError) msg = '⚠️ บันทึกแล้ว แต่ส่งอีเมลไม่ได้: '+res.emailError;
@@ -5161,6 +5162,8 @@ function editRoleAutoFill(role) {
 function saveUserEdit(email) {
   const role = document.getElementById('editRole').value;
   const perms = Array.from(document.querySelectorAll('.edit-perm-chk:checked')).map(c=>c.dataset.page).join(',');
+  // ใช้ closest() เพื่อหา modal ที่มี editRole อยู่จริงๆ ไม่ใช่ modal อื่น
+  const modalEl = document.getElementById('editRole').closest('.modal-overlay');
   const modalEl = document.querySelector('.modal-overlay');
   const saveBtn = modalEl ? modalEl.querySelector('.btn-primary') : null;
   if(saveBtn) saveBtn.disabled = true;
