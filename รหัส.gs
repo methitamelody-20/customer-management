@@ -56,6 +56,15 @@ function include(filename) {
 // ============================================================
 // AUTH
 // ============================================================
+function _generateRefreshToken() {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  let token = '';
+  for (let i = 0; i < 32; i++) {
+    token += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return token;
+}
+
 function login(email, password) {
   try {
     const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SH_USERS);
@@ -70,12 +79,14 @@ function login(email, password) {
       if (rowEmail === email.toLowerCase().trim()) {
         if (!rowActive) return { success:false, error:'บัญชีนี้ถูกระงับ' };
         if (hashPw(password) === rowHash) {
-          // ใช้ ScriptProperties + key = email (ตรงกับ checkSession)
-          const sessData = {email:rowEmail, role:rowRole, name:rowName, ts:Date.now()};
+          // สร้าง session + refresh token
+          const refreshToken = _generateRefreshToken();
+          const sessData = {email:rowEmail, role:rowRole, name:rowName, ts:Date.now(), refreshToken:refreshToken};
           PropertiesService.getScriptProperties().setProperty('sess_'+rowEmail, JSON.stringify(sessData));
+          PropertiesService.getScriptProperties().setProperty('rtoken_'+refreshToken, JSON.stringify({email:rowEmail, createdAt:Date.now()}));
           sheet.getRange(i+1, 6).setValue(fmtDate(new Date()));
           Logger.log('Login success: '+rowEmail+' role='+rowRole);
-          return { success:true, role:rowRole, name:rowName, email:rowEmail };
+          return { success:true, role:rowRole, name:rowName, email:rowEmail, refreshToken:refreshToken };
         }
         return { success:false, error:'รหัสผ่านไม่ถูกต้อง' };
       }
@@ -87,6 +98,48 @@ function login(email, password) {
 function logout() {
   PropertiesService.getScriptProperties().deleteProperty('sess_'+Session.getEffectiveUser().getEmail());
   return { success:true };
+}
+
+function refreshSession(refreshToken) {
+  try {
+    if (!refreshToken) return { success:false, error:'ไม่มี refresh token' };
+
+    const sp = PropertiesService.getScriptProperties();
+    const rtokenData = sp.getProperty('rtoken_'+refreshToken);
+    if (!rtokenData) return { success:false, error:'Invalid refresh token' };
+
+    const rtoken = JSON.parse(rtokenData);
+    if (!rtoken.email) return { success:false, error:'Invalid refresh token' };
+
+    // ตรวจว่า refresh token ยังไม่หมดอายุ (7 วัน)
+    if (Date.now() - rtoken.createdAt > 7*24*60*60*1000) {
+      sp.deleteProperty('rtoken_'+refreshToken);
+      return { success:false, error:'Refresh token expired' };
+    }
+
+    // หา user info จาก Sheet
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SH_USERS);
+    if (!sheet) return { success:false, error:'Cannot access users sheet' };
+
+    const data = sheet.getDataRange().getValues();
+    for (let i = 1; i < data.length; i++) {
+      const rowEmail = (data[i][0]||'').toString().trim().toLowerCase();
+      if (rowEmail === rtoken.email.toLowerCase()) {
+        const rowRole = (data[i][2]||'').toString().trim();
+        const rowName = (data[i][3]||'').toString().trim();
+
+        // สร้าง session ใหม่
+        const newRefreshToken = _generateRefreshToken();
+        const sessData = {email:rtoken.email, role:rowRole, name:rowName, ts:Date.now(), refreshToken:newRefreshToken};
+        sp.setProperty('sess_'+rtoken.email, JSON.stringify(sessData));
+        sp.setProperty('rtoken_'+newRefreshToken, JSON.stringify({email:rtoken.email, createdAt:Date.now()}));
+        sp.deleteProperty('rtoken_'+refreshToken);
+
+        return { success:true, role:rowRole, name:rowName, email:rtoken.email, refreshToken:newRefreshToken };
+      }
+    }
+    return { success:false, error:'User not found' };
+  } catch(e) { return { success:false, error:e.message }; }
 }
 
 function checkSession() {
@@ -175,6 +228,8 @@ function _can(roles) {
 // ============================================================
 // FIREBASE INTEGRATION
 // ============================================================
+// ⚠️ SENSITIVE: API Key stored here - NEVER expose to client
+// Use getFirebaseConfigForClient() to get safe config for frontend
 const FIREBASE_CONFIG = {
   apiKey: "AIzaSyDpRytR1M8rLsckJXdJb3HTaHxP2S53HWc",
   authDomain: "management-crm-stoupost.firebaseapp.com",
@@ -186,6 +241,20 @@ const FIREBASE_CONFIG = {
 };
 
 const USE_FIREBASE = false; // ตั้งเป็น true เมื่อต้องการใช้ Firebase
+
+// ✅ SAFE: Returns Firebase config without API key for client-side use
+function getFirebaseConfigForClient() {
+  return {
+    authDomain: FIREBASE_CONFIG.authDomain,
+    projectId: FIREBASE_CONFIG.projectId,
+    databaseURL: FIREBASE_CONFIG.databaseURL,
+    storageBucket: FIREBASE_CONFIG.storageBucket,
+    messagingSenderId: FIREBASE_CONFIG.messagingSenderId,
+    appId: FIREBASE_CONFIG.appId
+    // ⚠️ Note: apiKey intentionally excluded. Client must not have it.
+    // Use backend functions for Firebase operations instead.
+  };
+}
 
 // Firebase REST API Helper
 function firebaseCall(method, path, data = null) {
@@ -3308,6 +3377,7 @@ function registerExternalStaff(data) {
     const email = (data.email||'').toLowerCase().trim();
     if (!email || !data.name) return { success:false, error:'กรุณากรอกชื่อและอีเมล' };
     if (!data.password || data.password.length < 8) return { success:false, error:'รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร' };
+
     // ตรวจซ้ำ
     const rows = sh.getDataRange().getValues();
     for (let i = 1; i < rows.length; i++) {
@@ -3315,7 +3385,8 @@ function registerExternalStaff(data) {
         return { success:false, error:'อีเมลนี้ลงทะเบียนไว้แล้ว' };
       }
     }
-    // Hash the password and store it during registration
+
+    // Store temporary password during registration (will be replaced after admin approval)
     const hashedPassword = hashPw(data.password);
     sh.appendRow([email, data.name||'', data.org||'', data.phone||'', 'pending', hashedPassword, '', new Date(), '', '']);
 
@@ -3332,11 +3403,13 @@ function registerExternalStaff(data) {
         + '• เบอร์โทร: ' + (data.phone||'-') + '\n\n'
         + '⏳ ขั้นตอนต่อไป:\n'
         + 'เจ้าหน้าที่ของระบบจะตรวจสอบและอนุมัติการลงทะเบียนของท่านโดยเร็วที่สุด\n'
-        + 'เมื่ออนุมัติแล้ว ท่านจะสามารถเข้าระบบได้ทันที\n\n'
+        + 'เมื่ออนุมัติแล้ว ท่านจะได้รับอีเมลยืนยันพร้อมกับลิงก์สำหรับตั้งรหัสผ่าน\n\n'
         + 'หากมีข้อสงสัยติดต่อเจ้าหน้าที่ระบบได้ที่ 02 504 7623, 7626\n\n'
         + 'ด้วยความเคารพ\n'
         + 'ระบบจัดการเอกสารการสอน มสธ.');
-    } catch(e2) {}
+    } catch(e2) {
+      Logger.log('Failed to send registration confirmation: ' + e2.message);
+    }
 
     // แจ้ง admin ทาง email (ถ้ามี admin email ใน settings)
     try {
@@ -3347,7 +3420,10 @@ function registerExternalStaff(data) {
           '[มสธ.] คำขอลงทะเบียนเจ้าหน้าที่ภายนอก: ' + data.name,
           'มีคำขอลงทะเบียนใหม่จาก:\nชื่อ: ' + data.name + '\nอีเมล: ' + email + '\nหน่วยงาน: ' + (data.org||'-') + '\nเบอร์โทร: ' + (data.phone||'-') + '\n\nกรุณาเข้าระบบเพื่ออนุมัติการลงทะเบียน');
       }
-    } catch(e2) {}
+    } catch(e2) {
+      Logger.log('Failed to send admin notification: ' + e2.message);
+    }
+
     return { success:true };
   } catch(e) { return { success:false, error:e.message }; }
 }
@@ -3361,17 +3437,28 @@ function approveExternalStaff(email) {
       if ((rows[i][0]||'').toLowerCase().trim() === email.toLowerCase().trim()) {
         if (rows[i][4] === 'active') return { success:false, error:'อนุมัติไปแล้ว' };
         const sess = _sess();
-        // Password is already set during registration, so just activate the account
-        sh.getRange(i+1, 5).setValue('active');
+
+        // Generate password reset token
+        const resetToken = _generateRefreshToken();
+        sh.getRange(i+1, 5).setValue('approved'); // Set status to "approved" (not "active" yet)
+        sh.getRange(i+1, 7).setValue(resetToken);  // Store reset token in column 7
         sh.getRange(i+1, 9).setValue(new Date());
         sh.getRange(i+1, 10).setValue(sess.name||sess.email||'admin');
-        // Send approval notification email with dashboard link
+
+        // Send approval email with password reset link
         try {
-          const dashboardUrl = ScriptApp.getService().getUrl() + '?page=ext_staff';
+          const dashboardUrl = ScriptApp.getService().getUrl() + '?page=ext_staff&token=' + encodeURIComponent(resetToken) + '&email=' + encodeURIComponent(email);
           GmailApp.sendEmail(email,
-            '[มสธ.] ✅ อนุมัติการลงทะเบียนแล้ว',
-            'ท่านได้รับการอนุมัติให้เข้าใช้ระบบ Dashboard เจ้าหน้าที่ภายนอก มสธ.\n\nท่านสามารถเข้าสู่ระบบได้ทันที โดยใช้อีเมลและรหัสผ่านที่ท่านตั้งไว้ตอนลงทะเบียน\n\nเข้าระบบที่: ' + dashboardUrl + '\n\nขอแสดงความนับถือ\nผู้ดูแลระบบ มสธ.');
-        } catch(e2) {}
+            '[มสธ.] ✅ อนุมัติการลงทะเบียนแล้ว - กรุณาตั้งรหัสผ่าน',
+            'สวัสดีค่ะ\n\nท่านได้รับการอนุมัติให้เข้าใช้ระบบ Dashboard เจ้าหน้าที่ภายนอก มสธ.\n\n'
+            + 'ขั้นตอนต่อไป: กรุณาคลิกลิงก์ด้านล่างเพื่อตั้งรหัสผ่านของท่าน\n'
+            + dashboardUrl + '\n\n'
+            + 'ลิงก์นี้จะใช้ได้ 7 วัน หากหมดอายุ กรุณาติดต่อผู้ดูแลระบบเพื่อขอลิงก์ใหม่\n\n'
+            + 'ขอแสดงความนับถือ\nผู้ดูแลระบบ มสธ.');
+        } catch(e2) {
+          Logger.log('Failed to send approval email: ' + e2.message);
+        }
+
         logAudit('อนุมัติเจ้าหน้าที่ภายนอก', email);
         return { success:true };
       }
@@ -3398,15 +3485,29 @@ function rejectExternalStaff(email) {
 
 function setExternalStaffPassword(email, token, newPassword) {
   try {
+    if (!newPassword || newPassword.length < 8) {
+      return { success:false, error:'รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร' };
+    }
+
     const sh = _getExtSheet();
     const rows = sh.getDataRange().getValues();
     for (let i = 1; i < rows.length; i++) {
       if ((rows[i][0]||'').toLowerCase().trim() === email.toLowerCase().trim()) {
-        if (rows[i][6] !== token) return { success:false, error:'token ไม่ถูกต้อง' };
-        if (!['approved','active'].includes(rows[i][4])) return { success:false, error:'บัญชีนี้ยังไม่ได้รับการอนุมัติ' };
-        sh.getRange(i+1, 5).setValue('active');
-        sh.getRange(i+1, 6).setValue(hashPw(newPassword));
-        sh.getRange(i+1, 7).setValue(''); // clear token
+        const storedToken = (rows[i][6]||'').toString().trim();
+        const status = (rows[i][4]||'').toString().trim();
+
+        if (storedToken !== token) {
+          return { success:false, error:'token ไม่ถูกต้อง หรือหมดอายุ' };
+        }
+        if (!['pending','approved'].includes(status)) {
+          return { success:false, error:'บัญชีนี้ยังไม่ได้รับการอนุมัติ' };
+        }
+
+        // Update password and activate account
+        sh.getRange(i+1, 4).setValue('active');     // Set status to active (column 4, not 5)
+        sh.getRange(i+1, 5).setValue(hashPw(newPassword)); // Store hashed password in column 5
+        sh.getRange(i+1, 7).setValue(''); // Clear token in column 7
+
         return { success:true };
       }
     }
@@ -3427,10 +3528,60 @@ function loginExternalStaff(email, password) {
         if (status !== 'active') return { success:false, error:'บัญชียังไม่ active' };
         if (!rows[i][5]) return { success:false, error:'ยังไม่ได้ตั้งรหัสผ่าน กรุณาตรวจสอบอีเมล' };
         if (hashPw(password) !== rows[i][5]) return { success:false, error:'รหัสผ่านไม่ถูกต้อง' };
-        return { success:true, user:{email:emailL, name:rows[i][1], org:rows[i][2], status:'active'} };
+
+        // Generate refresh token for external staff
+        const refreshToken = _generateRefreshToken();
+        const sp = PropertiesService.getScriptProperties();
+        const extTokenData = {email:emailL, type:'external_staff', createdAt:Date.now()};
+        sp.setProperty('ext_rtoken_'+refreshToken, JSON.stringify(extTokenData));
+
+        return { success:true, user:{email:emailL, name:rows[i][1], org:rows[i][2], status:'active'}, refreshToken:refreshToken };
       }
     }
     return { success:false, error:'ไม่พบอีเมลนี้ในระบบ' };
+  } catch(e) { return { success:false, error:e.message }; }
+}
+
+function refreshExternalStaffSession(refreshToken) {
+  try {
+    if (!refreshToken) return { success:false, error:'ไม่มี refresh token' };
+
+    const sp = PropertiesService.getScriptProperties();
+    const extTokenData = sp.getProperty('ext_rtoken_'+refreshToken);
+    if (!extTokenData) return { success:false, error:'Invalid refresh token' };
+
+    const extToken = JSON.parse(extTokenData);
+    if (!extToken.email) return { success:false, error:'Invalid refresh token' };
+
+    // ตรวจว่า refresh token ยังไม่หมดอายุ (7 วัน)
+    if (Date.now() - extToken.createdAt > 7*24*60*60*1000) {
+      sp.deleteProperty('ext_rtoken_'+refreshToken);
+      return { success:false, error:'Refresh token expired' };
+    }
+
+    // หา user info จาก External Staff sheet
+    const sh = _getExtSheet();
+    const rows = sh.getDataRange().getValues();
+    for (let i = 1; i < rows.length; i++) {
+      const rowEmail = (rows[i][0]||'').toLowerCase().trim();
+      if (rowEmail === extToken.email.toLowerCase()) {
+        const status = rows[i][4]||'pending';
+        if (status !== 'active') return { success:false, error:'บัญชีไม่ active' };
+
+        // สร้าง refresh token ใหม่
+        const newRefreshToken = _generateRefreshToken();
+        const newExtTokenData = {email:extToken.email, type:'external_staff', createdAt:Date.now()};
+        sp.setProperty('ext_rtoken_'+newRefreshToken, JSON.stringify(newExtTokenData));
+        sp.deleteProperty('ext_rtoken_'+refreshToken);
+
+        return {
+          success:true,
+          user:{email:extToken.email, name:rows[i][1], org:rows[i][2], status:'active'},
+          refreshToken:newRefreshToken
+        };
+      }
+    }
+    return { success:false, error:'User not found' };
   } catch(e) { return { success:false, error:e.message }; }
 }
 

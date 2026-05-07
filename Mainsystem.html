@@ -2738,10 +2738,9 @@ function doLogin() {
   const btn=document.getElementById('lgBtn');
   btn.disabled=true; btn.textContent='⏳ กำลังตรวจสอบ...';
 
-  // timeout 15 วิ — ถ้า google.script.run ไม่ตอบ
   const loginTimeout = setTimeout(function() {
     btn.disabled=false; btn.textContent='เข้าสู่ระบบ';
-    document.getElementById('lgErr').textContent='❌ ไม่ได้รับการตอบสนองจากเซิร์ฟเวอร์ กรุณา Deploy ใหม่แล้วลองอีกครั้ง';
+    document.getElementById('lgErr').textContent='❌ ไม่ได้รับการตอบสนองจากเซิร์ฟเวอร์ กรุณาลองใหม่';
   }, 15000);
 
   google.script.run
@@ -2749,24 +2748,14 @@ function doLogin() {
       clearTimeout(loginTimeout);
       btn.disabled=false; btn.textContent='เข้าสู่ระบบ';
       if(res.success){
-        // บันทึก/ลบ credentials ตาม checkbox
-        try {
-          const remember = document.getElementById('lgRemember').checked;
-          if (remember) {
-            localStorage.setItem('stou_saved_email', e);
-            localStorage.setItem('stou_saved_pass', p);
-          } else {
-            localStorage.removeItem('stou_saved_email');
-            localStorage.removeItem('stou_saved_pass');
-          }
-        } catch(err) {}
         currentRole=res.role; currentUser=res.name; currentEmail=res.email;
-        // บันทึก email/pass สำหรับ auto-refresh session (ถ้า remember)
+        // บันทึก refresh token เท่านั้น (ไม่บันทึก password)
         try {
           const remember = document.getElementById('lgRemember').checked;
-          if (remember) {
-            localStorage.setItem('stou_email', e);
-            localStorage.setItem('stou_pass', p);
+          if (remember && res.refreshToken) {
+            localStorage.setItem('stou_refresh_token', res.refreshToken);
+          } else {
+            localStorage.removeItem('stou_refresh_token');
           }
         } catch(err) {}
         document.getElementById('loginScreen').classList.add('hidden');
@@ -2787,6 +2776,14 @@ function doLogin() {
 }
 
 function doLogout() {
+  // clear all login-related data
+  try {
+    localStorage.removeItem('stou_refresh_token');
+    localStorage.removeItem('stou_saved_email');
+    localStorage.removeItem('stou_saved_pass');
+    localStorage.removeItem('stou_email');
+    localStorage.removeItem('stou_pass');
+  } catch(err) {}
   google.script.run.withSuccessHandler(()=>location.reload()).logout();
 }
 
@@ -3535,17 +3532,20 @@ function renderList(rows) {
   if(!rows||rows.error){
     var errMsg = (rows&&rows.error)||'เกิดข้อผิดพลาด';
     if(errMsg==='SESSION_EXPIRED') {
-      var savedEmail = localStorage.getItem('stou_email')||'';
-      var savedPass  = localStorage.getItem('stou_pass')||'';
-      if(savedEmail && savedPass) {
+      var refreshToken = localStorage.getItem('stou_refresh_token')||'';
+      if(refreshToken) {
         showToast('⏳ กำลัง refresh session...','');
         google.script.run
           .withSuccessHandler(function(res){
-            if(res.success){ showToast('✅ Session refreshed','success'); loadList(); }
+            if(res.success){
+              if(res.refreshToken) localStorage.setItem('stou_refresh_token', res.refreshToken);
+              showToast('✅ Session refreshed','success');
+              loadList();
+            }
             else { showToast('⚠️ กรุณา Login ใหม่','error'); doLogout(); }
           })
           .withFailureHandler(function(){ doLogout(); })
-          .login(savedEmail, savedPass);
+          .refreshSession(refreshToken);
         return;
       }
       showToast('⚠️ Session หมดอายุ กรุณา Login ใหม่','error');
@@ -7407,17 +7407,19 @@ function loadPersonalStats(){loadStaffStats(30);}
 
 function handleSessionError(res, retryFn) {
   if(res && res.error === 'SESSION_EXPIRED') {
-    var savedEmail = localStorage.getItem('stou_email')||'';
-    var savedPass  = localStorage.getItem('stou_pass')||'';
-    if(savedEmail && savedPass) {
+    var refreshToken = localStorage.getItem('stou_refresh_token')||'';
+    if(refreshToken) {
       showToast('⏳ กำลัง refresh session...','');
       google.script.run
         .withSuccessHandler(function(r){
-          if(r.success){ if(retryFn) setTimeout(retryFn, 500); }
+          if(r.success){
+            if(r.refreshToken) localStorage.setItem('stou_refresh_token', r.refreshToken);
+            if(retryFn) setTimeout(retryFn, 500);
+          }
           else doLogout();
         })
         .withFailureHandler(doLogout)
-        .login(savedEmail, savedPass);
+        .refreshSession(refreshToken);
       return true;
     }
     showToast('⚠️ Session หมดอายุ','error');
