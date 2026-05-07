@@ -34,6 +34,8 @@ function doGet(e) {
   }
   // ถ้ามี ?page=setpw → ให้ Mainsystem จัดการ (window.onload detect URL params)
   const tpl = HtmlService.createTemplateFromFile('Mainsystem');
+  tpl.setpwToken = '';  // Template variable สำหรับ password setup (handled by frontend)
+  tpl.setpwEmail = '';   // Template variable สำหรับ password setup email
   return tpl.evaluate()
     .setTitle('ระบบจัดการและติดตามเอกสารการสอน มสธ.')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
