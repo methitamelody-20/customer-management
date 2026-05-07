@@ -4541,7 +4541,9 @@ function submitCrmTicket(btnEl) {
 
   var courses = Array.from(document.querySelectorAll('#crmCourseRows .course-row')).map(function(row){
     var inputs = row.querySelectorAll('.finput');
-    return inputs[0]?inputs[0].value.trim():'';
+    var code = inputs[0]?inputs[0].value.trim():'';
+    var name = inputs[1]?inputs[1].value.trim():'';
+    return code ? {code:code, name:name, b1:'', b2:'', track:'', date:''} : null;
   }).filter(Boolean);
   var tags = document.getElementById('cm_tags_val')?document.getElementById('cm_tags_val').value:'';
 
@@ -4586,7 +4588,7 @@ function submitCrmTicket(btnEl) {
               // เติมชุดวิชาแรก
               if(courses.length) {
                 var c1 = document.getElementById(pfx+'c1_code');
-                if(c1) c1.value = courses[0];
+                if(c1) c1.value = courses[0].code;
               }
               // ส่งต่อที่อยู่จาก CRM ไปหน้าถัดไป
               [['hno','hno'],['street','street'],['sub','sub'],['dist','dist'],['prov','prov'],['zip','zip']].forEach(function(p){
@@ -4619,7 +4621,7 @@ function submitCrmTicket(btnEl) {
       department:branch,
       educationLevel:document.getElementById('cm_edu')?.value||'',
       issueType:ptype, detail:detail, channel:ch, term:term, year:year, priority:priority,
-      courses:courses.join(','), tags:tags, recorderName:currentUser,
+      courses:JSON.stringify(courses), tags:tags, recorderName:currentUser,
       assigneeName:assignee, plan:plan,
     });
 }
