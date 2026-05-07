@@ -657,17 +657,16 @@ function submitForm() {
   const btn = document.getElementById('submitBtn');
   btn.disabled = true; btn.textContent = '⏳ กำลังส่ง...';
 
-  // รวมสาขา + แผน
   const dept = document.getElementById('f_dept')?.value||'';
   const plan = document.getElementById('f_plan')?.value||'';
-  const deptFull = dept + (plan?' / '+plan:'');
 
   const ticketData = {
     reporterName:    name,
     studentId:       document.getElementById('f_sid').value.trim(),
     reporterEmail:   email,
     reporterPhone:   document.getElementById('f_phone').value.trim(),
-    department:      deptFull,
+    department:      dept,
+    plan:            plan,
     educationLevel:  document.getElementById('f_edu').value,
     term:            term,
     year:            year,
@@ -696,6 +695,8 @@ function submitForm() {
         document.getElementById('mainForm').style.display = 'none';
         document.getElementById('successScreen').style.display = 'block';
         window.scrollTo({top:0,behavior:'smooth'});
+        // แจ้ง parent dashboard (ถ้าอยู่ใน iframe) ให้รีโหลด ticket list
+        try { window.parent.postMessage({type:'crm_submitted', id:res.id}, '*'); } catch(e) {}
       } else {
         btn.disabled = false; btn.textContent = '📨 ส่งแบบฟอร์ม';
         alert('เกิดข้อผิดพลาด: ' + res.error);
@@ -756,13 +757,36 @@ function loadIssueTypes() {
         issues.map(t => '<option>' + t + '</option>').join('') +
         '<option value="อื่นๆ">อื่นๆ (ระบุเอง)</option>';
       issueSelect.value = currentVal;
+
+      const planSelect = document.getElementById('f_plan');
+      if (planSelect && settings && settings.plans && settings.plans.length) {
+        const currentPlanVal = planSelect.value;
+        planSelect.innerHTML = '<option value="">— เลือกแผน —</option>' +
+          settings.plans.map(p => '<option>' + p + '</option>').join('');
+        planSelect.value = currentPlanVal;
+      }
     })
     .getSettings();
 }
 
-// เรียกเมื่อหน้าโหลด
+// เรียกเมื่อหน้าโหลด — รองรับ pre-fill จาก URL params (เมื่อใช้งานผ่าน iframe)
 window.addEventListener('load', function() {
   loadIssueTypes();
+  try {
+    var p = new URLSearchParams(window.location.search);
+    if (p.get('prefill_email')) {
+      var el = document.getElementById('f_email');
+      if (el) { el.value = p.get('prefill_email'); el.readOnly = true; el.style.background='#f5f5f5'; }
+    }
+    if (p.get('prefill_name')) {
+      var el = document.getElementById('f_name');
+      if (el && !el.value) el.value = p.get('prefill_name');
+    }
+    if (p.get('prefill_phone')) {
+      var el = document.getElementById('f_phone');
+      if (el && !el.value) el.value = p.get('prefill_phone');
+    }
+  } catch(e) {}
 });
 </script>
 </body>

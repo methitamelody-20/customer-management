@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Dashboard เจ้าหน้าที่ภายนอก — มสธ.</title>
+<title>Dashboard ติดตามปัญหาเอกสารการสอนเจ้าหน้าที่ — มสธ.</title>
 <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&family=Prompt:wght@600;700&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -125,7 +125,7 @@ html,body{min-height:100%;font-family:var(--font);color:var(--text);background:v
       <div class="logo">
         <div class="logo-ico">🏢</div>
         <div>
-          <h1>Dashboard เจ้าหน้าที่ภายนอก</h1>
+          <h1>Dashboard ติดตามปัญหาเอกสารการสอนเจ้าหน้าที่</h1>
           <p>งานนวัตกรรมเพื่อการบริการการศึกษา ศูนย์บริการการสอนทางไปรษณีย์<br>สำนักบริการการศึกษา มหาวิทยาลัยสุโขทัยธรรมาธิราช</p>
         </div>
       </div>
@@ -149,6 +149,10 @@ html,body{min-height:100%;font-family:var(--font);color:var(--text);background:v
           <input class="finput" id="loginPassword" type="password" placeholder="••••••••"
             onkeydown="if(event.key==='Enter')doLogin()">
         </div>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px">
+          <input type="checkbox" id="rememberPassword" style="width:18px;height:18px;cursor:pointer">
+          <label style="margin:0;cursor:pointer;font-size:13px;color:var(--text)" for="rememberPassword">จดจำรหัสผ่าน</label>
+        </div>
         <div style="margin-top:18px">
           <button class="btn-primary" id="loginBtn" onclick="doLogin()">🔑 เข้าสู่ระบบ</button>
         </div>
@@ -168,16 +172,24 @@ html,body{min-height:100%;font-family:var(--font);color:var(--text);background:v
         <div class="fg">
           <label class="flbl">อีเมล <span class="req">*</span></label>
           <input class="finput" id="regEmail" type="email" placeholder="your@email.com">
-          <div class="tip">📧 Admin จะส่งลิงก์ตั้งรหัสผ่านมาที่อีเมลนี้เมื่ออนุมัติ</div>
         </div>
         <div class="fg">
           <label class="flbl">เบอร์โทรติดต่อ</label>
           <input class="finput" id="regPhone" placeholder="08X-XXX-XXXX">
         </div>
+        <div class="fg">
+          <label class="flbl">รหัสผ่าน <span class="req">*</span></label>
+          <input class="finput" id="regPass1" type="password" placeholder="อย่างน้อย 8 ตัวอักษร">
+          <div class="tip">🔐 ตั้งรหัสผ่านตอนนี้ เมื่อ Admin อนุมัติแล้วท่านจะเข้าได้เลย</div>
+        </div>
+        <div class="fg">
+          <label class="flbl">ยืนยันรหัสผ่าน <span class="req">*</span></label>
+          <input class="finput" id="regPass2" type="password" placeholder="กรอกซ้ำอีกครั้ง">
+        </div>
         <div style="margin-top:18px">
           <button class="btn-primary" id="registerBtn" onclick="doRegister()">📝 ส่งคำขอลงทะเบียน</button>
         </div>
-        <p style="font-size:12px;color:var(--gray3);margin-top:12px;text-align:center">Admin จะตรวจสอบและอนุมัติภายใน 1 วันทำการ</p>
+        <p style="font-size:12px;color:var(--gray3);margin-top:12px;text-align:center">Admin จะตรวจสอบและอนุมัติภายใน 1 วันทำการ<br>เมื่ออนุมัติแล้วท่านสามารถเข้าสู่ระบบได้ทันที</p>
       </div>
     </div>
   </div>
@@ -234,7 +246,7 @@ html,body{min-height:100%;font-family:var(--font);color:var(--text);background:v
 <!-- ===================== DASHBOARD PAGE ===================== -->
 <div class="page" id="dashPage">
   <div class="dash-topbar">
-    <h1>📊 Dashboard เจ้าหน้าที่ภายนอก — มสธ.</h1>
+    <h1>📊 Dashboard ติดตามปัญหาเอกสารการสอนเจ้าหน้าที่ — มสธ.</h1>
     <div class="user-info">
       <span id="dashUserName">—</span>
       <button class="btn-outline" style="padding:6px 14px;font-size:12px;color:#fff;border-color:rgba(255,255,255,0.4)" onclick="doLogout()">ออกจากระบบ</button>
@@ -250,16 +262,44 @@ html,body{min-height:100%;font-family:var(--font);color:var(--text);background:v
       <div class="stat-card green"><div class="stat-num" id="statClosed">—</div><div class="stat-lbl">Admin ตอบแล้ว / ปิด</div></div>
     </div>
 
+    <!-- Create new issue form -->
+    <div class="card" id="createIssueCard" style="display:none;background:linear-gradient(135deg,rgba(45,125,210,0.05),rgba(242,162,30,0.05));border:1.5px dashed var(--sky);padding:0;overflow:hidden">
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:1px solid var(--gray1)">
+        <div class="card-title" style="margin-bottom:0">➕ แจ้งปัญหา/เรื่องร้องเรียนใหม่</div>
+        <button class="btn-outline" style="padding:6px 12px;font-size:12px" onclick="toggleCreateIssue()">ปิด</button>
+      </div>
+      <iframe id="crmIframe"
+        src=""
+        style="width:100%;height:720px;border:none;display:block"
+        allow="forms"
+        title="ฟอร์มแจ้งปัญหา CRM">
+      </iframe>
+    </div>
+
     <!-- Ticket list -->
     <div class="card">
-      <div class="card-title">📋 รายการเรื่องร้องเรียน</div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <div class="card-title" style="margin-bottom:0">📋 รายการเรื่องร้องเรียน</div>
+        <div style="display:flex;gap:8px">
+          <button class="btn-outline" style="padding:8px 14px;font-size:12px;width:auto" onclick="loadTickets()" id="refreshBtn">🔄 รีเฟรช</button>
+          <button class="btn-outline" style="padding:8px 14px;font-size:12px;width:auto" onclick="exportTickets()">⬇️ Export</button>
+          <button class="btn-primary" style="padding:8px 14px;font-size:12px;width:auto" onclick="toggleCreateIssue()">➕ เรื่องใหม่</button>
+        </div>
+      </div>
       <div class="ticket-filter">
         <button class="filter-chip active" onclick="filterTickets('all',this)">ทั้งหมด</button>
         <button class="filter-chip" onclick="filterTickets('open',this)">รอดำเนินการ</button>
         <button class="filter-chip" onclick="filterTickets('in_progress',this)">กำลังดำเนินการ</button>
         <button class="filter-chip" onclick="filterTickets('closed',this)">ปิดแล้ว</button>
-        <input class="finput" id="ticketSearch" placeholder="ค้นหา..." style="width:180px;padding:7px 12px;font-size:13px"
+        <input class="finput" id="ticketSearch" placeholder="ค้นหา..." style="width:160px;padding:7px 12px;font-size:13px"
           oninput="renderTickets()">
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+        <span style="font-size:12px;color:var(--gray3)">📅 ช่วงวันที่:</span>
+        <input class="finput" id="filterDateFrom" type="text" placeholder="dd/mm/yyyy" style="width:120px;padding:6px 10px;font-size:12px" oninput="renderTickets()">
+        <span style="font-size:12px;color:var(--gray3)">ถึง</span>
+        <input class="finput" id="filterDateTo" type="text" placeholder="dd/mm/yyyy" style="width:120px;padding:6px 10px;font-size:12px" oninput="renderTickets()">
+        <button class="btn-outline" style="padding:5px 10px;font-size:11px;width:auto" onclick="clearDateFilter()">ล้าง</button>
       </div>
       <div style="overflow-x:auto">
         <table class="ticket-table">
@@ -298,15 +338,18 @@ let setPwToken  = '';
 // INIT
 // ============================================================
 window.addEventListener('load', function() {
-  // ตรวจ token ตั้งรหัสผ่านจาก URL ?token=xxx&email=xxx
+  // ตรวจ token ตั้งรหัสผ่านจาก URL ?token=xxx&email=xxx (priority ต้องใช้ URL param)
   const params = new URLSearchParams(window.location.search);
-  if (params.get('token') && params.get('email')) {
-    setPwToken = params.get('token');
-    document.getElementById('setPwEmail').textContent = params.get('email');
+  const token = params.get('token');
+  const email = params.get('email');
+  if (token && email) {
+    sessionStorage.removeItem('ext_user');
+    setPwToken = token;
+    document.getElementById('setPwEmail').textContent = email;
     showPage('setPasswordPage');
     return;
   }
-  // ตรวจ session
+  // ตรวจ session ถ้าไม่มี URL param
   const saved = sessionStorage.getItem('ext_user');
   if (saved) {
     try {
@@ -314,6 +357,16 @@ window.addEventListener('load', function() {
       if (currentUser.status === 'pending') { showPage('pendingPage'); return; }
       if (currentUser.status === 'active')  { loadDashboard(); return; }
     } catch(e) { sessionStorage.removeItem('ext_user'); }
+  }
+  // โหลด remembered credentials ถ้ามี
+  const remembered = localStorage.getItem('ext_remembered');
+  if (remembered) {
+    try {
+      const creds = JSON.parse(remembered);
+      document.getElementById('loginEmail').value = creds.email || '';
+      document.getElementById('loginPassword').value = creds.password || '';
+      document.getElementById('rememberPassword').checked = true;
+    } catch(e) { localStorage.removeItem('ext_remembered'); }
   }
   showPage('authPage');
 });
@@ -355,9 +408,18 @@ function showAlert(id, msg, type) {
 function doLogin() {
   const email = document.getElementById('loginEmail').value.trim();
   const pw    = document.getElementById('loginPassword').value;
+  const remember = document.getElementById('rememberPassword').checked;
   if (!email || !pw) { showAlert('loginAlert','กรุณากรอกอีเมลและรหัสผ่าน','err'); return; }
   const btn = document.getElementById('loginBtn');
   btn.disabled = true; btn.textContent = '⏳ กำลังเข้าสู่ระบบ...';
+
+  // save credentials ถ้า checkbox ถูก
+  if (remember) {
+    localStorage.setItem('ext_remembered', JSON.stringify({email:email, password:pw}));
+  } else {
+    localStorage.removeItem('ext_remembered');
+  }
+
   google.script.run
     .withSuccessHandler(function(res) {
       btn.disabled = false; btn.textContent = '🔑 เข้าสู่ระบบ';
@@ -382,22 +444,28 @@ function doRegister() {
   const email = document.getElementById('regEmail').value.trim();
   const org   = document.getElementById('regOrg').value.trim();
   const phone = document.getElementById('regPhone').value.trim();
+  const pass1 = document.getElementById('regPass1').value;
+  const pass2 = document.getElementById('regPass2').value;
+
   if (!name || !email) { showAlert('registerAlert','กรุณากรอกชื่อและอีเมล','err'); return; }
   if (!/\S+@\S+\.\S+/.test(email)) { showAlert('registerAlert','รูปแบบอีเมลไม่ถูกต้อง','err'); return; }
+  if (!pass1 || pass1.length < 8) { showAlert('registerAlert','รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร','err'); return; }
+  if (pass1 !== pass2) { showAlert('registerAlert','รหัสผ่านไม่ตรงกัน','err'); return; }
+
   const btn = document.getElementById('registerBtn');
   btn.disabled = true; btn.textContent = '⏳ กำลังส่ง...';
   google.script.run
     .withSuccessHandler(function(res) {
       btn.disabled = false; btn.textContent = '📝 ส่งคำขอลงทะเบียน';
       if (!res.success) { showAlert('registerAlert', res.error || 'เกิดข้อผิดพลาด', 'err'); return; }
-      showAlert('registerAlert','✅ ส่งคำขอเรียบร้อยแล้ว! Admin จะตรวจสอบและส่งลิงก์ตั้งรหัสผ่านทางอีเมล','ok');
-      showPage('pendingPage');
+      showAlert('registerAlert','✅ ส่งคำขอเรียบร้อยแล้ว! Admin จะตรวจสอบและอนุมัติภายในไม่กี่ชั่วโมง','ok');
+      setTimeout(() => showPage('pendingPage'), 1500);
     })
     .withFailureHandler(function(e) {
       btn.disabled = false; btn.textContent = '📝 ส่งคำขอลงทะเบียน';
       showAlert('registerAlert', e.message || 'เกิดข้อผิดพลาด', 'err');
     })
-    .registerExternalStaff({name:name, email:email, org:org, phone:phone});
+    .registerExternalStaff({name:name, email:email, org:org, phone:phone, password:pass1});
 }
 
 // ============================================================
@@ -436,6 +504,8 @@ function doLogout() {
   sessionStorage.removeItem('ext_user');
   currentUser = null;
   allTickets = [];
+  // เลือกให้ clear remembered credentials เมื่อออกจากระบบ
+  localStorage.removeItem('ext_remembered');
   showPage('authPage');
 }
 
@@ -445,17 +515,7 @@ function doLogout() {
 function loadDashboard() {
   showPage('dashPage');
   document.getElementById('dashUserName').textContent = (currentUser.name || currentUser.email) + ' (' + (currentUser.org || 'ภายนอก') + ')';
-  // โหลด tickets จาก email ของ user
-  google.script.run
-    .withSuccessHandler(function(data) {
-      allTickets = data || [];
-      updateStats();
-      renderTickets();
-    })
-    .withFailureHandler(function(e) {
-      console.error('loadDashboard error:', e.message);
-    })
-    .getExternalStaffTickets(currentUser.email);
+  loadTickets();
 }
 
 function updateStats() {
@@ -484,8 +544,25 @@ const statusLabel = {
   pending:     '<span class="badge pending">รอตรวจสอบ</span>',
 };
 
+function parseDateStr(s) {
+  if (!s) return null;
+  var m = String(s).trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if (m) return new Date(+m[3], +m[2]-1, +m[1]);
+  return new Date(s);
+}
+
+function clearDateFilter() {
+  var f = document.getElementById('filterDateFrom');
+  var t = document.getElementById('filterDateTo');
+  if(f) f.value = '';
+  if(t) t.value = '';
+  renderTickets();
+}
+
 function renderTickets() {
   const q = (document.getElementById('ticketSearch')?.value || '').toLowerCase();
+  const dateFrom = parseDateStr(document.getElementById('filterDateFrom')?.value);
+  const dateTo   = parseDateStr(document.getElementById('filterDateTo')?.value);
   let list = allTickets;
   if (activeFilter !== 'all') list = list.filter(t => t.status === activeFilter);
   if (q) list = list.filter(t =>
@@ -493,6 +570,13 @@ function renderTickets() {
     (t.detail||'').toLowerCase().includes(q) ||
     (t.id||'').toLowerCase().includes(q)
   );
+  if (dateFrom && !isNaN(dateFrom)) list = list.filter(function(t) {
+    var d = parseDateStr(t.date); return d && d >= dateFrom;
+  });
+  if (dateTo && !isNaN(dateTo)) {
+    var dateToEnd = new Date(dateTo); dateToEnd.setHours(23,59,59,999);
+    list = list.filter(function(t) { var d = parseDateStr(t.date); return d && d <= dateToEnd; });
+  }
   const tbody = document.getElementById('ticketBody');
   const empty = document.getElementById('ticketEmpty');
   if (!list.length) {
@@ -529,6 +613,95 @@ function parseReplies(raw) {
 
 function esc(s) {
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function toggleCreateIssue() {
+  const card = document.getElementById('createIssueCard');
+  const isHidden = card.style.display === 'none';
+  card.style.display = isHidden ? 'block' : 'none';
+  if (isHidden) {
+    // ส่ง email/name/phone ให้ iframe เพื่อ pre-fill ฟอร์ม
+    const base = 'https://script.google.com/a/g.stou.ac.th/macros/s/AKfycbxTikZrZ7YxPPNg5fKr2-nOopI2axcUT7SCvvrDT3r1R7qZrxwEyy8WyoRRY1v9-gNpIg/exec';
+    const p = new URLSearchParams({
+      page: 'crm',
+      prefill_email: currentUser.email || '',
+      prefill_name:  currentUser.name  || '',
+      prefill_phone: currentUser.phone || '',
+      prefill_org:   currentUser.org   || ''
+    });
+    const iframe = document.getElementById('crmIframe');
+    if (!iframe.src || iframe.src === window.location.href) {
+      iframe.src = base + '?' + p.toString();
+    }
+    card.scrollIntoView({behavior:'smooth', block:'start'});
+  }
+}
+
+// โหลด ticket list ใหม่ (ใช้ใน refresh button ด้วย)
+function loadTickets() {
+  const btn = document.getElementById('refreshBtn');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳...'; }
+  google.script.run
+    .withSuccessHandler(function(data) {
+      allTickets = data || [];
+      updateStats();
+      renderTickets();
+      if (btn) { btn.disabled = false; btn.textContent = '🔄 รีเฟรช'; }
+    })
+    .withFailureHandler(function(e) {
+      if (btn) { btn.disabled = false; btn.textContent = '🔄 รีเฟรช'; }
+      console.error('loadTickets error:', e.message);
+    })
+    .getExternalStaffTickets(currentUser.email);
+}
+
+// รับ postMessage จาก iframe CRM เมื่อ submit สำเร็จ
+window.addEventListener('message', function(ev) {
+  if (ev.data && ev.data.type === 'crm_submitted') {
+    setTimeout(function() {
+      toggleCreateIssue(); // ปิด iframe
+      loadTickets();       // รีโหลด ticket list
+    }, 800);
+  }
+});
+
+function exportTickets() {
+  const q = (document.getElementById('ticketSearch')?.value || '').toLowerCase();
+  let list = allTickets;
+  if (activeFilter !== 'all') list = list.filter(t => t.status === activeFilter);
+  if (q) list = list.filter(t =>
+    (t.issueType||'').toLowerCase().includes(q) ||
+    (t.detail||'').toLowerCase().includes(q) ||
+    (t.id||'').toLowerCase().includes(q)
+  );
+  if (!list.length) { alert('ไม่มีข้อมูลที่จะ Export'); return; }
+
+  const statusMap = { open: 'รอดำเนินการ', in_progress: 'กำลังดำเนินการ', closed: 'ปิดแล้ว', resolved: 'แก้ไขแล้ว' };
+  const headers = ['#','รหัส','วันที่','ประเภทปัญหา','รายละเอียด','สถานะ','การตอบกลับล่าสุด'];
+  const rows = list.map(function(t, i) {
+    const replies = parseReplies(t.replies);
+    const lastReply = replies.length ? replies[replies.length-1] : null;
+    const replyText = lastReply ? (lastReply.by||'Admin') + ': ' + (lastReply.text||'') : '';
+    return [
+      i+1,
+      t.id||'',
+      t.date||'',
+      t.issueType||'',
+      (t.detail||'').replace(/\n/g,' '),
+      statusMap[t.status] || t.status || '',
+      replyText
+    ].map(v => '"' + String(v).replace(/"/g,'""') + '"').join(',');
+  });
+
+  const bom = '﻿';
+  const csv = bom + headers.map(h => '"' + h + '"').join(',') + '\n' + rows.join('\n');
+  const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  const now  = new Date();
+  const fname = 'รายงานร้องเรียน_' + now.getFullYear() + ('0'+(now.getMonth()+1)).slice(-2) + ('0'+now.getDate()).slice(-2) + '.csv';
+  a.href = url; a.download = fname; a.click();
+  URL.revokeObjectURL(url);
 }
 </script>
 </body>
