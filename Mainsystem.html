@@ -3314,24 +3314,34 @@ function renderSearchResults(res) {
           ${data.crm.map(c=>`<div class="freq-item"><span>💬 ${c.date||''} · ${c.issueType||''}</span><span style="color:var(--gray3)">${statusMap[c.status]||''}</span></div>`).join('')}
         </div>`:''}
         ${data.records.length?`<div class="table-wrap" style="margin-top:10px"><table>
-          <thead><tr><th>ประเภท</th><th>วันที่</th><th>ชุดวิชา</th><th>สาเหตุ</th><th>ติดต่อ</th><th>Tag</th><th>สถานะ</th><th>หมายเหตุ</th><th></th></tr></thead>
+          <thead><tr><th>ประเภท</th><th>วันที่</th><th>ชุดวิชา</th><th>เลขพัสดุ / วันที่ส่ง</th><th>สาเหตุ</th><th>ติดต่อ</th><th>Tag</th><th>สถานะ</th><th></th></tr></thead>
           <tbody>${data.records.map(r=>{
             var courseTxt = r.courseCode||'-';
-            try { var cs=JSON.parse(r.courses||'[]'); if(cs.length) courseTxt=cs.map(function(c){return c.code;}).join(', '); } catch(e){}
+            var trackHtml = '<span style="color:var(--gray3);font-size:11px">—</span>';
+            try {
+              var cs=JSON.parse(r.courses||'[]');
+              if(cs.length) courseTxt=cs.map(function(c){return c.code;}).join(', ');
+              var withTrack=cs.filter(function(c){return c.track;});
+              if(withTrack.length){
+                trackHtml=withTrack.map(function(c){
+                  return '<div style="margin-bottom:2px"><a href="https://track.thailandpost.co.th/?trackNumber='+c.track+'" target="_blank" style="font-family:monospace;font-size:11px;color:var(--blue);text-decoration:none;font-weight:600">'+c.track+'</a>'
+                    +(c.date?'<br><span style="font-size:10px;color:var(--gray3)">'+c.date+'</span>':'')+'</div>';
+                }).join('');
+              }
+            } catch(e){}
             var typeTxt = r.recType==='lend'?'<span style="color:#e57c00;font-size:11px">📤 ให้ยืม</span>'
                         : r.recType==='return'?'<span style="color:#185FA5;font-size:11px">↩️ ตีคืน</span>'
                         : '<span style="color:#3B6D11;font-size:11px">⭐ พิเศษ</span>';
-            var remarkShort=(r.remark||'').slice(0,40)+(r.remark&&r.remark.length>40?'…':'');
             _recordMap[r.id] = r;
             return '<tr>'
               +'<td>'+typeTxt+'</td>'
               +'<td style="font-size:11px;white-space:nowrap">'+(r.date||'')+'</td>'
               +'<td style="font-family:monospace;font-size:11px;color:var(--blue)">'+courseTxt+'</td>'
+              +'<td style="font-size:11px">'+trackHtml+'</td>'
               +'<td style="color:var(--red);font-size:11px">'+(r.cause||'')+'</td>'
               +'<td>'+contactIcon(r.contactStatus)+'</td>'
               +'<td>'+renderTagChips(r.tags?r.tags.split(',').filter(Boolean):[])+'</td>'
               +'<td style="font-size:11px">'+(r.status||'')+'</td>'
-              +'<td style="font-size:11px;color:var(--gray3)" title="'+(r.remark||'')+'">'+remarkShort+'</td>'
               +'<td><button class="btn btn-outline btn-xs" onclick="openRecordDetail(\''+r.id+'\')" title="ดูรายละเอียด/แก้ไข" style="font-size:11px;padding:3px 8px">✏️ ดูรายละเอียด</button></td>'
               +'</tr>';
           }).join('')}</tbody></table></div>`:''}
@@ -3710,13 +3720,35 @@ function openRecordDetail(idOrObj) {
     +'</div>'
     +'</div>'
 
-    // ===== Section 4: History/Timeline =====
+    // ===== Section 4: Parcel Tracking =====
     +'<div class="card" style="margin-top:14px">'
-    +'<div class="card-title">📅 ประวัติการติดตามและส่ง</div>'
-    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">'
-    +'<div><label class="flbl" style="display:block;margin-bottom:6px">ส่งครั้งที่ 1</label><div style="padding:10px;background:var(--light);border-radius:6px;font-size:13px"><div>หมายเลข: <strong>'+esc(r.send1Track||'—')+'</strong></div><div style="color:var(--gray3);margin-top:4px">'+esc(r.send1Date||'—')+'</div></div></div>'
-    +'<div><label class="flbl" style="display:block;margin-bottom:6px">ส่งครั้งที่ 2</label><div style="padding:10px;background:var(--light);border-radius:6px;font-size:13px"><div>หมายเลข: <strong>'+esc(r.send2Track||'—')+'</strong></div><div style="color:var(--gray3);margin-top:4px">'+esc(r.send2Date||'—')+'</div></div></div>'
-    +'</div>'
+    +'<div class="card-title">📦 เลขพัสดุและวันที่ส่ง</div>'
+    +(function(){
+      var rows = '';
+      try {
+        var cs = JSON.parse(r.courses||'[]');
+        var withTrack = cs.filter(function(c){ return c.track; });
+        if (withTrack.length) {
+          withTrack.forEach(function(c){
+            var trackLink = c.track
+              ? '<a href="https://track.thailandpost.co.th/?trackNumber='+esc(c.track)+'" target="_blank" style="font-family:monospace;font-size:13px;color:var(--blue);text-decoration:none;font-weight:700">'+esc(c.track)+' 🔗</a>'
+              : '<span style="color:var(--gray3)">—</span>';
+            rows += '<div style="display:flex;align-items:center;gap:12px;padding:10px;background:var(--light);border-radius:6px;margin-bottom:8px;flex-wrap:wrap">'
+              +'<span style="font-family:monospace;font-size:12px;background:#e8f0fe;color:var(--blue);padding:2px 8px;border-radius:4px;flex-shrink:0">'+esc(c.code||'')+'</span>'
+              +'<span style="flex:1">'+trackLink+'</span>'
+              +'<span style="font-size:12px;color:var(--gray3);white-space:nowrap">📅 '+esc(c.date||'—')+'</span>'
+              +'</div>';
+          });
+        } else {
+          rows = '<div style="color:var(--gray3);padding:16px;text-align:center;font-size:13px">ยังไม่มีเลขพัสดุบันทึกไว้</div>';
+        }
+      } catch(e) {
+        if (r.send1Track) rows += '<div style="display:flex;align-items:center;gap:12px;padding:10px;background:var(--light);border-radius:6px;margin-bottom:8px"><span style="font-size:12px;color:var(--gray3)">ครั้งที่ 1</span><a href="https://track.thailandpost.co.th/?trackNumber='+esc(r.send1Track)+'" target="_blank" style="font-family:monospace;font-size:13px;color:var(--blue);text-decoration:none;font-weight:700">'+esc(r.send1Track)+' 🔗</a><span style="font-size:12px;color:var(--gray3)">📅 '+esc(r.send1Date||'—')+'</span></div>';
+        if (r.send2Track) rows += '<div style="display:flex;align-items:center;gap:12px;padding:10px;background:var(--light);border-radius:6px;margin-bottom:8px"><span style="font-size:12px;color:var(--gray3)">ครั้งที่ 2</span><a href="https://track.thailandpost.co.th/?trackNumber='+esc(r.send2Track)+'" target="_blank" style="font-family:monospace;font-size:13px;color:var(--blue);text-decoration:none;font-weight:700">'+esc(r.send2Track)+' 🔗</a><span style="font-size:12px;color:var(--gray3)">📅 '+esc(r.send2Date||'—')+'</span></div>';
+        if (!r.send1Track && !r.send2Track) rows = '<div style="color:var(--gray3);padding:16px;text-align:center;font-size:13px">ยังไม่มีเลขพัสดุบันทึกไว้</div>';
+      }
+      return rows;
+    })()
     +'</div>'
     +'</div>';
 

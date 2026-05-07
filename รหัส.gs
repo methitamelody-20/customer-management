@@ -1129,6 +1129,9 @@ function addRecord(data) {
     sheet.appendRow(row);
     const lr = sheet.getLastRow();
     if (lr%2===0) sheet.getRange(lr,1,1,row.length).setBackground('#f0f4f8');
+    // Force phone (col18) and zipCode (col17) as plain text to preserve leading zeros
+    sheet.getRange(lr, 17).setNumberFormat('@STRING@').setValue(String(data.zipCode||''));
+    sheet.getRange(lr, 18).setNumberFormat('@STRING@').setValue(String(data.phone||''));
     logAudit('บันทึกพัสดุ', id+' | '+data.recType+' | นศ.'+data.studentId+' | '+data.courseCode);
     return { success:true, id:id };
   } catch(e) { return { success:false, error:e.message }; }
@@ -1187,7 +1190,7 @@ function getRecords(filters) {
         district:    S(r[14]),
         province:    S(r[15]),
         zipCode:     S(r[16]),
-        phone:       S(r[17]),
+        phone:       (function(v){ var s=v==null?'':String(v); return (typeof v==='number'&&s.length===9)?'0'+s:s; })(r[17]),
         cause:       S(r[18]),
         contactStatus: S(r[19]),
         send1Track:  S(r[20]),
@@ -3257,7 +3260,12 @@ function updateRecordFields(id, updates) {
         for (const [field, value] of Object.entries(updates)) {
           const col = fieldColMap[field];
           if (col) {
-            sheet.getRange(row, col).setValue(value || '');
+            const cell = sheet.getRange(row, col);
+            if (field === 'phone' || field === 'zipCode') {
+              cell.setNumberFormat('@STRING@').setValue(String(value || ''));
+            } else {
+              cell.setValue(value || '');
+            }
           }
         }
 
