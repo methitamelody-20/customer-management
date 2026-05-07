@@ -414,7 +414,32 @@ tbody td{padding:12px;vertical-align:middle}
 }
 </style>
 
-<!-- Firebase: ปิด ES module เพราะ GAS sandbox ไม่รองรับ import statements -->
+<!-- Firebase SDK -->
+<script type="module">
+  // Firebase Web SDK Configuration
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
+  import { getDatabase, ref, get, push, set, update, query, orderByChild, equalTo } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-database.js";
+  import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js";
+
+  // Firebase configuration
+  const firebaseConfig = {
+    apiKey: "AIzaSyDpRytR1M8rLsckJXdJb3HTaHxP2S53HWc",
+    authDomain: "management-crm-stoupost.firebaseapp.com",
+    projectId: "management-crm-stoupost",
+    databaseURL: "https://management-crm-stoupost-default-rtdb.asia-southeast1.firebasedatabase.app",
+    storageBucket: "management-crm-stoupost.firebasestorage.app",
+    messagingSenderId: "766285421505",
+    appId: "1:766285421505:web:6fe74c474b386a6433ad40"
+  };
+
+  // Initialize Firebase
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getDatabase(app);
+
+  // Expose to global window for use in HTML
+  window.firebase = { app, auth, db, getDatabase, ref, get, push, set, update, query, orderByChild, equalTo };
+</script>
 
 </head>
 <body>
@@ -2326,19 +2351,10 @@ tbody td{padding:12px;vertical-align:middle}
 
 <script>
 // ============================================================
-// SETPW PARAMS — read from URL parameters
+// SETPW PARAMS — injected from server via doGet template variables
 // ============================================================
-var _SETPW_TOKEN = '';
-var _SETPW_EMAIL = '';
-
-// Read setpw parameters from URL if present
-(function() {
-  const params = new URLSearchParams(window.location.search);
-  if (params.get('page') === 'setpw') {
-    _SETPW_TOKEN = params.get('token') || '';
-    _SETPW_EMAIL = params.get('email') || '';
-  }
-})();
+var _SETPW_TOKEN = '<?= setpwToken ?>';
+var _SETPW_EMAIL = '<?= setpwEmail ?>';
 
 // ============================================================
 // STATE
@@ -2348,7 +2364,7 @@ let settings={parcelTypes:[],returnCauses:[],prefixes:[],terms:[]};
 let allYears=[], allTags=[];
 let tagSelectedColor=0;
 let allRecords=[], allCrm=[];  // cache จาก Sheets
-let useFirebase = false; // ปิด Firebase — ใช้ Apps Script แทน (GAS sandbox ไม่รองรับ ES module)
+let useFirebase = true; // ถ้า Firebase เปิด จะ set เป็น true
 
 // ============================================================
 // FIREBASE WRAPPER
@@ -2738,9 +2754,10 @@ function doLogin() {
   const btn=document.getElementById('lgBtn');
   btn.disabled=true; btn.textContent='⏳ กำลังตรวจสอบ...';
 
+  // timeout 15 วิ — ถ้า google.script.run ไม่ตอบ
   const loginTimeout = setTimeout(function() {
     btn.disabled=false; btn.textContent='เข้าสู่ระบบ';
-    document.getElementById('lgErr').textContent='❌ ไม่ได้รับการตอบสนองจากเซิร์ฟเวอร์ กรุณาลองใหม่';
+    document.getElementById('lgErr').textContent='❌ ไม่ได้รับการตอบสนองจากเซิร์ฟเวอร์ กรุณา Deploy ใหม่แล้วลองอีกครั้ง';
   }, 15000);
 
   google.script.run
@@ -2748,14 +2765,24 @@ function doLogin() {
       clearTimeout(loginTimeout);
       btn.disabled=false; btn.textContent='เข้าสู่ระบบ';
       if(res.success){
-        currentRole=res.role; currentUser=res.name; currentEmail=res.email;
-        // บันทึก refresh token เท่านั้น (ไม่บันทึก password)
+        // บันทึก/ลบ credentials ตาม checkbox
         try {
           const remember = document.getElementById('lgRemember').checked;
-          if (remember && res.refreshToken) {
-            localStorage.setItem('stou_refresh_token', res.refreshToken);
+          if (remember) {
+            localStorage.setItem('stou_saved_email', e);
+            localStorage.setItem('stou_saved_pass', p);
           } else {
-            localStorage.removeItem('stou_refresh_token');
+            localStorage.removeItem('stou_saved_email');
+            localStorage.removeItem('stou_saved_pass');
+          }
+        } catch(err) {}
+        currentRole=res.role; currentUser=res.name; currentEmail=res.email;
+        // บันทึก email/pass สำหรับ auto-refresh session (ถ้า remember)
+        try {
+          const remember = document.getElementById('lgRemember').checked;
+          if (remember) {
+            localStorage.setItem('stou_email', e);
+            localStorage.setItem('stou_pass', p);
           }
         } catch(err) {}
         document.getElementById('loginScreen').classList.add('hidden');
@@ -2776,14 +2803,6 @@ function doLogin() {
 }
 
 function doLogout() {
-  // clear all login-related data
-  try {
-    localStorage.removeItem('stou_refresh_token');
-    localStorage.removeItem('stou_saved_email');
-    localStorage.removeItem('stou_saved_pass');
-    localStorage.removeItem('stou_email');
-    localStorage.removeItem('stou_pass');
-  } catch(err) {}
   google.script.run.withSuccessHandler(()=>location.reload()).logout();
 }
 
@@ -3532,20 +3551,17 @@ function renderList(rows) {
   if(!rows||rows.error){
     var errMsg = (rows&&rows.error)||'เกิดข้อผิดพลาด';
     if(errMsg==='SESSION_EXPIRED') {
-      var refreshToken = localStorage.getItem('stou_refresh_token')||'';
-      if(refreshToken) {
+      var savedEmail = localStorage.getItem('stou_email')||'';
+      var savedPass  = localStorage.getItem('stou_pass')||'';
+      if(savedEmail && savedPass) {
         showToast('⏳ กำลัง refresh session...','');
         google.script.run
           .withSuccessHandler(function(res){
-            if(res.success){
-              if(res.refreshToken) localStorage.setItem('stou_refresh_token', res.refreshToken);
-              showToast('✅ Session refreshed','success');
-              loadList();
-            }
+            if(res.success){ showToast('✅ Session refreshed','success'); loadList(); }
             else { showToast('⚠️ กรุณา Login ใหม่','error'); doLogout(); }
           })
           .withFailureHandler(function(){ doLogout(); })
-          .refreshSession(refreshToken);
+          .login(savedEmail, savedPass);
         return;
       }
       showToast('⚠️ Session หมดอายุ กรุณา Login ใหม่','error');
@@ -5136,8 +5152,7 @@ function editRoleAutoFill(role) {
 function saveUserEdit(email) {
   const role = document.getElementById('editRole').value;
   const perms = Array.from(document.querySelectorAll('.edit-perm-chk:checked')).map(c=>c.dataset.page).join(',');
-  // ใช้ closest() เพื่อหา modal ที่มี editRole อยู่จริงๆ ไม่ใช่ modal อื่น
-  const modalEl = document.getElementById('editRole').closest('.modal-overlay');
+  const modalEl = document.querySelector('.modal-overlay');
   const saveBtn = modalEl ? modalEl.querySelector('.btn-primary') : null;
   if(saveBtn) saveBtn.disabled = true;
 
@@ -5171,6 +5186,7 @@ function saveUserEdit(email) {
       if(saveBtn) saveBtn.disabled = false;
       showError(e);
     })
+    .withFailureHandler(showError)
     .updateUserRole(email, role, perms);
 }
 
@@ -7407,19 +7423,17 @@ function loadPersonalStats(){loadStaffStats(30);}
 
 function handleSessionError(res, retryFn) {
   if(res && res.error === 'SESSION_EXPIRED') {
-    var refreshToken = localStorage.getItem('stou_refresh_token')||'';
-    if(refreshToken) {
+    var savedEmail = localStorage.getItem('stou_email')||'';
+    var savedPass  = localStorage.getItem('stou_pass')||'';
+    if(savedEmail && savedPass) {
       showToast('⏳ กำลัง refresh session...','');
       google.script.run
         .withSuccessHandler(function(r){
-          if(r.success){
-            if(r.refreshToken) localStorage.setItem('stou_refresh_token', r.refreshToken);
-            if(retryFn) setTimeout(retryFn, 500);
-          }
+          if(r.success){ if(retryFn) setTimeout(retryFn, 500); }
           else doLogout();
         })
         .withFailureHandler(doLogout)
-        .refreshSession(refreshToken);
+        .login(savedEmail, savedPass);
       return true;
     }
     showToast('⚠️ Session หมดอายุ','error');
