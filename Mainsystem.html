@@ -5136,7 +5136,8 @@ function editRoleAutoFill(role) {
 function saveUserEdit(email) {
   const role = document.getElementById('editRole').value;
   const perms = Array.from(document.querySelectorAll('.edit-perm-chk:checked')).map(c=>c.dataset.page).join(',');
-  const modalEl = document.querySelector('.modal-overlay');
+  // ใช้ closest() เพื่อหา modal ที่มี editRole อยู่จริงๆ ไม่ใช่ modal อื่น
+  const modalEl = document.getElementById('editRole').closest('.modal-overlay');
   const saveBtn = modalEl ? modalEl.querySelector('.btn-primary') : null;
   if(saveBtn) saveBtn.disabled = true;
 
@@ -5170,7 +5171,6 @@ function saveUserEdit(email) {
       if(saveBtn) saveBtn.disabled = false;
       showError(e);
     })
-    .withFailureHandler(showError)
     .updateUserRole(email, role, perms);
 }
 
