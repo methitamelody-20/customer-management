@@ -466,15 +466,15 @@ tbody td{padding:12px;vertical-align:middle}
       <h2>ระบบจัดการและติดตาม<br>เอกสารการสอน มสธ.</h2>
       <p>Document Tracking System</p>
     </div>
-    <div class="lf"><label>Email</label><input type="email" id="lgEmail" placeholder="email@stou.ac.th" onkeydown="if(event.key==='Enter')doLogin()"></div>
-    <div class="lf"><label>Password</label><input type="password" id="lgPass" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()"></div>
+    <div class="lf"><label>Email</label><input type="email" id="lgEmail" placeholder="email@stou.ac.th"></div>
+    <div class="lf"><label>Password</label><input type="password" id="lgPass" placeholder="••••••••"></div>
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px">
       <input type="checkbox" id="lgRemember" style="width:15px;height:15px;cursor:pointer;accent-color:var(--sky)">
       <label for="lgRemember" style="font-size:12px;color:var(--gray3);cursor:pointer">จดจำรหัสผ่าน</label>
     </div>
-    <button class="login-btn" id="lgBtn" onclick="doLogin()">เข้าสู่ระบบ</button>
-    <button style="width:100%;margin-top:8px;padding:8px;background:none;border:1px solid #ccc;border-radius:6px;cursor:pointer;font-size:12px;color:#888" onclick="testScriptRun()">🔍 ทดสอบ connection</button>
-    <button style="width:100%;margin-top:6px;padding:8px;background:#fff3e0;border:1px solid #ffa726;border-radius:6px;cursor:pointer;font-size:12px;color:#e65100;font-weight:600" onclick="testFirebaseUI()">🔥 ทดสอบ Firebase</button>
+    <button class="login-btn" id="lgBtn">เข้าสู่ระบบ</button>
+    <button type="button" style="width:100%;margin-top:8px;padding:8px;background:none;border:1px solid #ccc;border-radius:6px;cursor:pointer;font-size:12px;color:#888" id="testConnBtn">🔍 ทดสอบ connection</button>
+    <button type="button" style="width:100%;margin-top:6px;padding:8px;background:#fff3e0;border:1px solid #ffa726;border-radius:6px;cursor:pointer;font-size:12px;color:#e65100;font-weight:600" id="testFirebaseBtn">🔥 ทดสอบ Firebase</button>
     <div class="login-err" id="lgErr"></div>
     <div id="firebaseTestResult" style="margin-top:10px;padding:10px;border-radius:6px;font-size:11px;display:none;max-height:300px;overflow-y:auto;white-space:pre-wrap;font-family:monospace"></div>
   </div>
@@ -2530,6 +2530,36 @@ window.onload = function() {
   if (_SETPW_TOKEN && _SETPW_EMAIL) {
     showSetPasswordScreen(decodeURIComponent(_SETPW_EMAIL), _SETPW_TOKEN);
     return;
+  }
+
+  // Attach event listeners for login buttons
+  var lgBtn = document.getElementById('lgBtn');
+  if (lgBtn) {
+    lgBtn.addEventListener('click', doLogin);
+  }
+
+  var lgEmail = document.getElementById('lgEmail');
+  if (lgEmail) {
+    lgEmail.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') doLogin();
+    });
+  }
+
+  var lgPass = document.getElementById('lgPass');
+  if (lgPass) {
+    lgPass.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') doLogin();
+    });
+  }
+
+  var testConnBtn = document.getElementById('testConnBtn');
+  if (testConnBtn) {
+    testConnBtn.addEventListener('click', testScriptRun);
+  }
+
+  var testFirebaseBtn = document.getElementById('testFirebaseBtn');
+  if (testFirebaseBtn) {
+    testFirebaseBtn.addEventListener('click', testFirebaseUI);
   }
 
   // โหลด saved credentials ถ้าเคยติ๊ก "จดจำรหัสผ่าน"
