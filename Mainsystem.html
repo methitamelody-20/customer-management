@@ -4887,9 +4887,20 @@ function renderCrmDashboard(tickets, stats) {
     channelCount[t.channel] = (channelCount[t.channel] || 0) + 1;
     priorityCount[t.priority] = (priorityCount[t.priority] || 0) + 1;
     if (t.courses) {
-      t.courses.split(',').forEach(c => {
-        const code = c.trim();
-        if (code) courseCount[code] = (courseCount[code] || 0) + 1;
+      var codes = [];
+      try {
+        var parsed = JSON.parse(t.courses);
+        if (Array.isArray(parsed)) {
+          codes = parsed.map(c => (c.code || c || '')).filter(Boolean);
+        }
+      } catch(e) {
+        codes = (t.courses || '').split(',').map(c => c.trim()).filter(Boolean);
+      }
+      codes.forEach(c => {
+        var splitCodes = splitCourseCodeIntelligently(c);
+        splitCodes.forEach(code => {
+          if (code && code.trim()) courseCount[code.trim()] = (courseCount[code.trim()] || 0) + 1;
+        });
       });
     }
   });
