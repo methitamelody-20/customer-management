@@ -3974,6 +3974,43 @@ function loadCrm() {
     .getCrmTickets(filters);
 }
 
+function splitCourseCodeIntelligently(codeStr) {
+  if (!codeStr) return [];
+  if (typeof codeStr !== 'string') codeStr = String(codeStr);
+  codeStr = codeStr.trim();
+
+  // Handle comma-separated codes
+  if (codeStr.includes(',')) {
+    return codeStr.split(',').map(c => c.trim()).filter(c => c);
+  }
+
+  // If not digit-only or less than 6 digits, return as-is
+  if (!/^\d{6,}$/.test(codeStr)) {
+    return [codeStr];
+  }
+
+  // Recursively split concatenated codes
+  function findOptimalSplit(str, accumulated) {
+    accumulated = accumulated || [];
+    if (!str) return accumulated.length > 0 ? accumulated : null;
+    if (str.length < 3) return null;
+
+    for (let len = 7; len >= 3; len--) {
+      if (str.length >= len) {
+        const chunk = str.substring(0, len);
+        const rest = str.substring(len);
+        if (!rest) return [...accumulated, chunk];
+        const recursiveResult = findOptimalSplit(rest, [...accumulated, chunk]);
+        if (recursiveResult) return recursiveResult;
+      }
+    }
+    return null;
+  }
+
+  const result = findOptimalSplit(codeStr);
+  return result || [codeStr];
+}
+
 function expandCrmByCourses(items) {
   var expanded = [];
   items.forEach(function(crm) {
@@ -3983,10 +4020,19 @@ function expandCrmByCourses(items) {
       if (Array.isArray(parsed)) courses = parsed;
     } catch(e) {}
 
-    if (!courses.length) {
+    // Split concatenated course codes
+    var allCodes = [];
+    courses.forEach(function(course) {
+      var codes = splitCourseCodeIntelligently(course.code || '');
+      codes.forEach(function(code) {
+        allCodes.push({code: code, b1: course.b1 || '', b2: course.b2 || '', track: course.track || '', date: course.date || ''});
+      });
+    });
+
+    if (!allCodes.length) {
       expanded.push(crm);
     } else {
-      courses.forEach(function(course, idx) {
+      allCodes.forEach(function(course, idx) {
         var expandedCrm = Object.assign({}, crm);
         expandedCrm.courseCode = course.code || '';
         expandedCrm.courseB1 = course.b1 || '';
@@ -3994,13 +4040,14 @@ function expandCrmByCourses(items) {
         expandedCrm.courseTrack = course.track || '';
         expandedCrm.courseDate = course.date || '';
         expandedCrm._courseIndex = idx;
-        expandedCrm._totalCourses = courses.length;
+        expandedCrm._totalCourses = allCodes.length;
         expanded.push(expandedCrm);
       });
     }
   });
   return expanded;
 }
+
 
 function renderCrmList(items) {
   if(!items||items.error){showError(items&&items.error||'เกิดข้อผิดพลาด');return;}
