@@ -1296,6 +1296,7 @@ function searchStudent(query) {
 function addCrmTicket(data) {
   // CRM เปิดให้ทุกคนส่งได้ (รวมถึงหน้า public)
   try {
+    Logger.log('addCrmTicket - received courses: [' + (data.courses||'') + ']');
     const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SH_CRM);
     const now   = new Date();
     const id    = 'CRM-' + Utilities.formatDate(now,'Asia/Bangkok','yyyyMMdd') + '-' + sheet.getLastRow();
@@ -1417,10 +1418,12 @@ function getCrmTickets(filters) {
     const ncols = Math.min(sheet.getLastColumn(), 24);
     const rawRows = sheet.getRange(2,1,lr-1,ncols).getValues();
     const rows = [];
+    Logger.log('getCrmTickets - Sheet columns: ' + ncols + ', rows: ' + rawRows.length);
     for (let i = 0; i < rawRows.length; i++) {
       const r = rawRows[i];
       if (!r[0]) continue;
       const recorderName = S(r[20]);
+      if (i === 0) Logger.log('First row - col 10 (courses): [' + r[10] + ']');
       // col 22 (r[21]) = source (admin/external), col 23 (r[22]) = plan, col 24 (r[23]) = org
       const storedSource = ncols >= 22 ? S(r[21]) : '';
       const source = storedSource || (recorderName === 'ผู้แจ้งออนไลน์' || recorderName === '' ? 'external' : 'admin');
