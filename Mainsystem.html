@@ -4890,23 +4890,25 @@ function renderCrmDashboard(tickets, stats) {
     issueTypeCount[t.issueType] = (issueTypeCount[t.issueType] || 0) + 1;
     channelCount[t.channel] = (channelCount[t.channel] || 0) + 1;
     priorityCount[t.priority] = (priorityCount[t.priority] || 0) + 1;
-    if (t.courses) {
-      var codes = [];
+
+    var codes = [];
+    if (t.courses && String(t.courses).trim()) {
       try {
         var parsed = JSON.parse(t.courses);
         if (Array.isArray(parsed)) {
           codes = parsed.map(c => (c.code || c || '')).filter(Boolean);
         }
       } catch(e) {
-        codes = (t.courses || '').split(',').map(c => c.trim()).filter(Boolean);
+        codes = String(t.courses).split(',').map(c => c.trim()).filter(Boolean);
       }
-      codes.forEach(c => {
-        var splitCodes = splitCourseCodeIntelligently(c);
-        splitCodes.forEach(code => {
-          if (code && code.trim()) courseCount[code.trim()] = (courseCount[code.trim()] || 0) + 1;
-        });
-      });
     }
+
+    codes.forEach(c => {
+      var splitCodes = splitCourseCodeIntelligently(c);
+      splitCodes.forEach(code => {
+        if (code && code.trim()) courseCount[code.trim()] = (courseCount[code.trim()] || 0) + 1;
+      });
+    });
   });
 
   // Destroy old charts if exist
@@ -4987,6 +4989,7 @@ function renderCrmDashboard(tickets, stats) {
   const topCourses = Object.entries(courseCount)
     .sort((a,b) => b[1] - a[1])
     .slice(0, 10);
+  console.log('courseCount:', courseCount, 'topCourses:', topCourses);
   const courseHtml = topCourses.map(([code, count]) =>
     `<tr><td style="padding:8px">${code}</td><td style="padding:8px;text-align:center;font-weight:600">${count}</td></tr>`
   ).join('');
