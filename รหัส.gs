@@ -8,6 +8,7 @@ const SH_SETTINGS = 'ตั้งค่า';
 const SH_USERS    = 'ผู้ใช้งาน';
 const SH_CRM      = 'CRM แจ้งปัญหา';
 const SH_TAGS     = 'Tags';
+const SH_INVEST   = 'สอบสวนไปรษณีย์';
 const R_SUPER  = 'superadmin';
 const R_STAFF  = 'staff';
 const R_VIEWER = 'viewer';
@@ -184,7 +185,7 @@ const FIREBASE_CONFIG = {
   appId: "1:766285421505:web:6fe74c474b386a6433ad40"
 };
 
-const USE_FIREBASE = false; // ตั้งเป็น true เมื่อต้องการใช้ Firebase
+const USE_FIREBASE = true; // ตั้งเป็น true เมื่อต้องการใช้ Firebase
 
 // Firebase REST API Helper
 function firebaseCall(method, path, data = null) {
@@ -1871,7 +1872,6 @@ function fmtDate(d) {
 // ============================================================
 // POSTAL INVESTIGATION — ระบบสอบสวนไปรษณีย์ไทย
 // ============================================================
-const SH_INVEST = 'สอบสวนไปรษณีย์';
 
 function setupInvestSheet() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
