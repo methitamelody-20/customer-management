@@ -33,10 +33,9 @@ function doGet(e) {
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
       .addMetaTag('viewport','width=device-width,initial-scale=1');
   }
-  // ส่ง setpw params ผ่าน template variables เพื่อให้ Mainsystem.html ใช้งานได้
   const tpl = HtmlService.createTemplateFromFile('Mainsystem');
-  tpl.setpwToken = (params.page === 'setpw' && params.token) ? params.token : '';
-  tpl.setpwEmail = (params.page === 'setpw' && params.email) ? params.email : '';
+  tpl.setpwToken = '';
+  tpl.setpwEmail = '';
   return tpl.evaluate()
     .setTitle('ระบบจัดการและติดตามเอกสารการสอน มสธ.')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
