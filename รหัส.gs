@@ -1636,6 +1636,42 @@ function _esc(s) {
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
+function getAddressFromRecord(studentId, courseCode) {
+  try {
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SH_DATA);
+    if (!sheet) return { success:false, address:'' };
+
+    const data = sheet.getDataRange().getValues();
+    const courseStr = String(courseCode || '').trim();
+    const studentStr = String(studentId || '').trim();
+
+    for (let i = 1; i < data.length; i++) {
+      const rowCourse = String(data[i][6] || '').trim();
+      const rowStudent = String(data[i][7] || '').trim();
+
+      if (rowCourse === courseStr && rowStudent === studentStr) {
+        // Found matching record - construct address from components
+        const houseNo = String(data[i][11] || '').trim();
+        const street = String(data[i][12] || '').trim();
+        const subDistrict = String(data[i][13] || '').trim();
+        const district = String(data[i][14] || '').trim();
+        const province = String(data[i][15] || '').trim();
+        const zipCode = String(data[i][16] || '').trim();
+
+        const addressParts = [houseNo, street, subDistrict, district, province, zipCode].filter(p => p);
+        const fullAddress = addressParts.join(' ');
+
+        return { success:true, address:fullAddress };
+      }
+    }
+
+    return { success:false, address:'' };
+  } catch(e) {
+    Logger.log('getAddressFromRecord error: ' + e.message);
+    return { success:false, address:'' };
+  }
+}
+
 function updateCrmStatus(id, status) {
   if (!_autoRefreshSession()) return { success:false, error:'SESSION_EXPIRED' };
   return _updateCrmField(id, 17, status);
