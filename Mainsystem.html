@@ -2351,10 +2351,14 @@ tbody td{padding:12px;vertical-align:middle}
 
 <script>
 // ============================================================
-// SETPW PARAMS — injected from server via doGet template variables
+// SETPW PARAMS — extract from URL parameters
 // ============================================================
-var _SETPW_TOKEN = '<?= setpwToken ?>';
-var _SETPW_EMAIL = '<?= setpwEmail ?>';
+function getUrlParam(param) {
+  const url = new URL(window.location);
+  return url.searchParams.get(param) || '';
+}
+var _SETPW_TOKEN = getUrlParam('token');
+var _SETPW_EMAIL = getUrlParam('email');
 
 // ============================================================
 // STATE
