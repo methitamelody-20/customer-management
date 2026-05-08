@@ -8,6 +8,7 @@ const SH_SETTINGS = 'ตั้งค่า';
 const SH_USERS    = 'ผู้ใช้งาน';
 const SH_CRM      = 'CRM แจ้งปัญหา';
 const SH_TAGS     = 'Tags';
+const SH_INVEST   = 'สอบสวนไปรษณีย์';
 const R_SUPER  = 'superadmin';
 const R_STAFF  = 'staff';
 const R_VIEWER = 'viewer';
@@ -1871,7 +1872,6 @@ function fmtDate(d) {
 // ============================================================
 // POSTAL INVESTIGATION — ระบบสอบสวนไปรษณีย์ไทย
 // ============================================================
-const SH_INVEST = 'สอบสวนไปรษณีย์';
 
 function setupInvestSheet() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
