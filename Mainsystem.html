@@ -3988,11 +3988,6 @@ function splitCourseCodeIntelligently(codeStr) {
     return codeStr.split(',').map(c => c.trim()).filter(c => c);
   }
 
-  // Handle period-separated codes (e.g., 101.211.012.110)
-  if (codeStr.includes('.')) {
-    return codeStr.split('.').map(c => c.trim()).filter(c => c);
-  }
-
   // If not digit-only or less than 6 digits, return as-is
   if (!/^\d{6,}$/.test(codeStr)) {
     return [codeStr];
