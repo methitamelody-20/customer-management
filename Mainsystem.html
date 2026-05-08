@@ -1008,7 +1008,7 @@ tbody td{padding:12px;vertical-align:middle}
         <div class="card" style="padding:0">
           <div class="table-wrap">
             <table>
-              <thead><tr><th>#</th><th>ประเภท</th><th>วันที่</th><th>ภาค/ปี</th><th>ชุดวิชา</th><th>รหัสนักศึกษา</th><th>ชื่อ-สกุล</th><th>จังหวัด/อำเภอ</th><th>เลขพัสดุ</th><th>ที่อยู่ที่ส่ง</th><th>วันที่ส่ง</th><th>สาเหตุ</th><th>ติดต่อ</th><th>Tag</th><th>สถานะ</th><th>หมายเหตุ</th><th>ใบจ่าหน้า/อีเมล</th><th class="no-print">แก้ไข</th><th class="no-print">ลบข้อมูล</th><th class="no-print">จัดการ</th></tr></thead>
+              <thead><tr><th>#</th><th>ประเภท</th><th>วันที่</th><th>ภาค/ปี</th><th>ชุดวิชา</th><th>รหัสนักศึกษา</th><th>ชื่อ-สกุล</th><th>จังหวัด/อำเภอ</th><th>เลขพัสดุ</th><th>ที่อยู่ที่ส่ง</th><th>วันที่ส่ง</th><th>สาเหตุ</th><th>ติดต่อ</th><th>Tag</th><th>สถานะ</th><th>หมายเหตุ</th><th>ใบจ่าหน้า/อีเมล</th><th class="no-print">🗑️ ลบข้อมูล</th><th class="no-print">✏️ จัดการ</th><th class="no-print">📮 แก้ไขเลขพัสดุ</th></tr></thead>
               <tbody id="listBody"><tr><td colspan="20" style="text-align:center;padding:30px;color:var(--gray3)">กำลังโหลด...</td></tr></tbody>
             </table>
           </div>
@@ -3758,8 +3758,9 @@ function renderListRows(rows, startIdx) {
       +'<td class="no-print" style="white-space:nowrap">'+printBtn
         +'<button class="btn btn-outline btn-sm" title="แจ้งทางอีเมล" onclick="openEmailModalById(\''+r.id+'\')" style="font-size:11px;padding:4px 8px;margin-left:4px">📧</button>'
       +'</td>'
-      +'<td class="no-print" style="white-space:nowrap">'+delBtn+'</td>'
-      +'<td class="no-print" style="white-space:nowrap"><button class="btn btn-outline btn-sm" title="แก้ไขรายละเอียด" onclick="openRecordDetail(\''+r.id+'\')" style="font-size:11px;padding:4px 8px">✏️</button><button class="btn btn-outline btn-sm" title="แก้ไขเลขพัสดุ" onclick="openParcelEditModal(\''+r.id+'\')" style="font-size:11px;padding:4px 8px;margin-left:4px;background:#ffc107;color:#000">📮</button></td>'
+      +'<td class="no-print">'+delBtn+'</td>'
+      +'<td class="no-print">'+editBtn+'</td>'
+      +'<td class="no-print"><button class="btn btn-outline btn-sm" title="แก้ไขเลขพัสดุ" onclick="openParcelEditModal(\''+r.id+'\')" style="font-size:11px;padding:4px 8px;background:#ffc107;color:#000">📮</button></td>'
       +'</tr>';
   }).join('');
 }
