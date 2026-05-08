@@ -2349,6 +2349,99 @@ tbody td{padding:12px;vertical-align:middle}
   </div>
 </div>
 
+<!-- MODAL 1: ตีคืน (Return) -->
+<div class="modal-overlay hidden" id="returnModal">
+  <div class="modal" style="max-width:600px">
+    <div class="modal-title">📦 บันทึกตีคืน (Return)</div>
+    <input type="hidden" id="ret_crm_id">
+    <div class="form-grid g2" style="margin-bottom:12px">
+      <div class="fg full"><label class="flbl">สาเหตุการตีคืน<span class="req">*</span></label>
+        <select class="fsel" id="ret_cause">
+          <option value="">-- เลือก --</option>
+          <option value="จำหน่ายไม่ได้สินค้น">จำหน่ายไม่ได้สินค้น</option>
+          <option value="ไม่มีการรับแจ้งซ้ำ">ไม่มีการรับแจ้งซ้ำ</option>
+          <option value="ไม่ชำรุด">ไม่ชำรุด</option>
+          <option value="ไม่มีรับการจำหน่าย">ไม่มีรับการจำหน่าย</option>
+          <option value="ไม่มีรับรายการไม่ได้ยินความ">ไม่มีรับรายการไม่ได้ยินความ</option>
+          <option value="มีมีรับการจำหน่ายลูกค้า">มีมีรับการจำหน่ายลูกค้า</option>
+          <option value="อ่านไม่ชำรุดไม่ใดใหม่">อ่านไม่ชำรุดไม่ใดใหม่</option>
+          <option value="อื่น ๆ">อื่น ๆ</option>
+        </select>
+      </div>
+      <div class="fg"><label class="flbl">ชุดวิชา</label><input class="finput" id="ret_course" readonly></div>
+      <div class="fg"><label class="flbl">รหัสนักศึกษา</label><input class="finput" id="ret_student_id" readonly></div>
+      <div class="fg"><label class="flbl">ชื่อ</label><input class="finput" id="ret_name" readonly></div>
+      <div class="fg"><label class="flbl">เบอร์โทร</label><input class="finput" id="ret_phone" readonly></div>
+      <div class="fg full"><label class="flbl">ที่อยู่</label><textarea class="ftextarea" id="ret_address" style="height:60px" readonly></textarea></div>
+      <div class="fg full"><label class="flbl">หมายเหตุ</label><textarea class="ftextarea" id="ret_notes" style="height:80px" placeholder="หมายเหตุเพิ่มเติม..."></textarea></div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="saveReturnRecord()">💾 บันทึก</button>
+      <button class="btn btn-outline" onclick="closeReturnModal()">ปิด</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL 2: ให้ยืม (Loan) -->
+<div class="modal-overlay hidden" id="loanModal">
+  <div class="modal" style="max-width:600px">
+    <div class="modal-title">📋 บันทึกให้ยืม (Loan)</div>
+    <input type="hidden" id="loan_crm_id">
+    <div class="form-grid g2" style="margin-bottom:12px">
+      <div class="fg full"><label class="flbl">สาเหตุการให้ยืม<span class="req">*</span></label>
+        <select class="fsel" id="loan_cause">
+          <option value="">-- เลือก --</option>
+          <option value="ส่งแล้วไม่ได้รับ">ส่งแล้วไม่ได้รับ</option>
+          <option value="เอกสารหาย">เอกสารหาย</option>
+          <option value="ส่งสอบสวน">ส่งสอบสวน</option>
+        </select>
+      </div>
+      <div class="fg"><label class="flbl">ชุดวิชา</label><input class="finput" id="loan_course" readonly></div>
+      <div class="fg"><label class="flbl">รหัสนักศึกษา</label><input class="finput" id="loan_student_id" readonly></div>
+      <div class="fg"><label class="flbl">ชื่อ</label><input class="finput" id="loan_name" readonly></div>
+      <div class="fg"><label class="flbl">เบอร์โทร</label><input class="finput" id="loan_phone" readonly></div>
+      <div class="fg"><label class="flbl">วันที่ต้องคืน</label><input class="finput" id="loan_due_date" type="date"></div>
+      <div class="fg full"><label class="flbl">ที่อยู่</label><textarea class="ftextarea" id="loan_address" style="height:60px" readonly></textarea></div>
+      <div class="fg full"><label class="flbl">หมายเหตุ</label><textarea class="ftextarea" id="loan_notes" style="height:80px" placeholder="หมายเหตุเพิ่มเติม..."></textarea></div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="saveLoanRecord()">💾 บันทึก</button>
+      <button class="btn btn-outline" onclick="closeLoanModal()">ปิด</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL 3: ส่งใหม่กรณีพิเศษ (Special Resend) -->
+<div class="modal-overlay hidden" id="specialResendModal">
+  <div class="modal" style="max-width:600px">
+    <div class="modal-title">⚡ ส่งใหม่กรณีพิเศษ (Special Resend)</div>
+    <input type="hidden" id="special_crm_id">
+    <div class="form-grid g2" style="margin-bottom:12px">
+      <div class="fg full"><label class="flbl">ประเภท<span class="req">*</span></label>
+        <select class="fsel" id="special_cause">
+          <option value="">-- เลือก --</option>
+          <option value="ส่งผิด">ส่งผิด</option>
+          <option value="ชำรุด">ชำรุด</option>
+          <option value="ส่งซ้ำ">ส่งซ้ำ</option>
+          <option value="เคสส่งเร่งด่วน (ครั้งที่ 1)">⚡ เคสส่งเร่งด่วน (ครั้งที่ 1)</option>
+          <option value="เปลี่ยนที่อยู่ด่วน">🚨 เปลี่ยนที่อยู่ด่วน</option>
+        </select>
+      </div>
+      <div class="fg"><label class="flbl">ชุดวิชา</label><input class="finput" id="special_course" readonly></div>
+      <div class="fg"><label class="flbl">รหัสนักศึกษา</label><input class="finput" id="special_student_id" readonly></div>
+      <div class="fg"><label class="flbl">ชื่อ</label><input class="finput" id="special_name" readonly></div>
+      <div class="fg"><label class="flbl">เบอร์โทร</label><input class="finput" id="special_phone" readonly></div>
+      <div class="fg full"><label class="flbl">ที่อยู่</label><textarea class="ftextarea" id="special_address" style="height:60px" readonly></textarea></div>
+      <div class="fg full"><label class="flbl">ที่อยู่ใหม่ (ถ้าเปลี่ยนที่อยู่)</label><textarea class="ftextarea" id="special_new_address" style="height:60px" placeholder="ถ้าเป็นการเปลี่ยนที่อยู่ให้ใส่ที่อยู่ใหม่..."></textarea></div>
+      <div class="fg full"><label class="flbl">หมายเหตุ</label><textarea class="ftextarea" id="special_notes" style="height:80px" placeholder="หมายเหตุเพิ่มเติม..."></textarea></div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="saveSpecialResendRecord()">💾 บันทึก</button>
+      <button class="btn btn-outline" onclick="closeSpecialResendModal()">ปิด</button>
+    </div>
+  </div>
+</div>
+
 <script>
 // ============================================================
 // SETPW PARAMS — extract from URL parameters
@@ -7653,6 +7746,149 @@ function deleteExtStaff(email, name) {
     })
     .withFailureHandler(showError)
     .deleteExternalStaff(email);
+}
+
+// ============================================================
+// RETURN / LOAN / SPECIAL RESEND MODALS
+// ============================================================
+
+function openReturnModal(crmId, crmData) {
+  document.getElementById('ret_crm_id').value = crmId;
+  document.getElementById('ret_course').value = crmData.courses || '';
+  document.getElementById('ret_student_id').value = crmData.studentId || '';
+  document.getElementById('ret_name').value = crmData.reporterName || '';
+  document.getElementById('ret_phone').value = crmData.reporterPhone || '';
+  document.getElementById('ret_address').value = crmData.address || '';
+  document.getElementById('ret_notes').value = '';
+  document.getElementById('ret_cause').value = '';
+  document.getElementById('returnModal').classList.remove('hidden');
+}
+
+function closeReturnModal() {
+  document.getElementById('returnModal').classList.add('hidden');
+}
+
+function saveReturnRecord() {
+  const cause = document.getElementById('ret_cause').value.trim();
+  if (!cause) { showToast('กรุณาเลือกสาเหตุ', 'error'); return; }
+
+  const data = {
+    crmId: document.getElementById('ret_crm_id').value,
+    cause: cause,
+    course: document.getElementById('ret_course').value,
+    studentId: document.getElementById('ret_student_id').value,
+    name: document.getElementById('ret_name').value,
+    phone: document.getElementById('ret_phone').value,
+    address: document.getElementById('ret_address').value,
+    notes: document.getElementById('ret_notes').value,
+    type: 'return'
+  };
+
+  google.script.run
+    .withSuccessHandler(function(res) {
+      if (res.success) {
+        showToast('✅ บันทึกแล้ว', 'success');
+        closeReturnModal();
+      } else {
+        showToast('❌ ' + (res.error||'เกิดข้อผิดพลาด'), 'error');
+      }
+    })
+    .withFailureHandler(showError)
+    .saveFollowUpRecord(data);
+}
+
+function openLoanModal(crmId, crmData) {
+  document.getElementById('loan_crm_id').value = crmId;
+  document.getElementById('loan_course').value = crmData.courses || '';
+  document.getElementById('loan_student_id').value = crmData.studentId || '';
+  document.getElementById('loan_name').value = crmData.reporterName || '';
+  document.getElementById('loan_phone').value = crmData.reporterPhone || '';
+  document.getElementById('loan_address').value = crmData.address || '';
+  document.getElementById('loan_notes').value = '';
+  document.getElementById('loan_cause').value = '';
+  document.getElementById('loan_due_date').value = '';
+  document.getElementById('loanModal').classList.remove('hidden');
+}
+
+function closeLoanModal() {
+  document.getElementById('loanModal').classList.add('hidden');
+}
+
+function saveLoanRecord() {
+  const cause = document.getElementById('loan_cause').value.trim();
+  if (!cause) { showToast('กรุณาเลือกสาเหตุ', 'error'); return; }
+
+  const data = {
+    crmId: document.getElementById('loan_crm_id').value,
+    cause: cause,
+    course: document.getElementById('loan_course').value,
+    studentId: document.getElementById('loan_student_id').value,
+    name: document.getElementById('loan_name').value,
+    phone: document.getElementById('loan_phone').value,
+    address: document.getElementById('loan_address').value,
+    dueDate: document.getElementById('loan_due_date').value,
+    notes: document.getElementById('loan_notes').value,
+    type: 'loan'
+  };
+
+  google.script.run
+    .withSuccessHandler(function(res) {
+      if (res.success) {
+        showToast('✅ บันทึกแล้ว', 'success');
+        closeLoanModal();
+      } else {
+        showToast('❌ ' + (res.error||'เกิดข้อผิดพลาด'), 'error');
+      }
+    })
+    .withFailureHandler(showError)
+    .saveFollowUpRecord(data);
+}
+
+function openSpecialResendModal(crmId, crmData) {
+  document.getElementById('special_crm_id').value = crmId;
+  document.getElementById('special_course').value = crmData.courses || '';
+  document.getElementById('special_student_id').value = crmData.studentId || '';
+  document.getElementById('special_name').value = crmData.reporterName || '';
+  document.getElementById('special_phone').value = crmData.reporterPhone || '';
+  document.getElementById('special_address').value = crmData.address || '';
+  document.getElementById('special_notes').value = '';
+  document.getElementById('special_cause').value = '';
+  document.getElementById('special_new_address').value = '';
+  document.getElementById('specialResendModal').classList.remove('hidden');
+}
+
+function closeSpecialResendModal() {
+  document.getElementById('specialResendModal').classList.add('hidden');
+}
+
+function saveSpecialResendRecord() {
+  const cause = document.getElementById('special_cause').value.trim();
+  if (!cause) { showToast('กรุณาเลือกประเภท', 'error'); return; }
+
+  const data = {
+    crmId: document.getElementById('special_crm_id').value,
+    cause: cause,
+    course: document.getElementById('special_course').value,
+    studentId: document.getElementById('special_student_id').value,
+    name: document.getElementById('special_name').value,
+    phone: document.getElementById('special_phone').value,
+    address: document.getElementById('special_address').value,
+    newAddress: document.getElementById('special_new_address').value,
+    notes: document.getElementById('special_notes').value,
+    type: 'special_resend'
+  };
+
+  google.script.run
+    .withSuccessHandler(function(res) {
+      if (res.success) {
+        showToast('✅ บันทึกแล้ว', 'success');
+        closeSpecialResendModal();
+      } else {
+        showToast('❌ ' + (res.error||'เกิดข้อผิดพลาด'), 'error');
+      }
+    })
+    .withFailureHandler(showError)
+    .saveFollowUpRecord(data);
 }
 </script>
 </body>
