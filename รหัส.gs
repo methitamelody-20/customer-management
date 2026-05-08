@@ -185,7 +185,7 @@ const FIREBASE_CONFIG = {
   appId: "1:766285421505:web:6fe74c474b386a6433ad40"
 };
 
-const USE_FIREBASE = true; // ตั้งเป็น true เมื่อต้องการใช้ Firebase
+const USE_FIREBASE = false; // ตั้งเป็น true เมื่อต้องการใช้ Firebase
 
 // Firebase REST API Helper
 function firebaseCall(method, path, data = null) {
