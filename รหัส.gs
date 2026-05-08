@@ -754,6 +754,54 @@ function updateInvestigationFirebase(investId, updates) {
   } catch(e) { return { success:false, error:e.message }; }
 }
 
+function saveFollowUpRecordFirebase(data) {
+  if (!USE_FIREBASE) return saveFollowUpRecord(data);
+  if (!_autoRefreshSession()) return { success:false, error:'SESSION_EXPIRED' };
+  try {
+    const sess = _sess();
+
+    // Update CRM in Firebase
+    const crmUpdates = {
+      followUpType: data.type || '',
+      followUpCause: data.cause || '',
+      followUpDate: new Date().toISOString(),
+      followUpNotes: data.notes || '',
+      followUpStatus: 'บันทึกแล้ว'
+    };
+
+    const crmResult = firebaseCall('PATCH', '/crm/' + data.crmId, crmUpdates);
+    if (!crmResult) {
+      return { success:false, error:'ไม่สามารถอัปเดต CRM ได้' };
+    }
+
+    // Create follow-up record in Firebase records
+    const followUpId = Utilities.getUuid();
+    const followUpRecord = {
+      id: followUpId,
+      crmId: data.crmId,
+      type: data.type,
+      cause: data.cause,
+      course: data.course,
+      studentId: data.studentId,
+      createdAt: new Date().toISOString(),
+      status: 'บันทึกแล้ว',
+      recorderName: sess.name || sess.email,
+      notes: data.notes || ''
+    };
+
+    const recordResult = firebaseCall('PUT', '/followUps/' + followUpId, followUpRecord);
+    if (!recordResult) {
+      return { success:false, error:'ไม่สามารถบันทึก Follow-up ได้' };
+    }
+
+    logAudit('บันทึก Follow-up (Firebase)', data.crmId + ' | ' + data.type + ' | นศ.' + data.studentId);
+    return { success:true, message:'บันทึก follow-up แล้ว', followUpId:followUpId };
+  } catch(e) {
+    Logger.log('saveFollowUpRecordFirebase error: ' + e.message);
+    return { success:false, error:e.message };
+  }
+}
+
 // ============================================================
 // MIGRATION FUNCTIONS - Sheets → Firebase
 // ============================================================
@@ -1602,6 +1650,102 @@ function _updateCrmField(id, col, val) {
     }
     return { success:false, error:'ไม่พบรายการ' };
   } catch(e) { return { success:false, error:e.message }; }
+}
+
+function saveFollowUpRecord(data) {
+  if (!_autoRefreshSession()) return { success:false, error:'SESSION_EXPIRED' };
+  try {
+    const sess = _sess();
+    const recorderName = sess.name || sess.email || 'เจ้าหน้าที่';
+
+    // Update CRM Sheet
+    const crmSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SH_CRM);
+    if (!crmSheet) return { success:false, error:'ไม่พบ CRM Sheet' };
+
+    const crmData = crmSheet.getDataRange().getValues();
+    let crmRowIndex = -1;
+    for (let i = 1; i < crmData.length; i++) {
+      if (crmData[i][0] === data.crmId) {
+        crmRowIndex = i;
+        break;
+      }
+    }
+
+    if (crmRowIndex === -1) {
+      return { success:false, error:'ไม่พบ CRM ID: ' + data.crmId };
+    }
+
+    // Add follow-up info to CRM (columns 25-29: followUpType, followUpCause, followUpDate, followUpNotes, followUpStatus)
+    const followUpDate = fmtDate(new Date());
+    const followUpStatus = 'บันทึกแล้ว';
+
+    crmSheet.getRange(crmRowIndex + 1, 25).setValue(data.type || '');
+    crmSheet.getRange(crmRowIndex + 1, 26).setValue(data.cause || '');
+    crmSheet.getRange(crmRowIndex + 1, 27).setValue(followUpDate);
+    crmSheet.getRange(crmRowIndex + 1, 28).setValue(data.notes || '');
+    crmSheet.getRange(crmRowIndex + 1, 29).setValue(followUpStatus);
+
+    // Update/Create record in ข้อมูลพัสดุ Sheet
+    const dataSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SH_DATA);
+    if (!dataSheet) return { success:false, error:'ไม่พบ ข้อมูลพัสดุ Sheet' };
+
+    const dataRows = dataSheet.getDataRange().getValues();
+    let existingRowIndex = -1;
+
+    // Find existing row by course + studentId
+    const searchCourse = String(data.course || '').trim();
+    const searchStudentId = String(data.studentId || '').trim();
+
+    for (let i = 1; i < dataRows.length; i++) {
+      const rowCourse = String(dataRows[i][6] || '').trim();
+      const rowStudentId = String(dataRows[i][7] || '').trim();
+      if (rowCourse === searchCourse && rowStudentId === searchStudentId) {
+        existingRowIndex = i;
+        break;
+      }
+    }
+
+    if (existingRowIndex !== -1) {
+      // UPDATE existing row - add follow-up info to columns 30+
+      dataSheet.getRange(existingRowIndex + 1, 30).setValue(data.type || '');
+      dataSheet.getRange(existingRowIndex + 1, 31).setValue(data.cause || '');
+      dataSheet.getRange(existingRowIndex + 1, 32).setValue(followUpDate);
+      dataSheet.getRange(existingRowIndex + 1, 33).setValue(followUpStatus);
+
+      logAudit('บันทึก Follow-up (อัปเดต)', data.crmId + ' | ' + data.type + ' | นศ.' + data.studentId);
+    } else {
+      // CREATE new row in ข้อมูลพัสดุ
+      const now = new Date();
+      const pfx = {return:'P', loan:'L', special_resend:'S'}[data.type] || 'P';
+      const newId = pfx + Utilities.formatDate(now, 'Asia/Bangkok', 'yyyyMMdd') + '-' + (dataSheet.getLastRow() + 1);
+
+      const newRow = [
+        newId, fmtDate(now), '', '', data.type, '',
+        data.course || '', data.studentId || '', '',
+        '', '',
+        '', '', '', '',
+        '', '', data.phone || '',
+        data.cause || '', '',
+        '', '',
+        '', '',
+        '', '',
+        JSON.stringify([data.course]), 'บันทึกแล้ว', fmtDate(now), recorderName,
+        // Follow-up columns
+        data.type || '', data.cause || '', followUpDate, 'บันทึกแล้ว'
+      ];
+
+      dataSheet.appendRow(newRow);
+      const lr = dataSheet.getLastRow();
+      if (lr % 2 === 0) dataSheet.getRange(lr, 1, 1, newRow.length).setBackground('#f0f4f8');
+
+      logAudit('บันทึก Follow-up (สร้างใหม่)', data.crmId + ' | ' + data.type + ' | นศ.' + data.studentId);
+    }
+
+    return { success:true, message:'บันทึก follow-up แล้ว' };
+  } catch(e) {
+    Logger.log('saveFollowUpRecord error: ' + e.message);
+    return { success:false, error:e.message };
+  }
 }
 
 // ============================================================
