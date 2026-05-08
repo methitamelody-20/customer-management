@@ -3988,23 +3988,20 @@ function splitCourseCodeIntelligently(codeStr) {
     return codeStr.split(',').map(c => c.trim()).filter(c => c);
   }
 
-  // Handle period-separated codes (e.g., 101.211.012.110)
-  if (codeStr.includes('.')) {
-    return codeStr.split('.').map(c => c.trim()).filter(c => c);
-  }
-
-  // If not digit-only or less than 6 digits, return as-is
-  if (!/^\d{6,}$/.test(codeStr)) {
+  // If not digit-only or less than 5 digits, return as-is
+  if (!/^\d{5,}$/.test(codeStr)) {
     return [codeStr];
   }
 
-  // Recursively split concatenated codes
+  // Recursively split concatenated codes (prefer 5-digit chunks)
   function findOptimalSplit(str, accumulated) {
     accumulated = accumulated || [];
     if (!str) return accumulated.length > 0 ? accumulated : null;
-    if (str.length < 3) return null;
+    if (str.length < 5) return null;
 
-    for (let len = 7; len >= 3; len--) {
+    // Try 5-digit chunks first, then 6, 7, 4
+    const lengths = [5, 6, 7, 4];
+    for (let len of lengths) {
       if (str.length >= len) {
         const chunk = str.substring(0, len);
         const rest = str.substring(len);
