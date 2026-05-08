@@ -1008,8 +1008,8 @@ tbody td{padding:12px;vertical-align:middle}
         <div class="card" style="padding:0">
           <div class="table-wrap">
             <table>
-              <thead><tr><th>#</th><th>ประเภท</th><th>วันที่</th><th>ภาค/ปี</th><th>ชุดวิชา</th><th>รหัสนักศึกษา</th><th>ชื่อ-สกุล</th><th>จังหวัด/อำเภอ</th><th>สาเหตุ</th><th>ติดต่อ</th><th>Tag</th><th>สถานะ</th><th>หมายเหตุ</th><th>ใบจ่าหน้า/อีเมล</th><th class="no-print">ลบข้อมูล</th><th class="no-print">จัดการ</th></tr></thead>
-              <tbody id="listBody"><tr><td colspan="16" style="text-align:center;padding:30px;color:var(--gray3)">กำลังโหลด...</td></tr></tbody>
+              <thead><tr><th>#</th><th>ประเภท</th><th>วันที่</th><th>ภาค/ปี</th><th>ชุดวิชา</th><th>รหัสนักศึกษา</th><th>ชื่อ-สกุล</th><th>จังหวัด/อำเภอ</th><th>เลขพัสดุ</th><th>ที่อยู่ที่ส่ง</th><th>วันที่ส่ง</th><th>สาเหตุ</th><th>ติดต่อ</th><th>Tag</th><th>สถานะ</th><th>หมายเหตุ</th><th>ใบจ่าหน้า/อีเมล</th><th class="no-print">แก้ไข</th><th class="no-print">ลบข้อมูล</th><th class="no-print">จัดการ</th></tr></thead>
+              <tbody id="listBody"><tr><td colspan="20" style="text-align:center;padding:30px;color:var(--gray3)">กำลังโหลด...</td></tr></tbody>
             </table>
           </div>
           <div style="padding:12px 16px;border-top:1px solid var(--gray1);display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap" class="no-print" id="listPagination">
@@ -2442,6 +2442,47 @@ tbody td{padding:12px;vertical-align:middle}
   </div>
 </div>
 
+<!-- MODAL: แก้ไขเลขพัสดุ -->
+<div class="modal-overlay hidden" id="parcelEditModal">
+  <div class="modal" style="max-width:600px">
+    <div class="modal-title">📮 แก้ไขเลขพัสดุและวันที่ส่ง</div>
+    <input type="hidden" id="pe_record_id">
+    <div style="background:#f0f4f8;border-radius:var(--rsm);padding:12px;margin-bottom:14px">
+      <div style="font-size:12px;font-weight:700;color:var(--navy);margin-bottom:10px">📋 ข้อมูลรายการ</div>
+      <div style="font-size:13px;display:grid;grid-template-columns:1fr 1fr;gap:12px 20px">
+        <div><span style="color:var(--gray3)">รหัส:</span> <strong id="pe_id">—</strong></div>
+        <div><span style="color:var(--gray3)">นักศึกษา:</span> <strong id="pe_student">—</strong></div>
+        <div><span style="color:var(--gray3)">ชุดวิชา:</span> <strong id="pe_course">—</strong></div>
+        <div><span style="color:var(--gray3)">ปีการศึกษา:</span> <strong id="pe_year">—</strong></div>
+      </div>
+    </div>
+
+    <div class="form-grid g2" style="margin-bottom:12px">
+      <div class="fg full">
+        <label class="flbl">🚚 เลขพัสดุส่งครั้งที่ 1</label>
+        <input class="finput" id="pe_send1_track" placeholder="เช่น EG012345678TH">
+      </div>
+      <div class="fg full">
+        <label class="flbl">📅 วันที่ส่งครั้งที่ 1</label>
+        <input class="finput" id="pe_send1_date" type="text" placeholder="dd/mm/yyyy HH:mm">
+      </div>
+      <div class="fg full">
+        <label class="flbl">🚚 เลขพัสดุส่งครั้งที่ 2 (ส่งใหม่)</label>
+        <input class="finput" id="pe_send2_track" placeholder="เช่น EG987654321TH">
+      </div>
+      <div class="fg full">
+        <label class="flbl">📅 วันที่ส่งครั้งที่ 2 (ส่งใหม่)</label>
+        <input class="finput" id="pe_send2_date" type="text" placeholder="dd/mm/yyyy HH:mm">
+      </div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="saveParcelEdit()">💾 บันทึก</button>
+      <button class="btn btn-outline" onclick="closeParcelEditModal()">ปิด</button>
+    </div>
+  </div>
+</div>
+
 <script>
 // ============================================================
 // SETPW PARAMS — extract from URL parameters
@@ -3700,6 +3741,9 @@ function renderListRows(rows, startIdx) {
       +'<td style="font-family:monospace;font-size:11px">'+(r.studentId||'')+'</td>'
       +'<td>'+(r.prefix||'')+(r.firstName||'')+' '+(r.lastName||'')+'</td>'
       +'<td style="font-size:11px">'+(r.province||'')+'<br><span style="color:var(--gray3)">'+(r.district||'')+' '+(r.zipCode||'')+'</span></td>'
+      +'<td style="font-size:11px;font-family:monospace">'+(r.send2Track||r.send1Track||'—')+'</td>'
+      +'<td style="font-size:11px">'+(r.houseNo||'')+' '+(r.street||'')+' '+(r.subDistrict||'')+'<br><span style="color:var(--gray3)">'+(r.district||'')+' '+(r.province||'')+'</span></td>'
+      +'<td style="font-size:11px;white-space:nowrap">'+(r.send2Date||r.send1Date||'—')+'</td>'
       +'<td style="color:var(--red);font-size:11px">'+(r.cause||'')+'</td>'
       +'<td>'+contactIcon(r.contactStatus)+'</td>'
       +'<td>'+renderTagChips(tags)+'</td>'
@@ -3708,6 +3752,7 @@ function renderListRows(rows, startIdx) {
       +'<td class="no-print" style="white-space:nowrap">'+printBtn
         +'<button class="btn btn-outline btn-sm" title="แจ้งทางอีเมล" onclick="openEmailModalById(\''+r.id+'\')" style="font-size:11px;padding:4px 8px;margin-left:4px">📧</button>'
       +'</td>'
+      +'<td class="no-print"><button class="btn btn-outline btn-sm" title="แก้ไขเลขพัสดุ/วันที่ส่ง" onclick="openParcelEditModal(\''+r.id+'\')" style="font-size:11px;padding:4px 8px;background:#ffc107;color:#000">📮</button></td>'
       +'<td class="no-print">'+delBtn+'</td>'
       +'<td class="no-print">'+editBtn+'</td>'
       +'</tr>';
@@ -7937,6 +7982,50 @@ function saveSpecialResendRecord() {
     })
     .withFailureHandler(showError)
     .saveFollowUpRecord(data);
+}
+
+// ============================================================
+// PARCEL EDIT FUNCTIONS
+// ============================================================
+function openParcelEditModal(recordId) {
+  const r = _recordMap[recordId] || {};
+  document.getElementById('pe_record_id').value = recordId;
+  document.getElementById('pe_id').textContent = r.id || '—';
+  document.getElementById('pe_student').textContent = (r.prefix||'') + (r.firstName||'') + ' ' + (r.lastName||'');
+  document.getElementById('pe_course').textContent = r.courseCode || '—';
+  document.getElementById('pe_year').textContent = r.year || '—';
+
+  document.getElementById('pe_send1_track').value = r.send1Track || '';
+  document.getElementById('pe_send1_date').value = r.send1Date || '';
+  document.getElementById('pe_send2_track').value = r.send2Track || '';
+  document.getElementById('pe_send2_date').value = r.send2Date || '';
+
+  document.getElementById('parcelEditModal').classList.remove('hidden');
+}
+
+function closeParcelEditModal() {
+  document.getElementById('parcelEditModal').classList.add('hidden');
+}
+
+function saveParcelEdit() {
+  const recordId = document.getElementById('pe_record_id').value;
+  const send1Track = document.getElementById('pe_send1_track').value.trim();
+  const send1Date = document.getElementById('pe_send1_date').value.trim();
+  const send2Track = document.getElementById('pe_send2_track').value.trim();
+  const send2Date = document.getElementById('pe_send2_date').value.trim();
+
+  google.script.run
+    .withSuccessHandler(function(res) {
+      if (res.success) {
+        showToast('✅ บันทึกเลขพัสดุแล้ว', 'success');
+        closeParcelEditModal();
+        loadList(); // โหลดข้อมูลใหม่
+      } else {
+        showToast('❌ ' + (res.error||'เกิดข้อผิดพลาด'), 'error');
+      }
+    })
+    .withFailureHandler(showError)
+    .updateRecordParcel(recordId, send1Track, send1Date, send2Track, send2Date);
 }
 </script>
 </body>

@@ -1694,6 +1694,37 @@ function getInvestigationByRefId(refId) {
   }
 }
 
+function updateRecordParcel(recordId, send1Track, send1Date, send2Track, send2Date) {
+  if (!_autoRefreshSession()) return { success:false, error:'SESSION_EXPIRED' };
+  try {
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SH_DATA);
+    if (!sheet) return { success:false, error:'ไม่พบ Sheet ข้อมูลพัสดุ' };
+
+    const data = sheet.getDataRange().getValues();
+    for (let i = 1; i < data.length; i++) {
+      if (String(data[i][0] || '').trim() === String(recordId || '').trim()) {
+        // Found the record
+        // Column indices (0-based): 20=send1Track, 21=send1Date, 22=send2Track, 23=send2Date
+        if (send1Track) sheet.getRange(i + 1, 21).setValue(send1Track); // col 21 = send1Track (col 20 in 1-based)
+        if (send1Date) sheet.getRange(i + 1, 22).setValue(send1Date);   // col 22 = send1Date
+        if (send2Track) sheet.getRange(i + 1, 23).setValue(send2Track); // col 23 = send2Track
+        if (send2Date) sheet.getRange(i + 1, 24).setValue(send2Date);   // col 24 = send2Date
+
+        // Update timestamp
+        sheet.getRange(i + 1, 29).setValue(new Date());
+
+        logAudit('แก้ไขเลขพัสดุ', recordId + ' | send1: ' + send1Track + ' | send2: ' + send2Track);
+        return { success:true, message:'อัปเดตเลขพัสดุแล้ว' };
+      }
+    }
+
+    return { success:false, error:'ไม่พบรายการ ' + recordId };
+  } catch(e) {
+    Logger.log('updateRecordParcel error: ' + e.message);
+    return { success:false, error:e.message };
+  }
+}
+
 function updateCrmStatus(id, status) {
   if (!_autoRefreshSession()) return { success:false, error:'SESSION_EXPIRED' };
   return _updateCrmField(id, 17, status);
