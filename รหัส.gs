@@ -1672,6 +1672,28 @@ function getAddressFromRecord(studentId, courseCode) {
   }
 }
 
+function getInvestigationByRefId(refId) {
+  try {
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SH_INVEST);
+    if (!sheet) return { success:false, investigationId:null, rowIndex:-1 };
+
+    const data = sheet.getDataRange().getValues();
+    const refIdStr = String(refId || '').trim();
+
+    for (let i = 1; i < data.length; i++) {
+      const rowRefId = String(data[i][1] || '').trim();
+      if (rowRefId === refIdStr) {
+        return { success:true, investigationId:String(data[i][0] || ''), rowIndex:i };
+      }
+    }
+
+    return { success:false, investigationId:null, rowIndex:-1 };
+  } catch(e) {
+    Logger.log('getInvestigationByRefId error: ' + e.message);
+    return { success:false, investigationId:null, rowIndex:-1 };
+  }
+}
+
 function updateCrmStatus(id, status) {
   if (!_autoRefreshSession()) return { success:false, error:'SESSION_EXPIRED' };
   return _updateCrmField(id, 17, status);
@@ -1741,8 +1763,11 @@ function saveFollowUpRecord(data) {
       }
     }
 
+    let recordId = null;
+
     if (existingRowIndex !== -1) {
       // UPDATE existing row - add follow-up info to columns 30+
+      recordId = String(dataRows[existingRowIndex][0] || '');
       dataSheet.getRange(existingRowIndex + 1, 30).setValue(data.type || '');
       dataSheet.getRange(existingRowIndex + 1, 31).setValue(data.cause || '');
       dataSheet.getRange(existingRowIndex + 1, 32).setValue(followUpDate);
@@ -1753,10 +1778,10 @@ function saveFollowUpRecord(data) {
       // CREATE new row in ข้อมูลพัสดุ
       const now = new Date();
       const pfx = {return:'P', loan:'L', special_resend:'S'}[data.type] || 'P';
-      const newId = pfx + Utilities.formatDate(now, 'Asia/Bangkok', 'yyyyMMdd') + '-' + (dataSheet.getLastRow() + 1);
+      recordId = pfx + Utilities.formatDate(now, 'Asia/Bangkok', 'yyyyMMdd') + '-' + (dataSheet.getLastRow() + 1);
 
       const newRow = [
-        newId, fmtDate(now), '', '', data.type, '',
+        recordId, fmtDate(now), '', '', data.type, '',
         data.course || '', data.studentId || '', '',
         '', '',
         '', '', '', '',
@@ -1775,6 +1800,35 @@ function saveFollowUpRecord(data) {
       if (lr % 2 === 0) dataSheet.getRange(lr, 1, 1, newRow.length).setBackground('#f0f4f8');
 
       logAudit('บันทึก Follow-up (สร้างใหม่)', data.crmId + ' | ' + data.type + ' | นศ.' + data.studentId);
+    }
+
+    // For loan type, also create investigation record
+    if (data.type === 'loan' && recordId) {
+      try {
+        const investCheck = getInvestigationByRefId(recordId);
+        if (!investCheck.success) {
+          // Investigation record doesn't exist - create one
+          const addResult = addInvestigation({
+            refId: recordId,
+            itemNo: recordId,
+            barcode: '',
+            sentDate: '',
+            courseCode: data.course || '',
+            courseName: '',
+            weight: '',
+            fee: '',
+            recipientName: data.name || '',
+            recipientAddr: data.address || '',
+            cause: data.cause || ''
+          });
+
+          if (addResult.success) {
+            Logger.log('Created investigation record for loan follow-up: ' + addResult.id);
+          }
+        }
+      } catch(investErr) {
+        Logger.log('Error creating investigation for loan: ' + investErr.message);
+      }
     }
 
     return { success:true, message:'บันทึก follow-up แล้ว' };
