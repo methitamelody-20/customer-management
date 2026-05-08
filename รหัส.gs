@@ -1804,6 +1804,20 @@ function saveFollowUpRecord(data) {
       dataSheet.getRange(existingRowIndex + 1, 32).setValue(followUpDate);
       dataSheet.getRange(existingRowIndex + 1, 33).setValue(followUpStatus);
 
+      // Update parcel info (columns 21-24)
+      if (data.parcelTrack || data.parcelDate) {
+        const send1Track = String(dataRows[existingRowIndex][20] || '').trim();
+        if (!send1Track) {
+          // send1 is empty, update send1 columns
+          dataSheet.getRange(existingRowIndex + 1, 21).setValue(data.parcelTrack || '');
+          dataSheet.getRange(existingRowIndex + 1, 22).setValue(data.parcelDate || '');
+        } else {
+          // send1 is filled, update send2 columns
+          dataSheet.getRange(existingRowIndex + 1, 23).setValue(data.parcelTrack || '');
+          dataSheet.getRange(existingRowIndex + 1, 24).setValue(data.parcelDate || '');
+        }
+      }
+
       logAudit('บันทึก Follow-up (อัปเดต)', data.crmId + ' | ' + data.type + ' | นศ.' + data.studentId);
     } else {
       // CREATE new row in ข้อมูลพัสดุ
@@ -1818,7 +1832,7 @@ function saveFollowUpRecord(data) {
         '', '', '', '',
         '', '', data.phone || '',
         data.cause || '', '',
-        '', '',
+        data.parcelTrack || '', data.parcelDate || '',
         '', '',
         '', '',
         JSON.stringify([data.course]), 'บันทึกแล้ว', fmtDate(now), recorderName,
