@@ -1368,6 +1368,8 @@ function getCrmDashboardData(filters) {
   try {
     const allTickets = getCrmTickets({});
     if (allTickets.error) return { success:false, error:allTickets.error };
+    Logger.log('getCrmDashboardData - allTickets count: ' + allTickets.length);
+    if (allTickets.length > 0) Logger.log('Sample ticket: ' + JSON.stringify(allTickets[0]));
 
     // Filter
     let filtered = allTickets;

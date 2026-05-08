@@ -4846,6 +4846,9 @@ function loadCrmDashboard() {
 }
 
 function renderCrmDashboard(tickets, stats) {
+  console.log('renderCrmDashboard - tickets:', tickets, 'stats:', stats);
+  console.log('Sample ticket courses:', tickets.length > 0 ? tickets[0].courses : 'no tickets');
+
   // Update stats
   document.getElementById('crmd_total').textContent = stats.total;
   document.getElementById('crmd_open').textContent = stats.open;
