@@ -316,7 +316,6 @@ button:disabled{opacity:0.38;cursor:not-allowed}
 /* TABLE - Material Design 3 */
 .table-wrap{overflow-x:auto}
 table{width:100%;border-collapse:collapse;font-size:13px}
-.dropdown{z-index:1001}
 thead tr{background:var(--primary-container);color:var(--on-primary-container);border-bottom:2px solid var(--primary)}
 thead th{padding:14px 12px;text-align:left;font-weight:700;font-size:12px;white-space:nowrap;letter-spacing:0.5px;text-transform:uppercase}
 tbody tr{border-bottom:1px solid var(--outline-variant);transition:background 0.12s}
@@ -2721,13 +2720,6 @@ window.onload = function() {
       document.getElementById('loginScreen').classList.remove('hidden');
     })
     .checkSession();
-
-  // Close dropdowns when clicking outside
-  document.addEventListener('click', function(e) {
-    if (!e.target.closest('.dropdown')) {
-      document.querySelectorAll('.dropdown-menu').forEach(m => m.style.display = 'none');
-    }
-  });
 };
 
 // ============================================================
@@ -3766,7 +3758,8 @@ function renderListRows(rows, startIdx) {
       +'<td class="no-print" style="white-space:nowrap">'+printBtn
         +'<button class="btn btn-outline btn-sm" title="แจ้งทางอีเมล" onclick="openEmailModalById(\''+r.id+'\')" style="font-size:11px;padding:4px 8px;margin-left:4px">📧</button>'
       +'</td>'
-      +'<td class="no-print" style="position:relative"><div class="dropdown" style="position:relative;display:inline-block;width:100%"><button class="btn btn-outline btn-sm" title="จัดการรายการ" onclick="toggleRecordMenu(event,\''+r.id+'\')" style="font-size:11px;padding:4px 8px;width:100%">⚙️ จัดการ</button><div class="dropdown-menu" id="menu-'+r.id+'" style="display:none;position:absolute;right:0;top:calc(100% + 2px);background:#fff;border:1px solid #ddd;border-radius:4px;min-width:180px;z-index:10000;box-shadow:0 2px 12px rgba(0,0,0,0.2)"><button class="dropdown-item" onclick="openRecordDetail(\''+r.id+'\')" style="display:block;width:100%;text-align:left;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:11px;color:var(--navy)">✏️ แก้ไขรายละเอียด</button><button class="dropdown-item" onclick="openParcelEditModal(\''+r.id+'\')" style="display:block;width:100%;text-align:left;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:11px;border-top:1px solid #eee;color:var(--navy)">📮 แก้ไขเลขพัสดุ</button>'+(canDel?'<button class="dropdown-item" onclick="deleteItem(\''+r.id+'\')" style="display:block;width:100%;text-align:left;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:11px;border-top:1px solid #eee;color:var(--red)">🗑️ ลบข้อมูล</button>':'')+'</div></div></td>'
+      +'<td class="no-print" style="white-space:nowrap">'+delBtn+'</td>'
+      +'<td class="no-print" style="white-space:nowrap"><button class="btn btn-outline btn-sm" title="แก้ไขรายละเอียด" onclick="openRecordDetail(\''+r.id+'\')" style="font-size:11px;padding:4px 8px">✏️</button><button class="btn btn-outline btn-sm" title="แก้ไขเลขพัสดุ" onclick="openParcelEditModal(\''+r.id+'\')" style="font-size:11px;padding:4px 8px;margin-left:4px;background:#ffc107;color:#000">📮</button></td>'
       +'</tr>';
   }).join('');
 }
@@ -3801,18 +3794,6 @@ function quickUpdateStatus(id, status) {
     .withSuccessHandler(function(res){ if(res.success) showToast('อัปเดตสถานะแล้ว','success'); else showToast('❌ '+res.error,'error'); })
     .withFailureHandler(showError)
     .updateRecordField(id, 'status', status);
-}
-
-function toggleRecordMenu(event, id) {
-  event.stopPropagation();
-  const menu = document.getElementById('menu-' + id);
-  if (menu) {
-    menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
-  }
-  // Close other menus
-  document.querySelectorAll('.dropdown-menu').forEach(m => {
-    if (m.id !== 'menu-' + id) m.style.display = 'none';
-  });
 }
 
 function openRecordDetail(idOrObj) {
