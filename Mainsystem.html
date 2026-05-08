@@ -2373,6 +2373,8 @@ tbody td{padding:12px;vertical-align:middle}
       <div class="fg"><label class="flbl">ชื่อ</label><input class="finput" id="ret_name" readonly></div>
       <div class="fg"><label class="flbl">เบอร์โทร</label><input class="finput" id="ret_phone" readonly></div>
       <div class="fg full"><label class="flbl">ที่อยู่</label><textarea class="ftextarea" id="ret_address" style="height:60px" readonly></textarea></div>
+      <div class="fg"><label class="flbl">🚚 เลขพัสดุ</label><input class="finput" id="ret_parcel_track" placeholder="เช่น EY123456789TH"></div>
+      <div class="fg"><label class="flbl">📅 วันที่ส่ง</label><input class="finput" id="ret_parcel_date" type="text" placeholder="dd/mm/yyyy"></div>
       <div class="fg full"><label class="flbl">หมายเหตุ</label><textarea class="ftextarea" id="ret_notes" style="height:80px" placeholder="หมายเหตุเพิ่มเติม..."></textarea></div>
     </div>
     <div class="btn-row">
@@ -2402,6 +2404,8 @@ tbody td{padding:12px;vertical-align:middle}
       <div class="fg"><label class="flbl">เบอร์โทร</label><input class="finput" id="loan_phone" readonly></div>
       <div class="fg"><label class="flbl">วันที่ต้องคืน</label><input class="finput" id="loan_due_date" type="date"></div>
       <div class="fg full"><label class="flbl">ที่อยู่</label><textarea class="ftextarea" id="loan_address" style="height:60px" readonly></textarea></div>
+      <div class="fg"><label class="flbl">🚚 เลขพัสดุ</label><input class="finput" id="loan_parcel_track" placeholder="เช่น EY123456789TH"></div>
+      <div class="fg"><label class="flbl">📅 วันที่ส่ง</label><input class="finput" id="loan_parcel_date" type="text" placeholder="dd/mm/yyyy"></div>
       <div class="fg full"><label class="flbl">หมายเหตุ</label><textarea class="ftextarea" id="loan_notes" style="height:80px" placeholder="หมายเหตุเพิ่มเติม..."></textarea></div>
     </div>
     <div class="btn-row">
@@ -2433,6 +2437,8 @@ tbody td{padding:12px;vertical-align:middle}
       <div class="fg"><label class="flbl">เบอร์โทร</label><input class="finput" id="special_phone" readonly></div>
       <div class="fg full"><label class="flbl">ที่อยู่</label><textarea class="ftextarea" id="special_address" style="height:60px" readonly></textarea></div>
       <div class="fg full"><label class="flbl">ที่อยู่ใหม่ (ถ้าเปลี่ยนที่อยู่)</label><textarea class="ftextarea" id="special_new_address" style="height:60px" placeholder="ถ้าเป็นการเปลี่ยนที่อยู่ให้ใส่ที่อยู่ใหม่..."></textarea></div>
+      <div class="fg"><label class="flbl">🚚 เลขพัสดุ</label><input class="finput" id="special_parcel_track" placeholder="เช่น EY123456789TH"></div>
+      <div class="fg"><label class="flbl">📅 วันที่ส่ง</label><input class="finput" id="special_parcel_date" type="text" placeholder="dd/mm/yyyy"></div>
       <div class="fg full"><label class="flbl">หมายเหตุ</label><textarea class="ftextarea" id="special_notes" style="height:80px" placeholder="หมายเหตุเพิ่มเติม..."></textarea></div>
     </div>
     <div class="btn-row">
@@ -7842,6 +7848,8 @@ function saveReturnRecord() {
     phone: document.getElementById('ret_phone').value,
     address: document.getElementById('ret_address').value,
     notes: document.getElementById('ret_notes').value,
+    parcelTrack: document.getElementById('ret_parcel_track').value.trim(),
+    parcelDate: document.getElementById('ret_parcel_date').value.trim(),
     type: 'return'
   };
 
@@ -7905,6 +7913,8 @@ function saveLoanRecord() {
     address: document.getElementById('loan_address').value,
     dueDate: document.getElementById('loan_due_date').value,
     notes: document.getElementById('loan_notes').value,
+    parcelTrack: document.getElementById('loan_parcel_track').value.trim(),
+    parcelDate: document.getElementById('loan_parcel_date').value.trim(),
     type: 'loan'
   };
 
@@ -7968,6 +7978,8 @@ function saveSpecialResendRecord() {
     address: document.getElementById('special_address').value,
     newAddress: document.getElementById('special_new_address').value,
     notes: document.getElementById('special_notes').value,
+    parcelTrack: document.getElementById('special_parcel_track').value.trim(),
+    parcelDate: document.getElementById('special_parcel_date').value.trim(),
     type: 'special_resend'
   };
 
