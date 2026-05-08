@@ -2374,7 +2374,7 @@ tbody td{padding:12px;vertical-align:middle}
       <div class="fg"><label class="flbl">เบอร์โทร</label><input class="finput" id="ret_phone" readonly></div>
       <div class="fg full"><label class="flbl">ที่อยู่</label><textarea class="ftextarea" id="ret_address" style="height:60px" readonly></textarea></div>
       <div class="fg"><label class="flbl">🚚 เลขพัสดุ</label><input class="finput" id="ret_parcel_track" placeholder="เช่น EY123456789TH"></div>
-      <div class="fg"><label class="flbl">📅 วันที่ส่ง</label><input class="finput" id="ret_parcel_date" type="text" placeholder="dd/mm/yyyy"></div>
+      <div class="fg"><label class="flbl">📅 วันที่ส่ง</label><input class="finput" id="ret_parcel_date" type="date"></div>
       <div class="fg full"><label class="flbl">หมายเหตุ</label><textarea class="ftextarea" id="ret_notes" style="height:80px" placeholder="หมายเหตุเพิ่มเติม..."></textarea></div>
     </div>
     <div class="btn-row">
@@ -2405,7 +2405,7 @@ tbody td{padding:12px;vertical-align:middle}
       <div class="fg"><label class="flbl">วันที่ต้องคืน</label><input class="finput" id="loan_due_date" type="date"></div>
       <div class="fg full"><label class="flbl">ที่อยู่</label><textarea class="ftextarea" id="loan_address" style="height:60px" readonly></textarea></div>
       <div class="fg"><label class="flbl">🚚 เลขพัสดุ</label><input class="finput" id="loan_parcel_track" placeholder="เช่น EY123456789TH"></div>
-      <div class="fg"><label class="flbl">📅 วันที่ส่ง</label><input class="finput" id="loan_parcel_date" type="text" placeholder="dd/mm/yyyy"></div>
+      <div class="fg"><label class="flbl">📅 วันที่ส่ง</label><input class="finput" id="loan_parcel_date" type="date"></div>
       <div class="fg full"><label class="flbl">หมายเหตุ</label><textarea class="ftextarea" id="loan_notes" style="height:80px" placeholder="หมายเหตุเพิ่มเติม..."></textarea></div>
     </div>
     <div class="btn-row">
@@ -2438,7 +2438,7 @@ tbody td{padding:12px;vertical-align:middle}
       <div class="fg full"><label class="flbl">ที่อยู่</label><textarea class="ftextarea" id="special_address" style="height:60px" readonly></textarea></div>
       <div class="fg full"><label class="flbl">ที่อยู่ใหม่ (ถ้าเปลี่ยนที่อยู่)</label><textarea class="ftextarea" id="special_new_address" style="height:60px" placeholder="ถ้าเป็นการเปลี่ยนที่อยู่ให้ใส่ที่อยู่ใหม่..."></textarea></div>
       <div class="fg"><label class="flbl">🚚 เลขพัสดุ</label><input class="finput" id="special_parcel_track" placeholder="เช่น EY123456789TH"></div>
-      <div class="fg"><label class="flbl">📅 วันที่ส่ง</label><input class="finput" id="special_parcel_date" type="text" placeholder="dd/mm/yyyy"></div>
+      <div class="fg"><label class="flbl">📅 วันที่ส่ง</label><input class="finput" id="special_parcel_date" type="date"></div>
       <div class="fg full"><label class="flbl">หมายเหตุ</label><textarea class="ftextarea" id="special_notes" style="height:80px" placeholder="หมายเหตุเพิ่มเติม..."></textarea></div>
     </div>
     <div class="btn-row">
@@ -2470,7 +2470,7 @@ tbody td{padding:12px;vertical-align:middle}
       </div>
       <div class="fg full">
         <label class="flbl">📅 วันที่ส่งครั้งที่ 1</label>
-        <input class="finput" id="pe_send1_date" type="text" placeholder="dd/mm/yyyy HH:mm">
+        <input class="finput" id="pe_send1_date" type="date">
       </div>
       <div class="fg full">
         <label class="flbl">🚚 เลขพัสดุส่งครั้งที่ 2 (ส่งใหม่)</label>
@@ -2478,7 +2478,7 @@ tbody td{padding:12px;vertical-align:middle}
       </div>
       <div class="fg full">
         <label class="flbl">📅 วันที่ส่งครั้งที่ 2 (ส่งใหม่)</label>
-        <input class="finput" id="pe_send2_date" type="text" placeholder="dd/mm/yyyy HH:mm">
+        <input class="finput" id="pe_send2_date" type="date">
       </div>
     </div>
 
@@ -2720,6 +2720,13 @@ window.onload = function() {
       document.getElementById('loginScreen').classList.remove('hidden');
     })
     .checkSession();
+
+  // Close dropdowns when clicking outside
+  document.addEventListener('click', function(e) {
+    if (!e.target.closest('.dropdown')) {
+      document.querySelectorAll('.dropdown-menu').forEach(m => m.style.display = 'none');
+    }
+  });
 };
 
 // ============================================================
@@ -3758,9 +3765,8 @@ function renderListRows(rows, startIdx) {
       +'<td class="no-print" style="white-space:nowrap">'+printBtn
         +'<button class="btn btn-outline btn-sm" title="แจ้งทางอีเมล" onclick="openEmailModalById(\''+r.id+'\')" style="font-size:11px;padding:4px 8px;margin-left:4px">📧</button>'
       +'</td>'
-      +'<td class="no-print"><button class="btn btn-outline btn-sm" title="แก้ไขเลขพัสดุ/วันที่ส่ง" onclick="openParcelEditModal(\''+r.id+'\')" style="font-size:11px;padding:4px 8px;background:#ffc107;color:#000">📮</button></td>'
       +'<td class="no-print">'+delBtn+'</td>'
-      +'<td class="no-print">'+editBtn+'</td>'
+      +'<td class="no-print"><div class="dropdown" style="position:relative;display:inline-block"><button class="btn btn-outline btn-sm" title="จัดการรายการ" onclick="toggleRecordMenu(event,\''+r.id+'\')" style="font-size:11px;padding:4px 8px">⚙️ จัดการ</button><div class="dropdown-menu" id="menu-'+r.id+'" style="display:none;position:absolute;right:0;top:100%;background:#fff;border:1px solid #ddd;border-radius:4px;min-width:160px;z-index:1000;box-shadow:0 2px 8px rgba(0,0,0,0.15)"><button class="dropdown-item" onclick="openRecordDetail(\''+r.id+'\')" style="display:block;width:100%;text-align:left;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:11px">✏️ แก้ไขรายละเอียด</button><button class="dropdown-item" onclick="openParcelEditModal(\''+r.id+'\')" style="display:block;width:100%;text-align:left;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:11px;border-top:1px solid #eee">📮 แก้ไขเลขพัสดุ</button></div></div></td>'
       +'</tr>';
   }).join('');
 }
@@ -3795,6 +3801,18 @@ function quickUpdateStatus(id, status) {
     .withSuccessHandler(function(res){ if(res.success) showToast('อัปเดตสถานะแล้ว','success'); else showToast('❌ '+res.error,'error'); })
     .withFailureHandler(showError)
     .updateRecordField(id, 'status', status);
+}
+
+function toggleRecordMenu(event, id) {
+  event.stopPropagation();
+  const menu = document.getElementById('menu-' + id);
+  if (menu) {
+    menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+  }
+  // Close other menus
+  document.querySelectorAll('.dropdown-menu').forEach(m => {
+    if (m.id !== 'menu-' + id) m.style.display = 'none';
+  });
 }
 
 function openRecordDetail(idOrObj) {
