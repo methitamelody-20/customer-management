@@ -1170,7 +1170,7 @@ function addRecord(data) {
       data.cause||'', data.contactStatus||'',
       data.send1Track||'', data.send1Date||'',
       data.send2Track||'', data.send2Date||'',
-      '', '', '', '',  // send3Track, send3Date (reserved)
+      data.send3Track||'', data.send3Date||'',
       data.tags||'', data.remark||'',
       data.courses||'[]',  // JSON array ของชุดวิชาทั้งหมด
       status, fmtDate(now), sess.name||sess.email||'ผู้ใช้งาน',
@@ -1195,8 +1195,8 @@ function getRecords(filters) {
     const lr    = sheet.getLastRow();
     if (lr < 2) return [];
 
-    // ดึงเฉพาะ 30 คอลัมน์ที่ใช้จริง (ต่อมาตรวจสอบจำนวนจริง)
-    const numCols = Math.min(sheet.getLastColumn(), 30);
+    // ดึงทุกคอลัมน์ที่มีข้อมูล
+    const numCols = sheet.getLastColumn();
     const rawRows = sheet.getRange(2,1,lr-1,numCols).getValues();
     const rows = [];
     for (let i = 0; i < rawRows.length; i++) {
@@ -1245,14 +1245,12 @@ function getRecords(filters) {
         send2Date:   D(r[23]),
         send3Track:  S(r[24]),
         send3Date:   D(r[25]),
-        send4Track:  S(r[26]),
-        send4Date:   D(r[27]),
-        tags:        S(r[28]),
-        remark:      S(r[29]),
-        courses:     S(r[30]) || '[]',
-        status:      S(r[31]),
-        updatedAt:   D(r[32]),
-        recorder:    S(r[33]),
+        tags:        S(r[26]),
+        remark:      S(r[27]),
+        courses:     S(r[28]) || '[]',
+        status:      S(r[29]),
+        updatedAt:   D(r[30]),
+        recorder:    S(r[31]),
       });
     }
 
@@ -1841,7 +1839,7 @@ function saveFollowUpRecord(data) {
         data.cause || '', '',
         data.parcelTrack || '', data.parcelDate || '',
         '', '',
-        '', '',
+        '', '', '',
         JSON.stringify([data.course]), 'บันทึกแล้ว', fmtDate(now), recorderName
       ];
 
