@@ -2480,14 +2480,6 @@ tbody td{padding:12px;vertical-align:middle}
         <label class="flbl">📅 วันที่ส่งวิชาที่ 2</label>
         <input class="finput" id="pe_send2_date" type="date">
       </div>
-      <div class="fg full">
-        <label class="flbl">🚚 เลขพัสดุวิชาที่ 3 <span style="color:var(--blue);font-weight:700" id="pe_course3_code"></span></label>
-        <input class="finput" id="pe_send3_track" placeholder="เช่น EG987654321TH">
-      </div>
-      <div class="fg full">
-        <label class="flbl">📅 วันที่ส่งวิชาที่ 3</label>
-        <input class="finput" id="pe_send3_date" type="date">
-      </div>
     </div>
 
     <div class="btn-row">
@@ -8030,14 +8022,11 @@ function openParcelEditModal(recordId) {
   // Display course codes in labels (or fallback to course 1, 2, 3 if not available)
   document.getElementById('pe_course1_code').textContent = '(' + (courseCodes[0] || '—') + ')';
   document.getElementById('pe_course2_code').textContent = '(' + (courseCodes[1] || '—') + ')';
-  document.getElementById('pe_course3_code').textContent = '(' + (courseCodes[2] || '—') + ')';
 
   document.getElementById('pe_send1_track').value = r.send1Track || '';
   document.getElementById('pe_send1_date').value = r.send1Date || '';
   document.getElementById('pe_send2_track').value = r.send2Track || '';
   document.getElementById('pe_send2_date').value = r.send2Date || '';
-  document.getElementById('pe_send3_track').value = r.send3Track || '';
-  document.getElementById('pe_send3_date').value = r.send3Date || '';
 
   document.getElementById('parcelEditModal').classList.remove('hidden');
 }
@@ -8052,21 +8041,19 @@ function saveParcelEdit() {
   const send1Date = document.getElementById('pe_send1_date').value.trim();
   const send2Track = document.getElementById('pe_send2_track').value.trim();
   const send2Date = document.getElementById('pe_send2_date').value.trim();
-  const send3Track = document.getElementById('pe_send3_track').value.trim();
-  const send3Date = document.getElementById('pe_send3_date').value.trim();
 
   google.script.run
     .withSuccessHandler(function(res) {
       if (res.success) {
         showToast('✅ บันทึกเลขพัสดุแล้ว', 'success');
         closeParcelEditModal();
-        loadList(); // โหลดข้อมูลใหม่
+        loadList();
       } else {
         showToast('❌ ' + (res.error||'เกิดข้อผิดพลาด'), 'error');
       }
     })
     .withFailureHandler(showError)
-    .updateRecordParcel(recordId, send1Track, send1Date, send2Track, send2Date, send3Track, send3Date);
+    .updateRecordParcel(recordId, send1Track, send1Date, send2Track, send2Date);
 }
 </script>
 </body>

@@ -1170,7 +1170,6 @@ function addRecord(data) {
       data.cause||'', data.contactStatus||'',
       data.send1Track||'', data.send1Date||'',
       data.send2Track||'', data.send2Date||'',
-      data.send3Track||'', data.send3Date||'',
       data.tags||'', data.remark||'',
       data.courses||'[]',  // JSON array ของชุดวิชาทั้งหมด
       status, fmtDate(now), sess.name||sess.email||'ผู้ใช้งาน',
@@ -1243,14 +1242,12 @@ function getRecords(filters) {
         send1Date:   D(r[21]),
         send2Track:  S(r[22]),
         send2Date:   D(r[23]),
-        send3Track:  S(r[24]),
-        send3Date:   D(r[25]),
-        tags:        S(r[26]),
-        remark:      S(r[27]),
-        courses:     S(r[28]) || '[]',
-        status:      S(r[29]),
-        updatedAt:   D(r[30]),
-        recorder:    S(r[31]),
+        tags:        S(r[24]),
+        remark:      S(r[25]),
+        courses:     S(r[26]) || '[]',
+        status:      S(r[27]),
+        updatedAt:   D(r[28]),
+        recorder:    S(r[29]),
       });
     }
 
@@ -1697,7 +1694,7 @@ function getInvestigationByRefId(refId) {
   }
 }
 
-function updateRecordParcel(recordId, send1Track, send1Date, send2Track, send2Date, send3Track, send3Date) {
+function updateRecordParcel(recordId, send1Track, send1Date, send2Track, send2Date) {
   if (!_autoRefreshSession()) return { success:false, error:'SESSION_EXPIRED' };
   try {
     const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SH_DATA);
@@ -1706,19 +1703,16 @@ function updateRecordParcel(recordId, send1Track, send1Date, send2Track, send2Da
     const data = sheet.getDataRange().getValues();
     for (let i = 1; i < data.length; i++) {
       if (String(data[i][0] || '').trim() === String(recordId || '').trim()) {
-        // Found the record
-        // Column indices (1-based for getRange): 21=send1Track, 22=send1Date, 23=send2Track, 24=send2Date, 25=send3Track, 26=send3Date
-        if (send1Track) sheet.getRange(i + 1, 21).setValue(send1Track);
-        if (send1Date) sheet.getRange(i + 1, 22).setValue(send1Date);
-        if (send2Track) sheet.getRange(i + 1, 23).setValue(send2Track);
-        if (send2Date) sheet.getRange(i + 1, 24).setValue(send2Date);
-        if (send3Track) sheet.getRange(i + 1, 25).setValue(send3Track);
-        if (send3Date) sheet.getRange(i + 1, 26).setValue(send3Date);
+        // Column indices (1-based): 21=send1Track, 22=send1Date, 23=send2Track, 24=send2Date
+        if (send1Track !== undefined) sheet.getRange(i + 1, 21).setValue(send1Track);
+        if (send1Date  !== undefined) sheet.getRange(i + 1, 22).setValue(send1Date);
+        if (send2Track !== undefined) sheet.getRange(i + 1, 23).setValue(send2Track);
+        if (send2Date  !== undefined) sheet.getRange(i + 1, 24).setValue(send2Date);
 
-        // Update timestamp
+        // Update timestamp at column 29 (updatedAt)
         sheet.getRange(i + 1, 29).setValue(new Date());
 
-        logAudit('แก้ไขเลขพัสดุ', recordId + ' | send1: ' + send1Track + ' | send2: ' + send2Track + ' | send3: ' + send3Track);
+        logAudit('แก้ไขเลขพัสดุ', recordId + ' | send1: ' + send1Track + ' | send2: ' + send2Track);
         return { success:true, message:'อัปเดตเลขพัสดุแล้ว' };
       }
     }
@@ -1830,6 +1824,11 @@ function saveFollowUpRecord(data) {
       const pfx = {return:'P', loan:'L', special_resend:'S'}[data.type] || 'P';
       recordId = pfx + Utilities.formatDate(now, 'Asia/Bangkok', 'yyyyMMdd') + '-' + (dataSheet.getLastRow() + 1);
 
+      // 30 columns: 0=id,1=date,2=term,3=year,4=recType,5=parcelType,6=courseCode,7=studentId,
+      // 8=prefix,9=firstName,10=lastName,11=houseNo,12=street,13=subDistrict,14=district,
+      // 15=province,16=zipCode,17=phone,18=cause,19=contactStatus,
+      // 20=send1Track,21=send1Date,22=send2Track,23=send2Date,
+      // 24=tags,25=remark,26=courses,27=status,28=updatedAt,29=recorder
       const newRow = [
         recordId, fmtDate(now), '', '', data.type, '',
         data.course || '', data.studentId || '', '',
@@ -1839,8 +1838,7 @@ function saveFollowUpRecord(data) {
         data.cause || '', '',
         data.parcelTrack || '', data.parcelDate || '',
         '', '',
-        '', '', '',
-        JSON.stringify([data.course]), 'บันทึกแล้ว', fmtDate(now), recorderName
+        '', '', JSON.stringify([data.course]), 'บันทึกแล้ว', fmtDate(now), recorderName
       ];
 
       dataSheet.appendRow(newRow);
