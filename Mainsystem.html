@@ -2463,24 +2463,7 @@ tbody td{padding:12px;vertical-align:middle}
       </div>
     </div>
 
-    <div class="form-grid g2" style="margin-bottom:12px">
-      <div class="fg full">
-        <label class="flbl">🚚 เลขพัสดุวิชาที่ 1 <span style="color:var(--blue);font-weight:700" id="pe_course1_code"></span></label>
-        <input class="finput" id="pe_send1_track" placeholder="เช่น EG012345678TH">
-      </div>
-      <div class="fg full">
-        <label class="flbl">📅 วันที่ส่งวิชาที่ 1</label>
-        <input class="finput" id="pe_send1_date" type="date">
-      </div>
-      <div class="fg full">
-        <label class="flbl">🚚 เลขพัสดุวิชาที่ 2 <span style="color:var(--blue);font-weight:700" id="pe_course2_code"></span></label>
-        <input class="finput" id="pe_send2_track" placeholder="เช่น EG987654321TH">
-      </div>
-      <div class="fg full">
-        <label class="flbl">📅 วันที่ส่งวิชาที่ 2</label>
-        <input class="finput" id="pe_send2_date" type="date">
-      </div>
-    </div>
+    <div id="pe_courses_container" style="margin-bottom:12px"></div>
 
     <div class="btn-row">
       <button class="btn btn-primary" onclick="saveParcelEdit()">💾 บันทึก</button>
@@ -8007,26 +7990,51 @@ function openParcelEditModal(recordId) {
   document.getElementById('pe_course').textContent = r.courseCode || '—';
   document.getElementById('pe_year').textContent = r.year || '—';
 
-  // Parse courses and display course codes
-  let courseCodes = [];
+  // Parse courses with parcel data
+  let courses = [];
   try {
-    const coursesData = JSON.parse(r.courses || '[]');
-    if (Array.isArray(coursesData)) {
-      courseCodes = coursesData.map(c => c.code || c || '—');
+    const parsed = JSON.parse(r.courses || '[]');
+    if (Array.isArray(parsed) && parsed.length > 0) {
+      courses = parsed.map(function(c, idx) {
+        const code = c.code || c || '';
+        const track = c.track || (idx === 0 ? r.send1Track : idx === 1 ? r.send2Track : '') || '';
+        const date  = c.date  || (idx === 0 ? r.send1Date  : idx === 1 ? r.send2Date  : '') || '';
+        return { code: code, track: track, date: date };
+      });
     }
-  } catch(e) {
-    // If courses is not JSON, use courseCode
-    courseCodes = r.courseCode ? [r.courseCode] : [];
+  } catch(e) {}
+
+  // Fallback: if no courses, build from courseCode
+  if (courses.length === 0) {
+    const codes = (r.courseCode || '').split(',').map(function(s){ return s.trim(); }).filter(Boolean);
+    codes.forEach(function(code, idx) {
+      courses.push({ code: code,
+        track: idx === 0 ? (r.send1Track||'') : idx === 1 ? (r.send2Track||'') : '',
+        date:  idx === 0 ? (r.send1Date||'')  : idx === 1 ? (r.send2Date||'')  : '' });
+    });
+    if (courses.length === 0) courses.push({ code: '—', track: r.send1Track||'', date: r.send1Date||'' });
   }
 
-  // Display course codes in labels (or fallback to course 1, 2, 3 if not available)
-  document.getElementById('pe_course1_code').textContent = '(' + (courseCodes[0] || '—') + ')';
-  document.getElementById('pe_course2_code').textContent = '(' + (courseCodes[1] || '—') + ')';
-
-  document.getElementById('pe_send1_track').value = r.send1Track || '';
-  document.getElementById('pe_send1_date').value = r.send1Date || '';
-  document.getElementById('pe_send2_track').value = r.send2Track || '';
-  document.getElementById('pe_send2_date').value = r.send2Date || '';
+  // Render course input rows (max 3)
+  const container = document.getElementById('pe_courses_container');
+  container.innerHTML = '';
+  courses.slice(0, 3).forEach(function(c, idx) {
+    const n = idx + 1;
+    container.innerHTML +=
+      '<div class="form-grid g2" style="margin-bottom:10px;padding:10px;border:1px solid #e2e8f0;border-radius:8px">' +
+        '<div class="fg full" style="grid-column:1/-1">' +
+          '<strong style="color:var(--blue);font-size:13px">📚 ชุดวิชาที่ ' + n + ': ' + esc(c.code) + '</strong>' +
+        '</div>' +
+        '<div class="fg full">' +
+          '<label class="flbl">🚚 เลขพัสดุวิชาที่ ' + n + '</label>' +
+          '<input class="finput pe-track" data-idx="' + idx + '" placeholder="เช่น EG012345678TH" value="' + esc(c.track) + '">' +
+        '</div>' +
+        '<div class="fg full">' +
+          '<label class="flbl">📅 วันที่ส่งวิชาที่ ' + n + '</label>' +
+          '<input class="finput pe-date" data-idx="' + idx + '" type="date" value="' + esc(c.date) + '">' +
+        '</div>' +
+      '</div>';
+  });
 
   document.getElementById('parcelEditModal').classList.remove('hidden');
 }
@@ -8037,10 +8045,38 @@ function closeParcelEditModal() {
 
 function saveParcelEdit() {
   const recordId = document.getElementById('pe_record_id').value;
-  const send1Track = document.getElementById('pe_send1_track').value.trim();
-  const send1Date = document.getElementById('pe_send1_date').value.trim();
-  const send2Track = document.getElementById('pe_send2_track').value.trim();
-  const send2Date = document.getElementById('pe_send2_date').value.trim();
+  const r = _recordMap[recordId] || {};
+
+  // Rebuild courses JSON with updated parcel data
+  let courses = [];
+  try {
+    const parsed = JSON.parse(r.courses || '[]');
+    if (Array.isArray(parsed) && parsed.length > 0) {
+      courses = parsed.map(function(c) {
+        return { code: c.code || c || '' };
+      });
+    }
+  } catch(e) {}
+
+  if (courses.length === 0) {
+    const codes = (r.courseCode || '').split(',').map(function(s){ return s.trim(); }).filter(Boolean);
+    codes.forEach(function(code) { courses.push({ code: code }); });
+    if (courses.length === 0) courses.push({ code: r.courseCode || '' });
+  }
+
+  // Read updated track/date from input fields
+  const trackInputs = document.querySelectorAll('.pe-track');
+  const dateInputs  = document.querySelectorAll('.pe-date');
+  trackInputs.forEach(function(inp) {
+    const idx = parseInt(inp.getAttribute('data-idx'));
+    if (courses[idx]) courses[idx].track = inp.value.trim();
+  });
+  dateInputs.forEach(function(inp) {
+    const idx = parseInt(inp.getAttribute('data-idx'));
+    if (courses[idx]) courses[idx].date = inp.value.trim();
+  });
+
+  const coursesJson = JSON.stringify(courses);
 
   google.script.run
     .withSuccessHandler(function(res) {
@@ -8053,7 +8089,7 @@ function saveParcelEdit() {
       }
     })
     .withFailureHandler(showError)
-    .updateRecordParcel(recordId, send1Track, send1Date, send2Track, send2Date);
+    .updateRecordCourseParcels(recordId, coursesJson);
 }
 </script>
 </body>

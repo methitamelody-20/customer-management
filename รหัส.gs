@@ -1724,6 +1724,46 @@ function updateRecordParcel(recordId, send1Track, send1Date, send2Track, send2Da
   }
 }
 
+function updateRecordCourseParcels(recordId, coursesJson) {
+  if (!_autoRefreshSession()) return { success:false, error:'SESSION_EXPIRED' };
+  try {
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SH_DATA);
+    if (!sheet) return { success:false, error:'ไม่พบ Sheet ข้อมูลพัสดุ' };
+
+    const data = sheet.getDataRange().getValues();
+    for (let i = 1; i < data.length; i++) {
+      if (String(data[i][0] || '').trim() === String(recordId || '').trim()) {
+        // Update courses JSON at column 27 (1-based = index 26)
+        sheet.getRange(i + 1, 27).setValue(coursesJson);
+
+        // Also sync send1/send2 from first two courses for backward compat
+        try {
+          const courses = JSON.parse(coursesJson || '[]');
+          if (courses[0]) {
+            sheet.getRange(i + 1, 21).setValue(courses[0].track || '');
+            sheet.getRange(i + 1, 22).setValue(courses[0].date  || '');
+          }
+          if (courses[1]) {
+            sheet.getRange(i + 1, 23).setValue(courses[1].track || '');
+            sheet.getRange(i + 1, 24).setValue(courses[1].date  || '');
+          }
+        } catch(e2) {}
+
+        // Update timestamp at column 29
+        sheet.getRange(i + 1, 29).setValue(new Date());
+
+        logAudit('แก้ไขเลขพัสดุ (courses)', recordId + ' | ' + coursesJson.substring(0, 100));
+        return { success:true, message:'อัปเดตเลขพัสดุแล้ว' };
+      }
+    }
+
+    return { success:false, error:'ไม่พบรายการ ' + recordId };
+  } catch(e) {
+    Logger.log('updateRecordCourseParcels error: ' + e.message);
+    return { success:false, error:e.message };
+  }
+}
+
 function updateCrmStatus(id, status) {
   if (!_autoRefreshSession()) return { success:false, error:'SESSION_EXPIRED' };
   return _updateCrmField(id, 17, status);
