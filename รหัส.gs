@@ -1835,9 +1835,7 @@ function saveFollowUpRecord(data) {
         data.parcelTrack || '', data.parcelDate || '',
         '', '',
         '', '',
-        JSON.stringify([data.course]), 'บันทึกแล้ว', fmtDate(now), recorderName,
-        // Follow-up columns
-        data.type || '', data.cause || '', followUpDate, 'บันทึกแล้ว'
+        JSON.stringify([data.course]), 'บันทึกแล้ว', fmtDate(now), recorderName
       ];
 
       dataSheet.appendRow(newRow);
