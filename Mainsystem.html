@@ -2465,7 +2465,7 @@ tbody td{padding:12px;vertical-align:middle}
 
     <div class="form-grid g2" style="margin-bottom:12px">
       <div class="fg full">
-        <label class="flbl">🚚 เลขพัสดุวิชาที่ 1</label>
+        <label class="flbl">🚚 เลขพัสดุวิชาที่ 1 <span style="color:var(--blue);font-weight:700" id="pe_course1_code"></span></label>
         <input class="finput" id="pe_send1_track" placeholder="เช่น EG012345678TH">
       </div>
       <div class="fg full">
@@ -2473,7 +2473,7 @@ tbody td{padding:12px;vertical-align:middle}
         <input class="finput" id="pe_send1_date" type="date">
       </div>
       <div class="fg full">
-        <label class="flbl">🚚 เลขพัสดุวิชาที่ 2</label>
+        <label class="flbl">🚚 เลขพัสดุวิชาที่ 2 <span style="color:var(--blue);font-weight:700" id="pe_course2_code"></span></label>
         <input class="finput" id="pe_send2_track" placeholder="เช่น EG987654321TH">
       </div>
       <div class="fg full">
@@ -2481,7 +2481,7 @@ tbody td{padding:12px;vertical-align:middle}
         <input class="finput" id="pe_send2_date" type="date">
       </div>
       <div class="fg full">
-        <label class="flbl">🚚 เลขพัสดุวิชาที่ 3</label>
+        <label class="flbl">🚚 เลขพัสดุวิชาที่ 3 <span style="color:var(--blue);font-weight:700" id="pe_course3_code"></span></label>
         <input class="finput" id="pe_send3_track" placeholder="เช่น EG987654321TH">
       </div>
       <div class="fg full">
@@ -8014,6 +8014,23 @@ function openParcelEditModal(recordId) {
   document.getElementById('pe_student').textContent = (r.prefix||'') + (r.firstName||'') + ' ' + (r.lastName||'');
   document.getElementById('pe_course').textContent = r.courseCode || '—';
   document.getElementById('pe_year').textContent = r.year || '—';
+
+  // Parse courses and display course codes
+  let courseCodes = [];
+  try {
+    const coursesData = JSON.parse(r.courses || '[]');
+    if (Array.isArray(coursesData)) {
+      courseCodes = coursesData.map(c => c.code || c || '—');
+    }
+  } catch(e) {
+    // If courses is not JSON, use courseCode
+    courseCodes = r.courseCode ? [r.courseCode] : [];
+  }
+
+  // Display course codes in labels (or fallback to course 1, 2, 3 if not available)
+  document.getElementById('pe_course1_code').textContent = '(' + (courseCodes[0] || '—') + ')';
+  document.getElementById('pe_course2_code').textContent = '(' + (courseCodes[1] || '—') + ')';
+  document.getElementById('pe_course3_code').textContent = '(' + (courseCodes[2] || '—') + ')';
 
   document.getElementById('pe_send1_track').value = r.send1Track || '';
   document.getElementById('pe_send1_date').value = r.send1Date || '';
