@@ -2374,7 +2374,7 @@ tbody td{padding:12px;vertical-align:middle}
       <div class="fg"><label class="flbl">เบอร์โทร</label><input class="finput" id="ret_phone" readonly></div>
       <div class="fg full"><label class="flbl">ที่อยู่</label><textarea class="ftextarea" id="ret_address" style="height:60px" readonly></textarea></div>
       <div class="fg"><label class="flbl">🚚 เลขพัสดุ</label><input class="finput" id="ret_parcel_track" placeholder="เช่น EY123456789TH"></div>
-      <div class="fg"><label class="flbl">📅 วันที่ส่ง</label><input class="finput" id="ret_parcel_date" type="date"></div>
+      <div class="fg"><label class="flbl">📅 วันที่ส่ง</label><input class="finput" id="ret_parcel_date" type="date" lang="en-GB"></div>
       <div class="fg full"><label class="flbl">หมายเหตุ</label><textarea class="ftextarea" id="ret_notes" style="height:80px" placeholder="หมายเหตุเพิ่มเติม..."></textarea></div>
     </div>
     <div class="btn-row">
@@ -2402,10 +2402,10 @@ tbody td{padding:12px;vertical-align:middle}
       <div class="fg"><label class="flbl">รหัสนักศึกษา</label><input class="finput" id="loan_student_id" readonly></div>
       <div class="fg"><label class="flbl">ชื่อ</label><input class="finput" id="loan_name" readonly></div>
       <div class="fg"><label class="flbl">เบอร์โทร</label><input class="finput" id="loan_phone" readonly></div>
-      <div class="fg"><label class="flbl">วันที่ต้องคืน</label><input class="finput" id="loan_due_date" type="date"></div>
+      <div class="fg"><label class="flbl">วันที่ต้องคืน</label><input class="finput" id="loan_due_date" type="date" lang="en-GB"></div>
       <div class="fg full"><label class="flbl">ที่อยู่</label><textarea class="ftextarea" id="loan_address" style="height:60px" readonly></textarea></div>
       <div class="fg"><label class="flbl">🚚 เลขพัสดุ</label><input class="finput" id="loan_parcel_track" placeholder="เช่น EY123456789TH"></div>
-      <div class="fg"><label class="flbl">📅 วันที่ส่ง</label><input class="finput" id="loan_parcel_date" type="date"></div>
+      <div class="fg"><label class="flbl">📅 วันที่ส่ง</label><input class="finput" id="loan_parcel_date" type="date" lang="en-GB"></div>
       <div class="fg full"><label class="flbl">หมายเหตุ</label><textarea class="ftextarea" id="loan_notes" style="height:80px" placeholder="หมายเหตุเพิ่มเติม..."></textarea></div>
     </div>
     <div class="btn-row">
@@ -2438,7 +2438,7 @@ tbody td{padding:12px;vertical-align:middle}
       <div class="fg full"><label class="flbl">ที่อยู่</label><textarea class="ftextarea" id="special_address" style="height:60px" readonly></textarea></div>
       <div class="fg full"><label class="flbl">ที่อยู่ใหม่ (ถ้าเปลี่ยนที่อยู่)</label><textarea class="ftextarea" id="special_new_address" style="height:60px" placeholder="ถ้าเป็นการเปลี่ยนที่อยู่ให้ใส่ที่อยู่ใหม่..."></textarea></div>
       <div class="fg"><label class="flbl">🚚 เลขพัสดุ</label><input class="finput" id="special_parcel_track" placeholder="เช่น EY123456789TH"></div>
-      <div class="fg"><label class="flbl">📅 วันที่ส่ง</label><input class="finput" id="special_parcel_date" type="date"></div>
+      <div class="fg"><label class="flbl">📅 วันที่ส่ง</label><input class="finput" id="special_parcel_date" type="date" lang="en-GB"></div>
       <div class="fg full"><label class="flbl">หมายเหตุ</label><textarea class="ftextarea" id="special_notes" style="height:80px" placeholder="หมายเหตุเพิ่มเติม..."></textarea></div>
     </div>
     <div class="btn-row">
@@ -5544,8 +5544,17 @@ function renderTagChips(tags){
   return tags.map(name=>{const t=allTags.find(x=>x.name===name)||{color:0};return`<span class="tag-chip tc${t.color}" style="font-size:10px">${name}</span>`;}).join(' ');
 }
 function formatDate(d){
-  if(!d)return''; const dt=new Date(d);
-  return dt.toLocaleDateString('th-TH',{year:'numeric',month:'2-digit',day:'2-digit'});
+  if(!d) return '';
+  try {
+    // Handle "dd/MM/yyyy" or "dd/MM/yyyy HH:mm" strings already in correct format
+    if (typeof d === 'string' && /^\d{2}\/\d{2}\/\d{4}/.test(d)) return d;
+    const dt = new Date(d);
+    if (isNaN(dt)) return String(d);
+    const dd   = String(dt.getDate()).padStart(2,'0');
+    const mm   = String(dt.getMonth()+1).padStart(2,'0');
+    const yyyy = dt.getFullYear();
+    return dd+'/'+mm+'/'+yyyy;
+  } catch(e) { return String(d); }
 }
 function setLoading(id,msg){const el=document.getElementById(id);if(el)el.innerHTML=`<div style="text-align:center;padding:20px;color:var(--gray3)">${msg||'กำลังโหลด...'}</div>`;}
 function showToast(msg,type){
@@ -8083,7 +8092,7 @@ function openParcelEditModal(recordId) {
         '</div>' +
         '<div class="fg full">' +
           '<label class="flbl">📅 วันที่ส่งวิชาที่ ' + n + '</label>' +
-          '<input class="finput pe-date" data-idx="' + idx + '" type="date" value="' + esc(c.date) + '">' +
+          '<input class="finput pe-date" data-idx="' + idx + '" type="date" lang="en-GB" value="' + esc(c.date) + '">' +
         '</div>' +
       '</div>';
   });
