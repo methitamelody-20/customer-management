@@ -3813,7 +3813,18 @@ function openRecordDetail(idOrObj) {
     +'<div class="fg"><label class="flbl">นามสกุล</label><input class="finput" id="rd_lastName" value="'+esc(r.lastName||'')+'" placeholder="นามสกุล"></div>'
 
     // Row 3: Course code, Phone
-    +'<div class="fg full"><label class="flbl">ชุดวิชา</label><input class="finput" id="rd_courseCode" value="'+esc(r.courseCode||'')+'" placeholder="เช่น 10101"></div>'
+    +'<div class="fg full"><label class="flbl">ชุดวิชา</label>'
+    + (function(){
+      let coursesTxt = r.courseCode || '—';
+      try {
+        const cs = JSON.parse(r.courses || '[]');
+        if (Array.isArray(cs) && cs.length > 0) {
+          coursesTxt = cs.map(function(c) { return c.code || c || ''; }).filter(Boolean).join(', ');
+        }
+      } catch(e) {}
+      return '<input class="finput" id="rd_courseCode" value="'+esc(coursesTxt)+'" placeholder="เช่น 10101" readonly style="background:var(--light);cursor:default">';
+    })()
+    +'</div>'
     +'<div class="fg"><label class="flbl">เบอร์โทร</label><input class="finput" id="rd_phone" value="'+esc(r.phone||'')+'" placeholder="0x-xxx-xxxx"></div>'
 
     // Row 4: Address
@@ -3844,10 +3855,31 @@ function openRecordDetail(idOrObj) {
     // ===== Section 4: History/Timeline =====
     +'<div class="card" style="margin-top:14px">'
     +'<div class="card-title">📅 ประวัติการติดตามและส่ง</div>'
-    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">'
-    +'<div><label class="flbl" style="display:block;margin-bottom:6px">ส่งครั้งที่ 1</label><div style="padding:10px;background:var(--light);border-radius:6px;font-size:13px"><div>หมายเลข: <strong>'+esc(r.send1Track||'—')+'</strong></div><div style="color:var(--gray3);margin-top:4px">'+esc(r.send1Date||'—')+'</div></div></div>'
-    +'<div><label class="flbl" style="display:block;margin-bottom:6px">ส่งครั้งที่ 2</label><div style="padding:10px;background:var(--light);border-radius:6px;font-size:13px"><div>หมายเลข: <strong>'+esc(r.send2Track||'—')+'</strong></div><div style="color:var(--gray3);margin-top:4px">'+esc(r.send2Date||'—')+'</div></div></div>'
-    +'</div>'
+    + (function(){
+      let coursesForHistory = [];
+      try {
+        const cs = JSON.parse(r.courses || '[]');
+        if (Array.isArray(cs) && cs.length > 0) {
+          coursesForHistory = cs.map(function(c) { return { code: c.code || c || '', track: c.track || '', date: c.date || '' }; });
+        }
+      } catch(e) {}
+      if (coursesForHistory.length === 0) {
+        coursesForHistory = [
+          { code: r.courseCode || '', track: r.send1Track || '', date: r.send1Date || '' },
+          { code: '', track: r.send2Track || '', date: r.send2Date || '' }
+        ];
+      }
+      let html = '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px">';
+      coursesForHistory.slice(0,3).forEach(function(c, idx) {
+        html += '<div><label class="flbl" style="display:block;margin-bottom:6px">📚 วิชาที่ '+(idx+1)+(c.code?' ('+esc(c.code)+')':'')+' </label>'
+          +'<div style="padding:10px;background:var(--light);border-radius:6px;font-size:13px">'
+          +'<div>หมายเลข: <strong>'+esc(c.track||'—')+'</strong></div>'
+          +'<div style="color:var(--gray3);margin-top:4px">'+esc(c.date||'—')+'</div>'
+          +'</div></div>';
+      });
+      html += '</div>';
+      return html;
+    })()
     +'</div>'
     +'</div>';
 
@@ -7987,7 +8019,15 @@ function openParcelEditModal(recordId) {
   document.getElementById('pe_record_id').value = recordId;
   document.getElementById('pe_id').textContent = r.id || '—';
   document.getElementById('pe_student').textContent = (r.prefix||'') + (r.firstName||'') + ' ' + (r.lastName||'');
-  document.getElementById('pe_course').textContent = r.courseCode || '—';
+  // Display all courses from JSON
+  let allCourses = r.courseCode || '—';
+  try {
+    const cs = JSON.parse(r.courses || '[]');
+    if (Array.isArray(cs) && cs.length > 0) {
+      allCourses = cs.map(function(c) { return c.code || c || ''; }).filter(Boolean).join(', ');
+    }
+  } catch(e) {}
+  document.getElementById('pe_course').textContent = allCourses;
   document.getElementById('pe_year').textContent = r.year || '—';
 
   // Parse courses with parcel data
