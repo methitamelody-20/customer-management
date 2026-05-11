@@ -3713,11 +3713,15 @@ function renderListRows(rows, startIdx) {
       var cs=JSON.parse(r.courses||'[]');
       if(cs.length) {
         coursesTxt = cs.map(function(c){return c.code;}).join(', ');
-        // Read latest parcel from courses JSON
-        var tracks = cs.map(function(c){return c.track||'';}).filter(Boolean);
-        var dates  = cs.map(function(c){return c.date||'';}).filter(Boolean);
-        if(tracks.length) parcelTrack = tracks[tracks.length-1];
-        if(dates.length)  parcelDate  = dates[dates.length-1];
+        // Show "CODE TRACK" per course that has a track number
+        var parcelLines = cs.filter(function(c){return c.track;})
+          .map(function(c){
+            return '<span style="white-space:nowrap"><span style="color:var(--blue);font-size:10px;font-weight:600">'+esc(c.code)+'</span> '+esc(c.track)+'</span>';
+          });
+        if(parcelLines.length) parcelTrack = parcelLines.join('<br>');
+        // Date: show all unique dates
+        var dates = cs.map(function(c){return c.date||'';}).filter(Boolean);
+        if(dates.length) parcelDate = [...new Set(dates)].join('<br>');
       }
     } catch(e){}
     var isNew=r.date&&r.date.toString().split(' ')[0]===todayStr;
