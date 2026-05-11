@@ -3707,7 +3707,19 @@ function renderListRows(rows, startIdx) {
   const now=new Date(); const todayStr=formatDate(now).split(' ')[0];
   document.getElementById('listBody').innerHTML=rows.map(function(r,i){
     var coursesTxt = r.courseCode||'-';
-    try { var cs=JSON.parse(r.courses||'[]'); if(cs.length) coursesTxt=cs.map(function(c){return c.code;}).join(', '); } catch(e){}
+    var parcelTrack = r.send2Track||r.send1Track||'—';
+    var parcelDate  = r.send2Date||r.send1Date||'—';
+    try {
+      var cs=JSON.parse(r.courses||'[]');
+      if(cs.length) {
+        coursesTxt = cs.map(function(c){return c.code;}).join(', ');
+        // Read latest parcel from courses JSON
+        var tracks = cs.map(function(c){return c.track||'';}).filter(Boolean);
+        var dates  = cs.map(function(c){return c.date||'';}).filter(Boolean);
+        if(tracks.length) parcelTrack = tracks[tracks.length-1];
+        if(dates.length)  parcelDate  = dates[dates.length-1];
+      }
+    } catch(e){}
     var isNew=r.date&&r.date.toString().split(' ')[0]===todayStr;
     var nb=isNew?'<span style="background:var(--accent);color:var(--navy);border-radius:20px;font-size:9px;font-weight:700;padding:1px 6px;margin-left:4px">NEW</span>':'';
     var tags=r.tags?r.tags.split(',').filter(Boolean):[];
@@ -3730,9 +3742,9 @@ function renderListRows(rows, startIdx) {
       +'<td style="font-family:monospace;font-size:11px">'+(r.studentId||'')+'</td>'
       +'<td>'+(r.prefix||'')+(r.firstName||'')+' '+(r.lastName||'')+'</td>'
       +'<td style="font-size:11px">'+(r.province||'')+'<br><span style="color:var(--gray3)">'+(r.district||'')+' '+(r.zipCode||'')+'</span></td>'
-      +'<td style="font-size:11px;font-family:monospace">'+(r.send2Track||r.send1Track||'—')+'</td>'
+      +'<td style="font-size:11px;font-family:monospace">'+parcelTrack+'</td>'
       +'<td style="font-size:11px">'+(r.houseNo||'')+' '+(r.street||'')+' '+(r.subDistrict||'')+'<br><span style="color:var(--gray3)">'+(r.district||'')+' '+(r.province||'')+'</span></td>'
-      +'<td style="font-size:11px;white-space:nowrap">'+(r.send2Date||r.send1Date||'—')+'</td>'
+      +'<td style="font-size:11px;white-space:nowrap">'+parcelDate+'</td>'
       +'<td style="color:var(--red);font-size:11px">'+(r.cause||'')+'</td>'
       +'<td>'+contactIcon(r.contactStatus)+'</td>'
       +'<td>'+renderTagChips(tags)+'</td>'
