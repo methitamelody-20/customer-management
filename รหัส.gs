@@ -1170,7 +1170,7 @@ function addRecord(data) {
       data.cause||'', data.contactStatus||'',
       data.send1Track||'', data.send1Date||'',
       data.send2Track||'', data.send2Date||'',
-      '', '', '', '',  // send3Track, send3Date, send4Track, send4Date (reserved for future use)
+      '', '', '', '',  // send3Track, send3Date (reserved)
       data.tags||'', data.remark||'',
       data.courses||'[]',  // JSON array ของชุดวิชาทั้งหมด
       status, fmtDate(now), sess.name||sess.email||'ผู้ใช้งาน',
@@ -1699,7 +1699,7 @@ function getInvestigationByRefId(refId) {
   }
 }
 
-function updateRecordParcel(recordId, send1Track, send1Date, send2Track, send2Date, send3Track, send3Date, send4Track, send4Date) {
+function updateRecordParcel(recordId, send1Track, send1Date, send2Track, send2Date, send3Track, send3Date) {
   if (!_autoRefreshSession()) return { success:false, error:'SESSION_EXPIRED' };
   try {
     const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SH_DATA);
@@ -1709,20 +1709,18 @@ function updateRecordParcel(recordId, send1Track, send1Date, send2Track, send2Da
     for (let i = 1; i < data.length; i++) {
       if (String(data[i][0] || '').trim() === String(recordId || '').trim()) {
         // Found the record
-        // Column indices (1-based for getRange): 21=send1Track, 22=send1Date, 23=send2Track, 24=send2Date, 25=send3Track, 26=send3Date, 27=send4Track, 28=send4Date
+        // Column indices (1-based for getRange): 21=send1Track, 22=send1Date, 23=send2Track, 24=send2Date, 25=send3Track, 26=send3Date
         if (send1Track) sheet.getRange(i + 1, 21).setValue(send1Track);
         if (send1Date) sheet.getRange(i + 1, 22).setValue(send1Date);
         if (send2Track) sheet.getRange(i + 1, 23).setValue(send2Track);
         if (send2Date) sheet.getRange(i + 1, 24).setValue(send2Date);
         if (send3Track) sheet.getRange(i + 1, 25).setValue(send3Track);
         if (send3Date) sheet.getRange(i + 1, 26).setValue(send3Date);
-        if (send4Track) sheet.getRange(i + 1, 27).setValue(send4Track);
-        if (send4Date) sheet.getRange(i + 1, 28).setValue(send4Date);
 
         // Update timestamp
         sheet.getRange(i + 1, 29).setValue(new Date());
 
-        logAudit('แก้ไขเลขพัสดุ', recordId + ' | send1: ' + send1Track + ' | send2: ' + send2Track + ' | send3: ' + send3Track + ' | send4: ' + send4Track);
+        logAudit('แก้ไขเลขพัสดุ', recordId + ' | send1: ' + send1Track + ' | send2: ' + send2Track + ' | send3: ' + send3Track);
         return { success:true, message:'อัปเดตเลขพัสดุแล้ว' };
       }
     }

@@ -2488,14 +2488,6 @@ tbody td{padding:12px;vertical-align:middle}
         <label class="flbl">📅 วันที่ส่งวิชาที่ 3</label>
         <input class="finput" id="pe_send3_date" type="date">
       </div>
-      <div class="fg full">
-        <label class="flbl">🚚 เลขพัสดุวิชาที่ 4</label>
-        <input class="finput" id="pe_send4_track" placeholder="เช่น EG987654321TH">
-      </div>
-      <div class="fg full">
-        <label class="flbl">📅 วันที่ส่งวิชาที่ 4</label>
-        <input class="finput" id="pe_send4_date" type="date">
-      </div>
     </div>
 
     <div class="btn-row">
@@ -8029,8 +8021,6 @@ function openParcelEditModal(recordId) {
   document.getElementById('pe_send2_date').value = r.send2Date || '';
   document.getElementById('pe_send3_track').value = r.send3Track || '';
   document.getElementById('pe_send3_date').value = r.send3Date || '';
-  document.getElementById('pe_send4_track').value = r.send4Track || '';
-  document.getElementById('pe_send4_date').value = r.send4Date || '';
 
   document.getElementById('parcelEditModal').classList.remove('hidden');
 }
@@ -8047,8 +8037,6 @@ function saveParcelEdit() {
   const send2Date = document.getElementById('pe_send2_date').value.trim();
   const send3Track = document.getElementById('pe_send3_track').value.trim();
   const send3Date = document.getElementById('pe_send3_date').value.trim();
-  const send4Track = document.getElementById('pe_send4_track').value.trim();
-  const send4Date = document.getElementById('pe_send4_date').value.trim();
 
   google.script.run
     .withSuccessHandler(function(res) {
@@ -8061,7 +8049,7 @@ function saveParcelEdit() {
       }
     })
     .withFailureHandler(showError)
-    .updateRecordParcel(recordId, send1Track, send1Date, send2Track, send2Date, send3Track, send3Date, send4Track, send4Date);
+    .updateRecordParcel(recordId, send1Track, send1Date, send2Track, send2Date, send3Track, send3Date);
 }
 </script>
 </body>
