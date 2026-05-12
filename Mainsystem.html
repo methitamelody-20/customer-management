@@ -6810,6 +6810,9 @@ function loadAdminReport() {
       // จัดกลุ่มตาม user — ใช้การจับคู่แบบเฉพาะเจาะจง (specificity-first)
       var byUser = {};
       filtered.forEach(function(l) {
+        // ข้ามเมลระบบที่ไม่ใช่ admin จริง
+        if ((l.email||'').toLowerCase() === 'stou.post@g.stou.ac.th') return;
+
         var user = l.name || l.email || 'ไม่ระบุ';
         if (!byUser[user]) byUser[user] = {
           name: user, email: l.email||'',
