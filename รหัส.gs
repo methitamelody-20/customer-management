@@ -2902,7 +2902,44 @@ function debugAuditIssue() {
   }
 }
 
-function createAuditEntriesFromDataSheet() {
+function checkColumnAD() {
+  try {
+    const dataSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SH_DATA);
+    if (!dataSheet) return { error: 'ไม่พบ Sheet ข้อมูลพัสดุ' };
+
+    const dataRows = dataSheet.getDataRange().getValues();
+
+    // ตรวจสอบจำนวนแถว
+    Logger.log('Total rows in data sheet: ' + (dataRows.length - 1));
+
+    // ตรวจสอบจำนวน columns
+    Logger.log('Total columns: ' + dataRows[0].length);
+
+    // ดึง recorder names จาก column AD (index 29)
+    const recorders = {};
+    for (let i = 1; i < dataRows.length; i++) {
+      const recorder = dataRows[i][29] || ''; // Column 29 = column AD
+      if (recorder && recorder.trim()) {
+        recorders[recorder] = (recorders[recorder] || 0) + 1;
+      }
+    }
+
+    Logger.log('Unique recorders found:');
+    for (const name in recorders) {
+      Logger.log('  ' + name + ': ' + recorders[name] + ' records');
+    }
+
+    return {
+      success: true,
+      totalDataRows: dataRows.length - 1,
+      totalColumns: dataRows[0].length,
+      uniqueRecorders: recorders,
+      recorderCount: Object.keys(recorders).length
+    };
+  } catch(e) {
+    return { error: e.message };
+  }
+}
   if (!_autoRefreshSession()) return { error: 'SESSION_EXPIRED' };
   try {
     const dataSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SH_DATA);
