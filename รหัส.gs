@@ -92,36 +92,21 @@ function logout() {
 function checkSession() {
   try {
     const sp = PropertiesService.getScriptProperties();
-    
-    // ลอง effective user email ก่อน
-    let userEmail = '';
-    try { userEmail = Session.getEffectiveUser().getEmail() || ''; } catch(e){}
-    
-    if (userEmail) {
-      const raw = sp.getProperty('sess_'+userEmail);
-      if (raw) {
-        try {
-          const s = JSON.parse(raw);
-          if (s && s.email && s.role && (Date.now()-s.ts < 8*60*60*1000)) {
-            return {valid:true, role:s.role, name:s.name||s.email, email:s.email};
-          }
-          sp.deleteProperty('sess_'+userEmail);
-        } catch(e) { sp.deleteProperty('sess_'+userEmail); }
-      }
-    }
-    
-    // ถ้าไม่มี session ของ effective user — ค้นหา session ที่ valid จากทุก key
+
+    // Don't use Session.getEffectiveUser() for lookup - it returns the sheet owner, not the actual user
+    // Instead, search through all stored sessions for a valid one
     const allProps = sp.getProperties();
     for (const key in allProps) {
       if (!key.startsWith('sess_')) continue;
       try {
         const s = JSON.parse(allProps[key]);
         if (s && s.email && s.role && (Date.now()-s.ts < 8*60*60*1000)) {
+          Logger.log('checkSession: Found valid session for ' + s.email);
           return {valid:true, role:s.role, name:s.name||s.email, email:s.email};
         }
       } catch(e) {}
     }
-    
+
     return {valid:false};
   } catch(e) { return {valid:false}; }
 }
