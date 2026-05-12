@@ -2798,45 +2798,53 @@ function logAudit(action, detail) {
     let recEmail = '';
     let recName  = '';
 
-    try {
-      recEmail = Session.getEffectiveUser().getEmail() || '';
-    } catch(ex) {
-      Logger.log('logAudit: Failed to get effective user email: ' + ex.message);
-    }
-
-    // Look up name from users sheet by email
-    if (recEmail) {
-      try {
-        const uSh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SH_USERS);
-        if (uSh && uSh.getLastRow() > 1) {
-          const uData = uSh.getDataRange().getValues();
-          for (let ui = 1; ui < uData.length; ui++) {
-            if ((uData[ui][0]||'').toLowerCase().trim() === recEmail.toLowerCase().trim()) {
-              recName = uData[ui][3] || recEmail;
-              Logger.log('logAudit: Found user name: ' + recName + ' for email: ' + recEmail);
-              break;
-            }
-          }
-          if (!recName) {
-            recName = recEmail;
-            Logger.log('logAudit: Email not found in users sheet: ' + recEmail);
-          }
-        } else {
-          recName = recEmail;
-          Logger.log('logAudit: Users sheet not available or empty');
-        }
-      } catch(ex) {
-        recName = recEmail;
-        Logger.log('logAudit name lookup error: ' + ex.message + ' for email: ' + recEmail);
-      }
+    // Priority: Use session email first (actual logged-in user), then fall back to effective user
+    if (sess && sess.email) {
+      recEmail = sess.email;
+      recName = sess.name || recEmail;
+      Logger.log('logAudit: Using session user: ' + recName + ' (' + recEmail + ')');
     } else {
-      Logger.log('logAudit: No effective user email available');
+      // Fallback to effective user only if session is not available
+      try {
+        recEmail = Session.getEffectiveUser().getEmail() || '';
+      } catch(ex) {
+        Logger.log('logAudit: Failed to get effective user email: ' + ex.message);
+      }
+
+      if (recEmail) {
+        // Look up name from users sheet by email
+        try {
+          const uSh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SH_USERS);
+          if (uSh && uSh.getLastRow() > 1) {
+            const uData = uSh.getDataRange().getValues();
+            for (let ui = 1; ui < uData.length; ui++) {
+              if ((uData[ui][0]||'').toLowerCase().trim() === recEmail.toLowerCase().trim()) {
+                recName = uData[ui][3] || recEmail;
+                Logger.log('logAudit: Found user name: ' + recName + ' for email: ' + recEmail);
+                break;
+              }
+            }
+            if (!recName) {
+              recName = recEmail;
+              Logger.log('logAudit: Email not found in users sheet: ' + recEmail);
+            }
+          } else {
+            recName = recEmail;
+            Logger.log('logAudit: Users sheet not available or empty');
+          }
+        } catch(ex) {
+          recName = recEmail;
+          Logger.log('logAudit name lookup error: ' + ex.message + ' for email: ' + recEmail);
+        }
+      } else {
+        Logger.log('logAudit: No effective user email available');
+      }
     }
 
     if (!recName) {
-      recName = sess.name||'ระบบ';
-      recEmail = sess.email||'';
-      Logger.log('logAudit: Using session name: ' + recName);
+      recName = '(ระบบ)';
+      recEmail = '';
+      Logger.log('logAudit: Using system default');
     }
 
     sh.appendRow([new Date(), recName, recEmail, action, detail||'']);
