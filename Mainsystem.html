@@ -171,8 +171,9 @@ html,body{height:100%;font-family:var(--font);color:var(--on-surface);background
 .bar-pct{font-size:10px;color:var(--gray3);width:30px}
 
 /* DASHBOARD FILTER */
-.dash-filter{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;padding:14px;background:var(--white);border:1px solid var(--gray1);border-radius:var(--r);margin-bottom:16px}
-.dash-filter label{font-size:11px;font-weight:600;color:var(--navy);display:block;margin-bottom:3px}
+.dash-filter{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;padding:16px;background:var(--white);border:1px solid var(--gray1);border-radius:var(--r);margin-bottom:16px}
+.dash-filter>div{display:flex;flex-direction:column;gap:4px}
+.dash-filter label{font-size:11px;font-weight:600;color:var(--navy);display:block}
 
 /* FORMS - iOS/Apple Style */
 .form-grid{display:grid;gap:18px}
@@ -557,13 +558,14 @@ tbody td{padding:12px;vertical-align:middle}
 
         <!-- Filter bar -->
         <div class="dash-filter no-print">
-          <div><label>ภาค</label><select class="fsel" id="dTerm" onchange="loadDash()" style="width:70px"><option value="">ทั้งหมด</option><option>1</option><option>2</option><option>3</option></select></div>
-          <div><label>ปีการศึกษา</label><select class="fsel" id="dYear" onchange="loadDash()" style="width:100px"><option value="">ทั้งหมด</option></select></div>
-          <div><label>ประเภทรายการ</label><select class="fsel" id="dType" onchange="loadDash()" style="width:140px"><option value="">ทั้งหมด</option><option value="return">พัสดุตีคืน</option><option value="lend">ให้ยืม</option><option value="special">ส่งใหม่พิเศษ</option></select></div>
-          <div><label>จังหวัด</label><select class="fsel" id="dProvince" onchange="loadDash()" style="width:130px"><option value="">ทั้งหมด</option></select></div>
-          <div><label>อำเภอ/เขต</label><select class="fsel" id="dDistrict" onchange="loadDash()" style="width:130px"><option value="">ทั้งหมด</option></select></div>
-          <div><label>รหัสไปรษณีย์</label><input class="finput" id="dZip" placeholder="เช่น 10900" oninput="loadDash()" style="width:110px"></div>
-          <div><label>Tag</label><select class="fsel" id="dTag" onchange="loadDash()" style="width:130px"><option value="">ทั้งหมด</option></select></div>
+          <div style="flex:0 0 auto"><label>ภาค</label><select class="fsel" id="dTerm" style="width:100px"><option value="">ทั้งหมด</option><option>1</option><option>2</option><option>3</option></select></div>
+          <div style="flex:0 0 auto"><label>ปีการศึกษา</label><select class="fsel" id="dYear" style="width:120px"><option value="">ทั้งหมด</option></select></div>
+          <div style="flex:0 0 auto"><label>ประเภทรายการ</label><select class="fsel" id="dType" style="width:150px"><option value="">ทั้งหมด</option><option value="return">พัสดุตีคืน</option><option value="lend">ให้ยืม</option><option value="special">ส่งใหม่พิเศษ</option></select></div>
+          <div style="flex:0 0 auto"><label>จังหวัด</label><select class="fsel" id="dProvince" style="width:150px"><option value="">ทั้งหมด</option></select></div>
+          <div style="flex:0 0 auto"><label>อำเภอ/เขต</label><select class="fsel" id="dDistrict" style="width:150px"><option value="">ทั้งหมด</option></select></div>
+          <div style="flex:0 0 auto"><label>รหัสไปรษณีย์</label><input class="finput" id="dZip" placeholder="เช่น 10900" style="width:130px"></div>
+          <div style="flex:0 0 auto"><label>Tag</label><select class="fsel" id="dTag" style="width:150px"><option value="">ทั้งหมด</option></select></div>
+          <button class="btn btn-primary btn-sm" onclick="loadDash()" style="flex:0 0 auto;align-self:flex-end;min-width:100px">🔍 ค้นหา</button>
         </div>
 
         <div class="stats-grid" id="statsGrid">
