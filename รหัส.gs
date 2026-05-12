@@ -2902,71 +2902,53 @@ function debugAuditIssue() {
   }
 }
 
-function fixMissingAuditEntries() {
+function fixIncorrectAuditEntries() {
   if (!_autoRefreshSession()) return { error: 'SESSION_EXPIRED' };
   try {
     const dataSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SH_DATA);
     const auditSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SH_AUDIT);
+
     if (!dataSheet || !auditSheet) return { error: 'Missing sheets' };
 
-    const staffToCheck = ['วรรณี รัตนากร', 'หทัย เรืองเกษตรกิจ'];
-    const fixedCount = {};
+    let fixedCount = 0;
+    const staffNames = ['วรรณี รัตนากร', 'หทัย เรืองเกษตรกิจ', 'สุพรรษา', 'เมธิตา'];
 
-    for (let staffName of staffToCheck) {
-      fixedCount[staffName] = 0;
+    // Get all data from parcel sheet
+    const dataRows = dataSheet.getDataRange().getValues();
+    const dataMap = {}; // Map record ID -> recorder name
 
-      if (dataSheet.getLastRow() > 1) {
-        const data = dataSheet.getDataRange().getValues();
-        for (let i = 1; i < data.length; i++) {
-          const recorder = data[i][29] || '';
-          if (recorder && recorder.includes(staffName)) {
-            const id = data[i][0] || '';
-            const recordDate = data[i][1] || new Date();
-            const recType = data[i][4] || '';
-            const studentId = data[i][7] || '';
-            const courseCode = data[i][6] || '';
+    for (let i = 1; i < dataRows.length; i++) {
+      const recordId = dataRows[i][0]; // Column A
+      const recorder = dataRows[i][29]; // Column AD (column 29)
+      if (recordId && recorder) {
+        dataMap[recordId] = recorder;
+      }
+    }
 
-            // Check if this entry already has an audit log
-            let hasAuditEntry = false;
-            if (auditSheet.getLastRow() > 1) {
-              const audit = auditSheet.getDataRange().getValues();
-              for (let j = 1; j < audit.length; j++) {
-                const auditName = audit[j][1] || '';
-                const auditDetail = audit[j][4] || '';
-                if (auditName && auditName.includes(staffName) && auditDetail && auditDetail.includes(id)) {
-                  hasAuditEntry = true;
-                  break;
-                }
-              }
-            }
+    // Get all audit entries
+    const auditRows = auditSheet.getDataRange().getValues();
 
-            // If no audit entry found, create one
-            if (!hasAuditEntry) {
-              auditSheet.appendRow([
-                recordDate,
-                staffName,
-                '',
-                'บันทึกพัสดุ',
-                id + ' | ' + recType + ' | นศ.' + studentId + ' | ' + courseCode
-              ]);
-              fixedCount[staffName]++;
-              Logger.log('Added audit entry for ' + staffName + ' record ' + id);
-            }
-          }
+    // Fix incorrect entries
+    for (let i = 1; i < auditRows.length; i++) {
+      const auditName = auditRows[i][1]; // Column B (ผู้ใช้)
+      const auditDetail = auditRows[i][4]; // Column E (รายละเอียด)
+
+      // Check if this is an incorrect entry showing stou.post
+      if (auditName && auditName.includes('stou.post')) {
+        // Try to extract record ID from detail
+        const recordId = auditDetail ? auditDetail.split(' | ')[0] : null;
+
+        if (recordId && dataMap[recordId]) {
+          const correctName = dataMap[recordId];
+          // Update the audit entry with correct name
+          auditSheet.getRange(i + 1, 2).setValue(correctName); // Column B
+          fixedCount++;
+          Logger.log('Fixed audit entry ' + recordId + ' → ' + correctName);
         }
       }
     }
 
-    // Format audit log alternating rows
-    if (auditSheet.getLastRow() > 1) {
-      for (let i = 2; i <= auditSheet.getLastRow(); i++) {
-        if (i % 2 === 0) {
-          auditSheet.getRange(i, 1, 1, 5).setBackground('#f8f9fa');
-        }
-      }
-    }
-
-    return { success: true, fixed: fixedCount };
+    return { success: true, fixed: fixedCount, message: 'แก้ไข ' + fixedCount + ' รายการแล้ว' };
   } catch(e) {
     return { error: e.message };
   }
