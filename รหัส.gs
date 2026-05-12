@@ -2795,56 +2795,28 @@ function logAudit(action, detail) {
     }
 
     const sess = _sess();
+    let recName = '';
     let recEmail = '';
-    let recName  = '';
 
-    try {
-      recEmail = Session.getEffectiveUser().getEmail() || '';
-    } catch(ex) {
-      Logger.log('logAudit: Failed to get effective user email: ' + ex.message);
-    }
-
-    // Look up name from users sheet by email
-    if (recEmail) {
-      try {
-        const uSh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SH_USERS);
-        if (uSh && uSh.getLastRow() > 1) {
-          const uData = uSh.getDataRange().getValues();
-          for (let ui = 1; ui < uData.length; ui++) {
-            if ((uData[ui][0]||'').toLowerCase().trim() === recEmail.toLowerCase().trim()) {
-              recName = uData[ui][3] || recEmail;
-              Logger.log('logAudit: Found user name: ' + recName + ' for email: ' + recEmail);
-              break;
-            }
-          }
-          if (!recName) {
-            recName = recEmail;
-            Logger.log('logAudit: Email not found in users sheet: ' + recEmail);
-          }
-        } else {
-          recName = recEmail;
-          Logger.log('logAudit: Users sheet not available or empty');
-        }
-      } catch(ex) {
-        recName = recEmail;
-        Logger.log('logAudit name lookup error: ' + ex.message + ' for email: ' + recEmail);
-      }
+    // Use session name directly - it's already been properly authenticated
+    // Do NOT use Session.getEffectiveUser() as it returns the sheet owner, not the actual user
+    if (sess && sess.name) {
+      recName = sess.name;
+      recEmail = sess.email || '';
+      Logger.log('logAudit: Using session name: ' + recName + ' (email: ' + recEmail + ')');
     } else {
-      Logger.log('logAudit: No effective user email available');
-    }
-
-    if (!recName) {
-      recName = sess.name||'ระบบ';
-      recEmail = sess.email||'';
-      Logger.log('logAudit: Using session name: ' + recName);
+      // Fallback only if session is completely missing
+      recName = '(ระบบ)';
+      recEmail = '';
+      Logger.log('logAudit: Session not available, using system default');
     }
 
     sh.appendRow([new Date(), recName, recEmail, action, detail||'']);
     const lr = sh.getLastRow();
     if (lr%2===0) sh.getRange(lr,1,1,5).setBackground('#f8f9fa');
-    Logger.log('logAudit SUCCESS: action=' + action + ', name=' + recName + ', email=' + recEmail);
+    Logger.log('logAudit SUCCESS: action=' + action + ', recorder=' + recName);
   } catch(e) {
-    Logger.log('CRITICAL logAudit ERROR: ' + e.message + ' | Stack: ' + e.stack + ' | action: ' + action + ' | detail: ' + detail);
+    Logger.log('CRITICAL logAudit ERROR: ' + e.message + ' | action: ' + action + ' | detail: ' + detail);
   }
 }
 
@@ -2861,68 +2833,86 @@ function getAuditLog(limit) {
   } catch(e) { return { error:e.message }; }
 }
 
-function diagnosticCheckAuditLogging() {
+function debugAuditIssue() {
   if (!_autoRefreshSession()) return { error: 'SESSION_EXPIRED' };
   try {
-    const sess = _sess();
     const dataSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SH_DATA);
     const auditSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SH_AUDIT);
     const usersSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SH_USERS);
 
-    if (!dataSheet) return { error: 'ไม่พบ Data Sheet' };
+    const staffNames = ['วรรณี รัตนากร', 'หทัย เรืองเกษตรกิจ'];
+    const results = {
+      staffData: {},
+      auditLogSample: [],
+      usersSheetCheck: {}
+    };
 
-    const staffToCheck = ['วรรณี รัตนากร', 'หทัย เรืองเกษตรกิจ'];
-    const results = {};
-
-    for (let staffName of staffToCheck) {
-      results[staffName] = {
-        inDataSheet: 0,
-        inAuditLog: 0,
-        details: []
-      };
-
-      // Check data sheet
-      if (dataSheet.getLastRow() > 1) {
-        const data = dataSheet.getDataRange().getValues();
-        for (let i = 1; i < data.length; i++) {
-          const recorder = data[i][29] || ''; // Column 29 is recorder name
-          if (recorder && recorder.includes(staffName)) {
-            results[staffName].inDataSheet++;
+    // Check users sheet for these staff members
+    if (usersSheet && usersSheet.getLastRow() > 1) {
+      const usersData = usersSheet.getDataRange().getValues();
+      for (let staffName of staffNames) {
+        results.usersSheetCheck[staffName] = {
+          found: false,
+          email: null,
+          role: null
+        };
+        for (let i = 1; i < usersData.length; i++) {
+          if ((usersData[i][3] || '').includes(staffName)) {
+            results.usersSheetCheck[staffName].found = true;
+            results.usersSheetCheck[staffName].email = usersData[i][0];
+            results.usersSheetCheck[staffName].role = usersData[i][2];
           }
         }
       }
-
-      // Check audit log
-      if (auditSheet && auditSheet.getLastRow() > 1) {
-        const audit = auditSheet.getDataRange().getValues();
-        for (let i = 1; i < audit.length; i++) {
-          const auditName = audit[i][1] || '';
-          if (auditName && auditName.includes(staffName)) {
-            results[staffName].inAuditLog++;
-          }
-        }
-      }
-
-      // Check users sheet
-      let userEmails = [];
-      if (usersSheet && usersSheet.getLastRow() > 1) {
-        const users = usersSheet.getDataRange().getValues();
-        for (let i = 1; i < users.length; i++) {
-          const email = users[i][0] || '';
-          const name = users[i][3] || '';
-          if (name && name.includes(staffName)) {
-            userEmails.push(email);
-          }
-        }
-      }
-
-      results[staffName].registeredEmails = userEmails;
-      results[staffName].discrepancy = results[staffName].inDataSheet - results[staffName].inAuditLog;
     }
 
-    return { success: true, results: results };
+    // Check data sheet for their records (column AD = column 29)
+    if (dataSheet && dataSheet.getLastRow() > 1) {
+      const data = dataSheet.getDataRange().getValues();
+      for (let staffName of staffNames) {
+        results.staffData[staffName] = {
+          recordCount: 0,
+          recordIds: [],
+          recordDates: []
+        };
+        for (let i = 1; i < data.length; i++) {
+          const recorder = data[i][29] || '';
+          if (recorder.includes(staffName)) {
+            results.staffData[staffName].recordCount++;
+            results.staffData[staffName].recordIds.push(data[i][0]);
+            results.staffData[staffName].recordDates.push(data[i][1]);
+          }
+        }
+      }
+    }
+
+    // Check audit log - get recent 100 entries
+    if (auditSheet && auditSheet.getLastRow() > 1) {
+      const auditData = auditSheet.getDataRange().getValues();
+      const recentCount = Math.min(100, auditData.length - 1);
+      for (let i = Math.max(1, auditData.length - recentCount); i < auditData.length; i++) {
+        const name = auditData[i][1] || '';
+        const email = auditData[i][2] || '';
+        const action = auditData[i][3] || '';
+        const detail = auditData[i][4] || '';
+
+        for (let staffName of staffNames) {
+          if (name.includes(staffName) || name.includes('stou.post')) {
+            results.auditLogSample.push({
+              date: auditData[i][0],
+              name: name,
+              email: email,
+              action: action,
+              detail: detail.substring(0, 100)
+            });
+          }
+        }
+      }
+    }
+
+    return { success: true, data: results };
   } catch(e) {
-    return { error: e.message };
+    return { error: e.message, stack: e.stack };
   }
 }
 
