@@ -5610,12 +5610,29 @@ function getDateISOValue(inputElement) {
 function setDateFormatterValue(inputElement, isoValue) {
   if (!inputElement || !isoValue) return;
   try {
-    const date = new Date(isoValue + 'T00:00:00Z');
-    const d = String(date.getUTCDate()).padStart(2,'0');
-    const m = String(date.getUTCMonth() + 1).padStart(2,'0');
-    const y = date.getUTCFullYear();
-    inputElement.value = d + '/' + m + '/' + y;
-    inputElement.dataset.isoValue = isoValue;
+    let displayValue = '';
+    let isoDate = isoValue;
+
+    // Handle different input formats
+    if (/^\d{4}-\d{2}-\d{2}/.test(isoValue)) {
+      // Already in ISO format (yyyy-mm-dd)
+      const date = new Date(isoValue + 'T00:00:00Z');
+      const d = String(date.getUTCDate()).padStart(2,'0');
+      const m = String(date.getUTCMonth() + 1).padStart(2,'0');
+      const y = date.getUTCFullYear();
+      displayValue = d + '/' + m + '/' + y;
+    } else if (/^\d{2}\/\d{2}\/\d{4}/.test(isoValue)) {
+      // Already in dd/mm/yyyy format
+      displayValue = isoValue.substring(0, 10);
+      const parts = displayValue.split('/');
+      isoDate = parts[2] + '-' + parts[1] + '-' + parts[0];
+    } else {
+      // Unknown format - just display as-is
+      displayValue = isoValue.substring(0, 10);
+    }
+
+    inputElement.value = displayValue;
+    inputElement.dataset.isoValue = isoDate;
   } catch(e) {}
 }
 
