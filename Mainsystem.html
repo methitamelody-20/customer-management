@@ -6880,7 +6880,7 @@ function loadAdminReport() {
         '<div style="text-align:center;padding:40px;color:var(--red)">❌ ไม่สามารถโหลดข้อมูลได้: '+(err&&err.message||'unknown error')+'</div>';
       showError(err);
     })
-    .getAuditLog(1000);
+    .getAuditLog(5000);
 }
 
 function filterAdminReport() {
@@ -7073,7 +7073,7 @@ function loadAuditLog() {
       }).join('');
     })
     .withFailureHandler(showError)
-    .getAuditLog(200);
+    .getAuditLog(5000);
 }
 
 // ============================================================
