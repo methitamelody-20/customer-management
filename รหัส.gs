@@ -2941,6 +2941,57 @@ function checkColumnAD() {
   }
 }
 
+function fixIncorrectAuditEntries() {
+  if (!_autoRefreshSession()) return { error: 'SESSION_EXPIRED' };
+  try {
+    const dataSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SH_DATA);
+    const auditSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SH_AUDIT);
+
+    if (!dataSheet || !auditSheet) return { error: 'Missing sheets' };
+
+    let fixedCount = 0;
+
+    // Get all data from parcel sheet
+    const dataRows = dataSheet.getDataRange().getValues();
+    const dataMap = {}; // Map record ID -> recorder name
+
+    for (let i = 1; i < dataRows.length; i++) {
+      const recordId = dataRows[i][0]; // Column A
+      const recorder = dataRows[i][29]; // Column AD (column 29)
+      if (recordId && recorder) {
+        dataMap[recordId] = recorder;
+      }
+    }
+
+    // Get all audit entries
+    const auditRows = auditSheet.getDataRange().getValues();
+
+    // Fix incorrect entries
+    for (let i = 1; i < auditRows.length; i++) {
+      const auditName = auditRows[i][1]; // Column B (ผู้ใช้)
+      const auditDetail = auditRows[i][4]; // Column E (รายละเอียด)
+
+      // Check if this is an incorrect entry showing stou.post
+      if (auditName && auditName.includes('stou.post')) {
+        // Try to extract record ID from detail
+        const recordId = auditDetail ? auditDetail.split(' | ')[0] : null;
+
+        if (recordId && dataMap[recordId]) {
+          const correctName = dataMap[recordId];
+          // Update the audit entry with correct name
+          auditSheet.getRange(i + 1, 2).setValue(correctName); // Column B
+          fixedCount++;
+          Logger.log('Fixed audit entry ' + recordId + ' → ' + correctName);
+        }
+      }
+    }
+
+    return { success: true, fixed: fixedCount, message: 'แก้ไข ' + fixedCount + ' รายการแล้ว' };
+  } catch(e) {
+    return { error: e.message };
+  }
+}
+
 function createAuditEntriesFromDataSheet() {
   if (!_autoRefreshSession()) return { error: 'SESSION_EXPIRED' };
   try {
