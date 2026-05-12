@@ -1159,10 +1159,12 @@ function addRecord(data) {
       data.courses||'[]',  // JSON array ของชุดวิชาทั้งหมด
       status, fmtDate(now), sess.name||sess.email||'ผู้ใช้งาน',
     ];
+    const recorderName = sess.name||sess.email||'ผู้ใช้งาน';
     sheet.appendRow(row);
     const lr = sheet.getLastRow();
     if (lr%2===0) sheet.getRange(lr,1,1,row.length).setBackground('#f0f4f8');
-    logAudit('บันทึกพัสดุ', id+' | '+data.recType+' | นศ.'+data.studentId+' | '+data.courseCode);
+    // Pass the recorder name directly to ensure consistency with column AD
+    logAudit('บันทึกพัสดุ', id+' | '+data.recType+' | นศ.'+data.studentId+' | '+data.courseCode, recorderName, sess.email||'');
     return { success:true, id:id };
   } catch(e) { return { success:false, error:e.message }; }
 }
@@ -2763,7 +2765,7 @@ ${topProv.map((p,i)=>`  ${i+1}. ${p[0]}: ${p[1]} รายการ`).join('\n')
 // ============================================================
 const SH_AUDIT = 'Audit Log';
 
-function logAudit(action, detail) {
+function logAudit(action, detail, recorderName, recorderEmail) {
   try {
     const ss   = SpreadsheetApp.getActiveSpreadsheet();
     let sh     = ss.getSheetByName(SH_AUDIT);
@@ -2779,21 +2781,20 @@ function logAudit(action, detail) {
       }
     }
 
-    const sess = _sess();
-    let recName = '';
-    let recEmail = '';
+    // Use provided recorder name if given, otherwise fall back to session
+    let recName = recorderName || '';
+    let recEmail = recorderEmail || '';
 
-    // Use session name directly - it's already been properly authenticated
-    // Do NOT use Session.getEffectiveUser() as it returns the sheet owner, not the actual user
-    if (sess && sess.name) {
-      recName = sess.name;
+    if (!recName) {
+      const sess = _sess();
+      recName = sess.name || '';
       recEmail = sess.email || '';
-      Logger.log('logAudit: Using session name: ' + recName + ' (email: ' + recEmail + ')');
-    } else {
-      // Fallback only if session is completely missing
+    }
+
+    if (!recName) {
       recName = '(ระบบ)';
       recEmail = '';
-      Logger.log('logAudit: Session not available, using system default');
+      Logger.log('logAudit: No recorder name available');
     }
 
     sh.appendRow([new Date(), recName, recEmail, action, detail||'']);
@@ -2801,7 +2802,7 @@ function logAudit(action, detail) {
     if (lr%2===0) sh.getRange(lr,1,1,5).setBackground('#f8f9fa');
     Logger.log('logAudit SUCCESS: action=' + action + ', recorder=' + recName);
   } catch(e) {
-    Logger.log('CRITICAL logAudit ERROR: ' + e.message + ' | action: ' + action + ' | detail: ' + detail);
+    Logger.log('CRITICAL logAudit ERROR: ' + e.message + ' | action: ' + action);
   }
 }
 
