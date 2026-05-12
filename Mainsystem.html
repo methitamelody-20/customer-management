@@ -6815,8 +6815,8 @@ function loadAdminReport() {
         if ((l.email||'').toLowerCase() === 'stou.post@g.stou.ac.th') return;
 
         var user = l.name || l.email || 'ไม่ระบุ';
-        // กรองออกชื่อที่ไม่ถูกต้อง (ชุดวิชา, ตัวเลข, ข้อมูลระบบ)
-        if (!user.trim() || /^(ชุดวิชา|ระบบ|\d+)/.test(user)) return;
+        // กรองออกชื่อที่เป็นข้อมูลระบบอย่างชัดเจน (ชุดวิชา ตัวเลขอย่างเดียว)
+        if (!user.trim() || user.trim() === 'ชุดวิชา' || /^\d+$/.test(user.trim())) return;
 
         if (!byUser[user]) byUser[user] = {
           name: user, email: l.email||'',
