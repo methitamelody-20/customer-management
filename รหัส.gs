@@ -2795,64 +2795,28 @@ function logAudit(action, detail) {
     }
 
     const sess = _sess();
+    let recName = '';
     let recEmail = '';
-    let recName  = '';
 
-    // Priority: Use session email first (actual logged-in user), then fall back to effective user
-    if (sess && sess.email) {
-      recEmail = sess.email;
-      recName = sess.name || recEmail;
-      Logger.log('logAudit: Using session user: ' + recName + ' (' + recEmail + ')');
+    // Use session name directly - it's already been properly authenticated
+    // Do NOT use Session.getEffectiveUser() as it returns the sheet owner, not the actual user
+    if (sess && sess.name) {
+      recName = sess.name;
+      recEmail = sess.email || '';
+      Logger.log('logAudit: Using session name: ' + recName + ' (email: ' + recEmail + ')');
     } else {
-      // Fallback to effective user only if session is not available
-      try {
-        recEmail = Session.getEffectiveUser().getEmail() || '';
-      } catch(ex) {
-        Logger.log('logAudit: Failed to get effective user email: ' + ex.message);
-      }
-
-      if (recEmail) {
-        // Look up name from users sheet by email
-        try {
-          const uSh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SH_USERS);
-          if (uSh && uSh.getLastRow() > 1) {
-            const uData = uSh.getDataRange().getValues();
-            for (let ui = 1; ui < uData.length; ui++) {
-              if ((uData[ui][0]||'').toLowerCase().trim() === recEmail.toLowerCase().trim()) {
-                recName = uData[ui][3] || recEmail;
-                Logger.log('logAudit: Found user name: ' + recName + ' for email: ' + recEmail);
-                break;
-              }
-            }
-            if (!recName) {
-              recName = recEmail;
-              Logger.log('logAudit: Email not found in users sheet: ' + recEmail);
-            }
-          } else {
-            recName = recEmail;
-            Logger.log('logAudit: Users sheet not available or empty');
-          }
-        } catch(ex) {
-          recName = recEmail;
-          Logger.log('logAudit name lookup error: ' + ex.message + ' for email: ' + recEmail);
-        }
-      } else {
-        Logger.log('logAudit: No effective user email available');
-      }
-    }
-
-    if (!recName) {
+      // Fallback only if session is completely missing
       recName = '(ระบบ)';
       recEmail = '';
-      Logger.log('logAudit: Using system default');
+      Logger.log('logAudit: Session not available, using system default');
     }
 
     sh.appendRow([new Date(), recName, recEmail, action, detail||'']);
     const lr = sh.getLastRow();
     if (lr%2===0) sh.getRange(lr,1,1,5).setBackground('#f8f9fa');
-    Logger.log('logAudit SUCCESS: action=' + action + ', name=' + recName + ', email=' + recEmail);
+    Logger.log('logAudit SUCCESS: action=' + action + ', recorder=' + recName);
   } catch(e) {
-    Logger.log('CRITICAL logAudit ERROR: ' + e.message + ' | Stack: ' + e.stack + ' | action: ' + action + ' | detail: ' + detail);
+    Logger.log('CRITICAL logAudit ERROR: ' + e.message + ' | action: ' + action + ' | detail: ' + detail);
   }
 }
 
