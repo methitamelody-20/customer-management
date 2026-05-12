@@ -6810,9 +6810,13 @@ function loadAdminReport() {
 
       // จัดกลุ่มตาม user — ใช้การจับคู่แบบเฉพาะเจาะจง (specificity-first)
       var byUser = {};
+      console.log('Total logs loaded:', logs.length, 'Filtered logs:', filtered.length, 'Period:', period);
       filtered.forEach(function(l) {
         // ข้ามเมลระบบเท่านั้น (ไม่มีชื่อ)
-        if (!l.name || l.name.includes('(')) return;
+        if (!l.name || l.name.includes('(')) {
+          console.log('Skipping entry - no name or invalid:', l);
+          return;
+        }
 
         var user = l.name || l.email || 'ไม่ระบุ';
         if (!byUser[user]) byUser[user] = {
@@ -6894,8 +6898,9 @@ function filterAdminReport() {
 }
 
 function renderAdminReport(users) {
+  console.log('renderAdminReport called with users:', users.map(function(u){return {name:u.name, count:u.actions.length};}) );
   if (!users.length) {
-    document.getElementById('adminReportContent').innerHTML = 
+    document.getElementById('adminReportContent').innerHTML =
       '<div style="text-align:center;padding:40px;color:var(--gray3)">ยังไม่มีข้อมูล Audit Log</div>';
     return;
   }
