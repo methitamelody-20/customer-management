@@ -1825,37 +1825,55 @@ function saveFollowUpRecord(data) {
     const searchStudentId = String(data.studentId || '').trim();
 
     for (let i = 1; i < dataRows.length; i++) {
-      const rowCourse = String(dataRows[i][6] || '').trim();
       const rowStudentId = String(dataRows[i][7] || '').trim();
-      if (rowCourse === searchCourse && rowStudentId === searchStudentId) {
-        existingRowIndex = i;
-        break;
-      }
+      if (rowStudentId !== searchStudentId) continue;
+
+      // Check courseCode column
+      const rowCourse = String(dataRows[i][6] || '').trim();
+      if (rowCourse === searchCourse) { existingRowIndex = i; break; }
+
+      // Also check inside courses JSON
+      try {
+        const rowCourses = JSON.parse(String(dataRows[i][26] || '[]'));
+        if (Array.isArray(rowCourses) && rowCourses.some(function(c) { return (c.code||c) === searchCourse; })) {
+          existingRowIndex = i; break;
+        }
+      } catch(e) {}
     }
 
     let recordId = null;
 
     if (existingRowIndex !== -1) {
-      // UPDATE existing row - add follow-up info to columns 30+
+      // UPDATE existing row
       recordId = String(dataRows[existingRowIndex][0] || '');
-      dataSheet.getRange(existingRowIndex + 1, 30).setValue(data.type || '');
-      dataSheet.getRange(existingRowIndex + 1, 31).setValue(data.cause || '');
-      dataSheet.getRange(existingRowIndex + 1, 32).setValue(followUpDate);
-      dataSheet.getRange(existingRowIndex + 1, 33).setValue(followUpStatus);
 
-      // Update parcel info (columns 21-24)
+      // Update courses JSON with new parcel data for the matching course
       if (data.parcelTrack || data.parcelDate) {
-        const send1Track = String(dataRows[existingRowIndex][20] || '').trim();
-        if (!send1Track) {
-          // send1 is empty, update send1 columns
-          dataSheet.getRange(existingRowIndex + 1, 21).setValue(data.parcelTrack || '');
-          dataSheet.getRange(existingRowIndex + 1, 22).setValue(data.parcelDate || '');
-        } else {
-          // send1 is filled, update send2 columns
-          dataSheet.getRange(existingRowIndex + 1, 23).setValue(data.parcelTrack || '');
-          dataSheet.getRange(existingRowIndex + 1, 24).setValue(data.parcelDate || '');
+        let courses = [];
+        try { courses = JSON.parse(String(dataRows[existingRowIndex][26] || '[]')); } catch(e) {}
+        if (!Array.isArray(courses) || courses.length === 0) {
+          // Build from courseCode
+          const cc = String(dataRows[existingRowIndex][6] || '');
+          courses = cc.split(',').map(function(s) { return { code: s.trim() }; }).filter(function(c) { return c.code; });
+          if (courses.length === 0) courses = [{ code: cc }];
         }
+        // Find course index matching data.course, or use first
+        let courseIdx = courses.findIndex(function(c) { return (c.code || c) === searchCourse; });
+        if (courseIdx === -1) courseIdx = 0;
+        courses[courseIdx] = Object.assign({}, courses[courseIdx], {
+          track: data.parcelTrack || '',
+          date:  data.parcelDate  || ''
+        });
+        dataSheet.getRange(existingRowIndex + 1, 27).setValue(JSON.stringify(courses));
+
+        // Sync send1/send2 columns from first two courses
+        if (courses[0]) { dataSheet.getRange(existingRowIndex + 1, 21).setValue(courses[0].track || ''); dataSheet.getRange(existingRowIndex + 1, 22).setValue(courses[0].date || ''); }
+        if (courses[1]) { dataSheet.getRange(existingRowIndex + 1, 23).setValue(courses[1].track || ''); dataSheet.getRange(existingRowIndex + 1, 24).setValue(courses[1].date || ''); }
       }
+
+      // Update status and timestamp
+      dataSheet.getRange(existingRowIndex + 1, 28).setValue('ส่งแล้ว');
+      dataSheet.getRange(existingRowIndex + 1, 29).setValue(new Date());
 
       logAudit('บันทึก Follow-up (อัปเดต)', data.crmId + ' | ' + data.type + ' | นศ.' + data.studentId);
     } else {
@@ -1863,6 +1881,9 @@ function saveFollowUpRecord(data) {
       const now = new Date();
       const pfx = {return:'P', loan:'L', special_resend:'S'}[data.type] || 'P';
       recordId = pfx + Utilities.formatDate(now, 'Asia/Bangkok', 'yyyyMMdd') + '-' + (dataSheet.getLastRow() + 1);
+
+      // Embed parcel data in courses JSON
+      const coursesArr = [{ code: data.course || '', track: data.parcelTrack || '', date: data.parcelDate || '' }];
 
       // 30 columns: 0=id,1=date,2=term,3=year,4=recType,5=parcelType,6=courseCode,7=studentId,
       // 8=prefix,9=firstName,10=lastName,11=houseNo,12=street,13=subDistrict,14=district,
@@ -1878,7 +1899,7 @@ function saveFollowUpRecord(data) {
         data.cause || '', '',
         data.parcelTrack || '', data.parcelDate || '',
         '', '',
-        '', '', JSON.stringify([data.course]), 'บันทึกแล้ว', fmtDate(now), recorderName
+        '', '', JSON.stringify(coursesArr), 'ส่งแล้ว', fmtDate(now), recorderName
       ];
 
       dataSheet.appendRow(newRow);
