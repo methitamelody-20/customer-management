@@ -2902,7 +2902,7 @@ function debugAuditIssue() {
   }
 }
 
-function fixIncorrectAuditEntries() {
+function createAuditEntriesFromDataSheet() {
   if (!_autoRefreshSession()) return { error: 'SESSION_EXPIRED' };
   try {
     const dataSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SH_DATA);
@@ -2910,45 +2910,52 @@ function fixIncorrectAuditEntries() {
 
     if (!dataSheet || !auditSheet) return { error: 'Missing sheets' };
 
-    let fixedCount = 0;
-    const staffNames = ['วรรณี รัตนากร', 'หทัย เรืองเกษตรกิจ', 'สุพรรษา', 'เมธิตา'];
-
-    // Get all data from parcel sheet
     const dataRows = dataSheet.getDataRange().getValues();
-    const dataMap = {}; // Map record ID -> recorder name
+    const auditRows = auditSheet.getDataRange().getValues();
 
-    for (let i = 1; i < dataRows.length; i++) {
-      const recordId = dataRows[i][0]; // Column A
-      const recorder = dataRows[i][29]; // Column AD (column 29)
-      if (recordId && recorder) {
-        dataMap[recordId] = recorder;
+    // Build map of existing audit entries by record ID
+    const existingAuditEntries = {};
+    for (let i = 1; i < auditRows.length; i++) {
+      const detail = auditRows[i][4] || ''; // Column E
+      const recordId = detail.split(' | ')[0]; // Extract record ID
+      if (recordId) {
+        existingAuditEntries[recordId] = true;
       }
     }
 
-    // Get all audit entries
-    const auditRows = auditSheet.getDataRange().getValues();
+    let createdCount = 0;
 
-    // Fix incorrect entries
-    for (let i = 1; i < auditRows.length; i++) {
-      const auditName = auditRows[i][1]; // Column B (ผู้ใช้)
-      const auditDetail = auditRows[i][4]; // Column E (รายละเอียด)
+    // Go through all data rows and create missing audit entries
+    for (let i = 1; i < dataRows.length; i++) {
+      const recordId = dataRows[i][0]; // Column A - ID
+      const recordDate = dataRows[i][1]; // Column B - Date
+      const recType = dataRows[i][4]; // Column E - Type (return/lend/special)
+      const studentId = dataRows[i][7]; // Column H - Student ID
+      const courseCode = dataRows[i][6]; // Column G - Course Code
+      const recorder = dataRows[i][29]; // Column AD - Recorder Name
 
-      // Check if this is an incorrect entry showing stou.post
-      if (auditName && auditName.includes('stou.post')) {
-        // Try to extract record ID from detail
-        const recordId = auditDetail ? auditDetail.split(' | ')[0] : null;
+      // Skip if no recorder name or already has audit entry
+      if (!recorder || existingAuditEntries[recordId]) {
+        continue;
+      }
 
-        if (recordId && dataMap[recordId]) {
-          const correctName = dataMap[recordId];
-          // Update the audit entry with correct name
-          auditSheet.getRange(i + 1, 2).setValue(correctName); // Column B
-          fixedCount++;
-          Logger.log('Fixed audit entry ' + recordId + ' → ' + correctName);
+      // Create audit entry
+      const detail = recordId + ' | ' + recType + ' | นศ.' + studentId + ' | ' + courseCode;
+      auditSheet.appendRow([recordDate, recorder, '', 'บันทึกพัสดุ', detail]);
+      createdCount++;
+      Logger.log('Created audit entry for ' + recorder + ' - ' + recordId);
+    }
+
+    // Format audit log alternating rows
+    if (auditSheet.getLastRow() > 1) {
+      for (let i = 2; i <= auditSheet.getLastRow(); i++) {
+        if (i % 2 === 0) {
+          auditSheet.getRange(i, 1, 1, 5).setBackground('#f8f9fa');
         }
       }
     }
 
-    return { success: true, fixed: fixedCount, message: 'แก้ไข ' + fixedCount + ' รายการแล้ว' };
+    return { success: true, created: createdCount, message: 'สร้าง ' + createdCount + ' audit entries' };
   } catch(e) {
     return { error: e.message };
   }
