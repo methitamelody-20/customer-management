@@ -6861,6 +6861,7 @@ function loadAdminReport() {
         var tb = b.counts.return+b.counts.lend+b.counts.special;
         return tb - ta;
       });
+      console.log('Aggregated users:', _adminReportData.users.map(function(u){return {name:u.name, entries:u.actions.length};}));
       _adminReportData.filtered = filtered;
 
       // populate dropdown
