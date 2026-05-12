@@ -2783,36 +2783,69 @@ function logAudit(action, detail) {
     const ss   = SpreadsheetApp.getActiveSpreadsheet();
     let sh     = ss.getSheetByName(SH_AUDIT);
     if (!sh) {
-      sh = ss.insertSheet(SH_AUDIT);
-      sh.appendRow(['วันที่','ผู้ใช้','อีเมล','การกระทำ','รายละเอียด']);
-      const hr=sh.getRange(1,1,1,5);hr.setBackground('#1a3a5c');hr.setFontColor('#fff');hr.setFontWeight('bold');
-      sh.setFrozenRows(1);
+      try {
+        sh = ss.insertSheet(SH_AUDIT);
+        sh.appendRow(['วันที่','ผู้ใช้','อีเมล','การกระทำ','รายละเอียด']);
+        const hr=sh.getRange(1,1,1,5);hr.setBackground('#1a3a5c');hr.setFontColor('#fff');hr.setFontWeight('bold');
+        sh.setFrozenRows(1);
+      } catch(shErr) {
+        Logger.log('logAudit: Failed to create Audit Log sheet: ' + shErr.message);
+        return;
+      }
     }
+
     const sess = _sess();
-    var recEmail = '';
-    var recName  = '';
-    try { recEmail = Session.getEffectiveUser().getEmail() || ''; } catch(ex) {}
+    let recEmail = '';
+    let recName  = '';
+
+    try {
+      recEmail = Session.getEffectiveUser().getEmail() || '';
+    } catch(ex) {
+      Logger.log('logAudit: Failed to get effective user email: ' + ex.message);
+    }
+
     // Look up name from users sheet by email
     if (recEmail) {
       try {
-        var uSh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SH_USERS);
-        if (uSh) {
-          var uData = uSh.getDataRange().getValues();
-          for (var ui = 1; ui < uData.length; ui++) {
+        const uSh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SH_USERS);
+        if (uSh && uSh.getLastRow() > 1) {
+          const uData = uSh.getDataRange().getValues();
+          for (let ui = 1; ui < uData.length; ui++) {
             if ((uData[ui][0]||'').toLowerCase().trim() === recEmail.toLowerCase().trim()) {
               recName = uData[ui][3] || recEmail;
+              Logger.log('logAudit: Found user name: ' + recName + ' for email: ' + recEmail);
               break;
             }
           }
-          if (!recName) recName = recEmail;
+          if (!recName) {
+            recName = recEmail;
+            Logger.log('logAudit: Email not found in users sheet: ' + recEmail);
+          }
+        } else {
+          recName = recEmail;
+          Logger.log('logAudit: Users sheet not available or empty');
         }
-      } catch(ex) { recName = recEmail; }
+      } catch(ex) {
+        recName = recEmail;
+        Logger.log('logAudit name lookup error: ' + ex.message + ' for email: ' + recEmail);
+      }
+    } else {
+      Logger.log('logAudit: No effective user email available');
     }
-    if (!recName) { recName = sess.name||'ระบบ'; recEmail = sess.email||''; }
+
+    if (!recName) {
+      recName = sess.name||'ระบบ';
+      recEmail = sess.email||'';
+      Logger.log('logAudit: Using session name: ' + recName);
+    }
+
     sh.appendRow([new Date(), recName, recEmail, action, detail||'']);
     const lr = sh.getLastRow();
     if (lr%2===0) sh.getRange(lr,1,1,5).setBackground('#f8f9fa');
-  } catch(e) {}
+    Logger.log('logAudit SUCCESS: action=' + action + ', name=' + recName + ', email=' + recEmail);
+  } catch(e) {
+    Logger.log('CRITICAL logAudit ERROR: ' + e.message + ' | Stack: ' + e.stack + ' | action: ' + action + ' | detail: ' + detail);
+  }
 }
 
 function getAuditLog(limit) {
@@ -2826,6 +2859,141 @@ function getAuditLog(limit) {
       date:r[0]?fmtDate(r[0]):'', name:r[1], email:r[2], action:r[3], detail:r[4]
     }));
   } catch(e) { return { error:e.message }; }
+}
+
+function diagnosticCheckAuditLogging() {
+  if (!_autoRefreshSession()) return { error: 'SESSION_EXPIRED' };
+  try {
+    const sess = _sess();
+    const dataSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SH_DATA);
+    const auditSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SH_AUDIT);
+    const usersSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SH_USERS);
+
+    if (!dataSheet) return { error: 'ไม่พบ Data Sheet' };
+
+    const staffToCheck = ['วรรณี รัตนากร', 'หทัย เรืองเกษตรกิจ'];
+    const results = {};
+
+    for (let staffName of staffToCheck) {
+      results[staffName] = {
+        inDataSheet: 0,
+        inAuditLog: 0,
+        details: []
+      };
+
+      // Check data sheet
+      if (dataSheet.getLastRow() > 1) {
+        const data = dataSheet.getDataRange().getValues();
+        for (let i = 1; i < data.length; i++) {
+          const recorder = data[i][29] || ''; // Column 29 is recorder name
+          if (recorder && recorder.includes(staffName)) {
+            results[staffName].inDataSheet++;
+          }
+        }
+      }
+
+      // Check audit log
+      if (auditSheet && auditSheet.getLastRow() > 1) {
+        const audit = auditSheet.getDataRange().getValues();
+        for (let i = 1; i < audit.length; i++) {
+          const auditName = audit[i][1] || '';
+          if (auditName && auditName.includes(staffName)) {
+            results[staffName].inAuditLog++;
+          }
+        }
+      }
+
+      // Check users sheet
+      let userEmails = [];
+      if (usersSheet && usersSheet.getLastRow() > 1) {
+        const users = usersSheet.getDataRange().getValues();
+        for (let i = 1; i < users.length; i++) {
+          const email = users[i][0] || '';
+          const name = users[i][3] || '';
+          if (name && name.includes(staffName)) {
+            userEmails.push(email);
+          }
+        }
+      }
+
+      results[staffName].registeredEmails = userEmails;
+      results[staffName].discrepancy = results[staffName].inDataSheet - results[staffName].inAuditLog;
+    }
+
+    return { success: true, results: results };
+  } catch(e) {
+    return { error: e.message };
+  }
+}
+
+function fixMissingAuditEntries() {
+  if (!_autoRefreshSession()) return { error: 'SESSION_EXPIRED' };
+  try {
+    const dataSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SH_DATA);
+    const auditSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SH_AUDIT);
+    if (!dataSheet || !auditSheet) return { error: 'Missing sheets' };
+
+    const staffToCheck = ['วรรณี รัตนากร', 'หทัย เรืองเกษตรกิจ'];
+    const fixedCount = {};
+
+    for (let staffName of staffToCheck) {
+      fixedCount[staffName] = 0;
+
+      if (dataSheet.getLastRow() > 1) {
+        const data = dataSheet.getDataRange().getValues();
+        for (let i = 1; i < data.length; i++) {
+          const recorder = data[i][29] || '';
+          if (recorder && recorder.includes(staffName)) {
+            const id = data[i][0] || '';
+            const recordDate = data[i][1] || new Date();
+            const recType = data[i][4] || '';
+            const studentId = data[i][7] || '';
+            const courseCode = data[i][6] || '';
+
+            // Check if this entry already has an audit log
+            let hasAuditEntry = false;
+            if (auditSheet.getLastRow() > 1) {
+              const audit = auditSheet.getDataRange().getValues();
+              for (let j = 1; j < audit.length; j++) {
+                const auditName = audit[j][1] || '';
+                const auditDetail = audit[j][4] || '';
+                if (auditName && auditName.includes(staffName) && auditDetail && auditDetail.includes(id)) {
+                  hasAuditEntry = true;
+                  break;
+                }
+              }
+            }
+
+            // If no audit entry found, create one
+            if (!hasAuditEntry) {
+              auditSheet.appendRow([
+                recordDate,
+                staffName,
+                '',
+                'บันทึกพัสดุ',
+                id + ' | ' + recType + ' | นศ.' + studentId + ' | ' + courseCode
+              ]);
+              fixedCount[staffName]++;
+              Logger.log('Added audit entry for ' + staffName + ' record ' + id);
+            }
+          }
+        }
+      }
+    }
+
+    // Format audit log alternating rows
+    if (auditSheet.getLastRow() > 1) {
+      for (let i = 2; i <= auditSheet.getLastRow(); i++) {
+        if (i % 2 === 0) {
+          auditSheet.getRange(i, 1, 1, 5).setBackground('#f8f9fa');
+        }
+      }
+    }
+
+    return { success: true, fixed: fixedCount };
+  } catch(e) {
+    return { error: e.message };
+  }
 }
 
 // เพิ่ม audit ใน addRecord
