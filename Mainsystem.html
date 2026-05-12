@@ -592,13 +592,14 @@ tbody td{padding:12px;vertical-align:middle}
 
       <!-- ===== SEARCH ===== -->
       <div id="page-search" class="page">
-        <div class="sec-head"><div><h2>ค้นหาข้อมูล นศ.</h2><div class="sub">ค้นจากรหัส / ชื่อ / ชุดวิชา / จังหวัด / Tag / เลขพัสดุ</div></div></div>
+        <div class="sec-head"><div><h2>ค้นหาข้อมูล นศ.</h2><div class="sub">ค้นหาข้อมูลนักศึกษา เพื่อตรวจสอบข้อมูลเท่านั้น</div></div></div>
         <div class="card">
-          <div style="display:flex;gap:10px;align-items:flex-end">
-            <div class="fg" style="flex:1"><label class="flbl">คำค้นหา</label>
-              <input class="finput" id="searchQ" placeholder="รหัสนักศึกษา, ชื่อ-สกุล, ชุดวิชา, จังหวัด, อำเภอ, รหัสไปรษณีย์, Tag, เลขพัสดุ..." onkeydown="if(event.key==='Enter')doSearch()">
+          <div class="form-grid g3">
+            <div class="fg"><label class="flbl">ภาคการศึกษา</label><select class="fsel" id="searchTerm" style="width:100%"><option value="">ทั้งหมด</option><option>1</option><option>2</option><option>3</option></select></div>
+            <div class="fg"><label class="flbl">รหัสนักศึกษา</label><input class="finput" id="searchStudentId" placeholder="เช่น 1234567" onkeydown="if(event.key==='Enter')doSearch()"></div>
+            <div style="display:flex;gap:8px;align-items:flex-end">
+              <button class="btn btn-primary" onclick="doSearch()" style="flex:1">🔍 ค้นหา</button>
             </div>
-            <button class="btn btn-primary" onclick="doSearch()">🔍 ค้นหา</button>
           </div>
         </div>
         <div id="searchRes"></div>
@@ -1674,10 +1675,10 @@ tbody td{padding:12px;vertical-align:middle}
     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
       <label style="font-size:13px;color:var(--gray3)">ช่วงเวลา:</label>
       <select class="fsel" id="ar_period" onchange="loadAdminReport()" style="width:140px">
-        <option value="all">ทั้งหมด</option>
+        <option value="all" selected>ทั้งหมด</option>
         <option value="today">วันนี้</option>
         <option value="week">สัปดาห์นี้</option>
-        <option value="month" selected>เดือนนี้</option>
+        <option value="month">เดือนนี้</option>
       </select>
       <label style="font-size:13px;color:var(--gray3);margin-left:8px">เจ้าหน้าที่:</label>
       <select class="fsel" id="ar_user" onchange="filterAdminReport()" style="width:180px">
@@ -3405,13 +3406,14 @@ function renderDistChart(id,entries){
 // SEARCH — ค้นหาจาก Sheets จริง
 // ============================================================
 function doSearch() {
-  const q=document.getElementById('searchQ').value.trim();
-  if(q.length<2){showToast('กรุณาพิมพ์อย่างน้อย 2 ตัวอักษร','error');return;}
+  const term=document.getElementById('searchTerm').value.trim();
+  const sid=document.getElementById('searchStudentId').value.trim();
+  if(!sid){showToast('กรุณาใส่รหัสนักศึกษา','error');return;}
   document.getElementById('searchRes').innerHTML='<div style="text-align:center;padding:30px;color:var(--gray3)"><div class="spinner" style="margin:0 auto 10px"></div>กำลังค้นหา...</div>';
   google.script.run
     .withSuccessHandler(renderSearchResults)
     .withFailureHandler(showError)
-    .searchStudent(q);
+    .searchStudentById(sid, term);
 }
 
 function renderSearchResults(res) {
@@ -3461,7 +3463,6 @@ function renderSearchResults(res) {
               +'<td>'+renderTagChips(r.tags?r.tags.split(',').filter(Boolean):[])+'</td>'
               +'<td style="font-size:11px">'+(r.status||'')+'</td>'
               +'<td style="font-size:11px;color:var(--gray3)" title="'+(r.remark||'')+'">'+remarkShort+'</td>'
-              +'<td><button class="btn btn-outline btn-xs" onclick="openRecordDetail(\''+r.id+'\')" title="ดูรายละเอียด/แก้ไข" style="font-size:11px;padding:3px 8px">✏️ ดูรายละเอียด</button></td>'
               +'</tr>';
           }).join('')}</tbody></table></div>`:''}
       </div>`;
@@ -6810,6 +6811,9 @@ function loadAdminReport() {
       // จัดกลุ่มตาม user — ใช้การจับคู่แบบเฉพาะเจาะจง (specificity-first)
       var byUser = {};
       filtered.forEach(function(l) {
+        // ข้ามเมลระบบที่ไม่ใช่ admin จริง
+        if ((l.email||'').toLowerCase() === 'stou.post@g.stou.ac.th') return;
+
         var user = l.name || l.email || 'ไม่ระบุ';
         if (!byUser[user]) byUser[user] = {
           name: user, email: l.email||'',

@@ -1339,6 +1339,29 @@ function searchStudent(query) {
   return { records: Array.isArray(records)?records:[], crm: Array.isArray(crm)?crm:[] };
 }
 
+function searchStudentById(studentId, term) {
+  // Search by student ID with optional term filter (read-only)
+  if (!studentId || studentId.trim().length < 2) return { records:[], crm:[] };
+  const sid = studentId.trim();
+  const t = term ? term.trim() : '';
+
+  // Get records and filter by student ID
+  const allRecords = getRecords({});
+  const filtered = allRecords.filter(function(r) {
+    if ((r.studentId || '').trim() !== sid) return false;
+    if (t && (r.term || '').trim() !== t) return false;
+    return true;
+  });
+
+  // Get CRM tickets for this student
+  const crm = getCrmTickets({ search: sid });
+
+  return {
+    records: Array.isArray(filtered) ? filtered : [],
+    crm: Array.isArray(crm) ? crm : []
+  };
+}
+
 // ============================================================
 // CRM
 // ============================================================
