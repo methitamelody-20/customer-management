@@ -2992,7 +2992,7 @@ function fixIncorrectAuditEntries() {
   }
 }
 
-function createAuditEntriesFromDataSheet() {
+function forceCreateAllAuditEntries() {
   if (!_autoRefreshSession()) return { error: 'SESSION_EXPIRED' };
   try {
     const dataSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SH_DATA);
@@ -3001,39 +3001,27 @@ function createAuditEntriesFromDataSheet() {
     if (!dataSheet || !auditSheet) return { error: 'Missing sheets' };
 
     const dataRows = dataSheet.getDataRange().getValues();
-    const auditRows = auditSheet.getDataRange().getValues();
-
-    // Build map of existing audit entries by record ID
-    const existingAuditEntries = {};
-    for (let i = 1; i < auditRows.length; i++) {
-      const detail = auditRows[i][4] || ''; // Column E
-      const recordId = detail.split(' | ')[0]; // Extract record ID
-      if (recordId) {
-        existingAuditEntries[recordId] = true;
-      }
-    }
-
     let createdCount = 0;
 
-    // Go through all data rows and create missing audit entries
+    // สร้าง entry สำหรับทุก record ที่มี recorder name
     for (let i = 1; i < dataRows.length; i++) {
       const recordId = dataRows[i][0]; // Column A - ID
       const recordDate = dataRows[i][1]; // Column B - Date
-      const recType = dataRows[i][4]; // Column E - Type (return/lend/special)
+      const recType = dataRows[i][4]; // Column E - Type
       const studentId = dataRows[i][7]; // Column H - Student ID
       const courseCode = dataRows[i][6]; // Column G - Course Code
       const recorder = dataRows[i][29]; // Column AD - Recorder Name
 
-      // Skip if no recorder name or already has audit entry
-      if (!recorder || existingAuditEntries[recordId]) {
+      // Skip if no recorder name or invalid name
+      if (!recorder || !recorder.trim() || recorder === 'บันทึกแล้ว') {
         continue;
       }
 
-      // Create audit entry
+      // Create audit entry (ไม่ตรวจสอบว่ามี entry เก่าอยู่แล้ว)
       const detail = recordId + ' | ' + recType + ' | นศ.' + studentId + ' | ' + courseCode;
       auditSheet.appendRow([recordDate, recorder, '', 'บันทึกพัสดุ', detail]);
       createdCount++;
-      Logger.log('Created audit entry for ' + recorder + ' - ' + recordId);
+      Logger.log('Created audit entry: ' + recorder + ' - ' + recordId);
     }
 
     // Format audit log alternating rows
@@ -3045,7 +3033,7 @@ function createAuditEntriesFromDataSheet() {
       }
     }
 
-    return { success: true, created: createdCount, message: 'สร้าง ' + createdCount + ' audit entries' };
+    return { success: true, created: createdCount, message: 'สร้าง ' + createdCount + ' audit entries (บังคับ)' };
   } catch(e) {
     return { error: e.message };
   }
