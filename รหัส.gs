@@ -2940,6 +2940,8 @@ function checkColumnAD() {
     return { error: e.message };
   }
 }
+
+function createAuditEntriesFromDataSheet() {
   if (!_autoRefreshSession()) return { error: 'SESSION_EXPIRED' };
   try {
     const dataSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SH_DATA);
