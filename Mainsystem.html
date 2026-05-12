@@ -2374,7 +2374,7 @@ tbody td{padding:12px;vertical-align:middle}
       <div class="fg"><label class="flbl">เบอร์โทร</label><input class="finput" id="ret_phone" readonly></div>
       <div class="fg full"><label class="flbl">ที่อยู่</label><textarea class="ftextarea" id="ret_address" style="height:60px" readonly></textarea></div>
       <div class="fg"><label class="flbl">🚚 เลขพัสดุ</label><input class="finput" id="ret_parcel_track" placeholder="เช่น EY123456789TH"></div>
-      <div class="fg"><label class="flbl">📅 วันที่ส่ง</label><input class="finput" id="ret_parcel_date" type="date" lang="en-GB"></div>
+      <div class="fg"><label class="flbl">📅 วันที่ส่ง</label><input class="finput date-input-formatter" id="ret_parcel_date" placeholder="dd/mm/yyyy" inputmode="numeric"></div>
       <div class="fg full"><label class="flbl">หมายเหตุ</label><textarea class="ftextarea" id="ret_notes" style="height:80px" placeholder="หมายเหตุเพิ่มเติม..."></textarea></div>
     </div>
     <div class="btn-row">
@@ -2402,10 +2402,10 @@ tbody td{padding:12px;vertical-align:middle}
       <div class="fg"><label class="flbl">รหัสนักศึกษา</label><input class="finput" id="loan_student_id" readonly></div>
       <div class="fg"><label class="flbl">ชื่อ</label><input class="finput" id="loan_name" readonly></div>
       <div class="fg"><label class="flbl">เบอร์โทร</label><input class="finput" id="loan_phone" readonly></div>
-      <div class="fg"><label class="flbl">วันที่ต้องคืน</label><input class="finput" id="loan_due_date" type="date" lang="en-GB"></div>
+      <div class="fg"><label class="flbl">วันที่ต้องคืน</label><input class="finput date-input-formatter" id="loan_due_date" placeholder="dd/mm/yyyy" inputmode="numeric"></div>
       <div class="fg full"><label class="flbl">ที่อยู่</label><textarea class="ftextarea" id="loan_address" style="height:60px" readonly></textarea></div>
       <div class="fg"><label class="flbl">🚚 เลขพัสดุ</label><input class="finput" id="loan_parcel_track" placeholder="เช่น EY123456789TH"></div>
-      <div class="fg"><label class="flbl">📅 วันที่ส่ง</label><input class="finput" id="loan_parcel_date" type="date" lang="en-GB"></div>
+      <div class="fg"><label class="flbl">📅 วันที่ส่ง</label><input class="finput date-input-formatter" id="loan_parcel_date" placeholder="dd/mm/yyyy" inputmode="numeric"></div>
       <div class="fg full"><label class="flbl">หมายเหตุ</label><textarea class="ftextarea" id="loan_notes" style="height:80px" placeholder="หมายเหตุเพิ่มเติม..."></textarea></div>
     </div>
     <div class="btn-row">
@@ -2438,7 +2438,7 @@ tbody td{padding:12px;vertical-align:middle}
       <div class="fg full"><label class="flbl">ที่อยู่</label><textarea class="ftextarea" id="special_address" style="height:60px" readonly></textarea></div>
       <div class="fg full"><label class="flbl">ที่อยู่ใหม่ (ถ้าเปลี่ยนที่อยู่)</label><textarea class="ftextarea" id="special_new_address" style="height:60px" placeholder="ถ้าเป็นการเปลี่ยนที่อยู่ให้ใส่ที่อยู่ใหม่..."></textarea></div>
       <div class="fg"><label class="flbl">🚚 เลขพัสดุ</label><input class="finput" id="special_parcel_track" placeholder="เช่น EY123456789TH"></div>
-      <div class="fg"><label class="flbl">📅 วันที่ส่ง</label><input class="finput" id="special_parcel_date" type="date" lang="en-GB"></div>
+      <div class="fg"><label class="flbl">📅 วันที่ส่ง</label><input class="finput date-input-formatter" id="special_parcel_date" placeholder="dd/mm/yyyy" inputmode="numeric"></div>
       <div class="fg full"><label class="flbl">หมายเหตุ</label><textarea class="ftextarea" id="special_notes" style="height:80px" placeholder="หมายเหตุเพิ่มเติม..."></textarea></div>
     </div>
     <div class="btn-row">
@@ -3625,6 +3625,7 @@ var listPageState = { currentPage: 1, pageSize: 20, totalRecords: 0, allRecords:
 var _recordMap = {};
 
 function loadList() {
+  initDateInputs();
   const filters={
     recType:document.getElementById('lt_type').value,
     term:document.getElementById('lt_term').value,
@@ -5565,6 +5566,57 @@ function showToast(msg,type){
   const t=document.getElementById('toast');
   t.textContent=msg; t.className='show '+(type||'');
   clearTimeout(t._timer); t._timer=setTimeout(()=>t.className='',3500);
+}
+
+// ============================================================
+// DATE INPUT FORMATTER — dd/mm/yyyy format
+// ============================================================
+function initDateInputs() {
+  document.querySelectorAll('.date-input-formatter').forEach(function(input) {
+    // Format as user types: dd/mm/yyyy
+    input.addEventListener('input', function(e) {
+      let val = e.target.value.replace(/[^\d]/g, '');
+      if (val.length >= 2) val = val.substring(0, 2) + '/' + val.substring(2);
+      if (val.length >= 5) val = val.substring(0, 5) + '/' + val.substring(5, 9);
+      e.target.value = val;
+    });
+    // Store ISO format in data attribute when blur
+    input.addEventListener('blur', function(e) {
+      const val = e.target.value.trim();
+      if (!val || val.length < 10) return;
+      const parts = val.split('/');
+      if (parts.length === 3) {
+        const [d, m, y] = parts;
+        if (d && m && y && y.length === 4) {
+          const isoDate = y + '-' + m.padStart(2,'0') + '-' + d.padStart(2,'0');
+          if (!isNaN(new Date(isoDate))) e.target.dataset.isoValue = isoDate;
+        }
+      }
+    });
+  });
+}
+function getDateISOValue(inputElement) {
+  if (!inputElement) return '';
+  if (inputElement.dataset.isoValue) return inputElement.dataset.isoValue;
+  const val = inputElement.value.trim();
+  if (!val || val.length < 10) return '';
+  const parts = val.split('/');
+  if (parts.length === 3) {
+    const [d, m, y] = parts;
+    if (d && m && y && y.length === 4) return y + '-' + m.padStart(2,'0') + '-' + d.padStart(2,'0');
+  }
+  return '';
+}
+function setDateFormatterValue(inputElement, isoValue) {
+  if (!inputElement || !isoValue) return;
+  try {
+    const date = new Date(isoValue + 'T00:00:00Z');
+    const d = String(date.getUTCDate()).padStart(2,'0');
+    const m = String(date.getUTCMonth() + 1).padStart(2,'0');
+    const y = date.getUTCFullYear();
+    inputElement.value = d + '/' + m + '/' + y;
+    inputElement.dataset.isoValue = isoValue;
+  } catch(e) {}
 }
 
 // ============================================================
@@ -7853,6 +7905,10 @@ function openReturnModal(crmId, crmData) {
   document.getElementById('ret_phone').value = crmData.reporterPhone || '';
   document.getElementById('ret_notes').value = '';
   document.getElementById('ret_cause').value = '';
+  document.getElementById('ret_parcel_track').value = '';
+  const parcelDateInput = document.getElementById('ret_parcel_date');
+  parcelDateInput.value = '';
+  parcelDateInput.dataset.isoValue = '';
 
   // Fetch address from ข้อมูลพัสดุ Sheet
   if (studentId && course) {
@@ -7889,7 +7945,7 @@ function saveReturnRecord() {
     address: document.getElementById('ret_address').value,
     notes: document.getElementById('ret_notes').value,
     parcelTrack: document.getElementById('ret_parcel_track').value.trim(),
-    parcelDate: document.getElementById('ret_parcel_date').value.trim(),
+    parcelDate: getDateISOValue(document.getElementById('ret_parcel_date')),
     type: 'return'
   };
 
@@ -7916,7 +7972,13 @@ function openLoanModal(crmId, crmData) {
   document.getElementById('loan_phone').value = crmData.reporterPhone || '';
   document.getElementById('loan_notes').value = '';
   document.getElementById('loan_cause').value = '';
-  document.getElementById('loan_due_date').value = '';
+  document.getElementById('loan_parcel_track').value = '';
+  const dueDateInput = document.getElementById('loan_due_date');
+  dueDateInput.value = '';
+  dueDateInput.dataset.isoValue = '';
+  const parcelDateInput = document.getElementById('loan_parcel_date');
+  parcelDateInput.value = '';
+  parcelDateInput.dataset.isoValue = '';
 
   // Fetch address from ข้อมูลพัสดุ Sheet
   if (studentId && course) {
@@ -7951,10 +8013,10 @@ function saveLoanRecord() {
     name: document.getElementById('loan_name').value,
     phone: document.getElementById('loan_phone').value,
     address: document.getElementById('loan_address').value,
-    dueDate: document.getElementById('loan_due_date').value,
+    dueDate: getDateISOValue(document.getElementById('loan_due_date')),
     notes: document.getElementById('loan_notes').value,
     parcelTrack: document.getElementById('loan_parcel_track').value.trim(),
-    parcelDate: document.getElementById('loan_parcel_date').value.trim(),
+    parcelDate: getDateISOValue(document.getElementById('loan_parcel_date')),
     type: 'loan'
   };
 
@@ -7982,6 +8044,10 @@ function openSpecialResendModal(crmId, crmData) {
   document.getElementById('special_notes').value = '';
   document.getElementById('special_cause').value = '';
   document.getElementById('special_new_address').value = '';
+  document.getElementById('special_parcel_track').value = '';
+  const parcelDateInput = document.getElementById('special_parcel_date');
+  parcelDateInput.value = '';
+  parcelDateInput.dataset.isoValue = '';
 
   // Fetch address from ข้อมูลพัสดุ Sheet
   if (studentId && course) {
@@ -8019,7 +8085,7 @@ function saveSpecialResendRecord() {
     newAddress: document.getElementById('special_new_address').value,
     notes: document.getElementById('special_notes').value,
     parcelTrack: document.getElementById('special_parcel_track').value.trim(),
-    parcelDate: document.getElementById('special_parcel_date').value.trim(),
+    parcelDate: getDateISOValue(document.getElementById('special_parcel_date')),
     type: 'special_resend'
   };
 
@@ -8096,10 +8162,21 @@ function openParcelEditModal(recordId) {
         '</div>' +
         '<div class="fg full">' +
           '<label class="flbl">📅 วันที่ส่งวิชาที่ ' + n + '</label>' +
-          '<input class="finput pe-date" data-idx="' + idx + '" type="date" lang="en-GB" value="' + esc(c.date) + '">' +
+          '<input class="finput date-input-formatter pe-date" data-idx="' + idx + '" placeholder="dd/mm/yyyy" inputmode="numeric">' +
         '</div>' +
       '</div>';
   });
+
+  // Set date values using formatter (after DOM is ready)
+  setTimeout(function() {
+    courses.slice(0, 3).forEach(function(c, idx) {
+      if (c.date) {
+        const dateInput = document.querySelector('.pe-date[data-idx="' + idx + '"]');
+        if (dateInput) setDateFormatterValue(dateInput, c.date);
+      }
+    });
+    initDateInputs();
+  }, 0);
 
   document.getElementById('parcelEditModal').classList.remove('hidden');
 }
@@ -8138,7 +8215,7 @@ function saveParcelEdit() {
   });
   dateInputs.forEach(function(inp) {
     const idx = parseInt(inp.getAttribute('data-idx'));
-    if (courses[idx]) courses[idx].date = inp.value.trim();
+    if (courses[idx]) courses[idx].date = getDateISOValue(inp);
   });
 
   const coursesJson = JSON.stringify(courses);
