@@ -92,36 +92,21 @@ function logout() {
 function checkSession() {
   try {
     const sp = PropertiesService.getScriptProperties();
-    
-    // ลอง effective user email ก่อน
-    let userEmail = '';
-    try { userEmail = Session.getEffectiveUser().getEmail() || ''; } catch(e){}
-    
-    if (userEmail) {
-      const raw = sp.getProperty('sess_'+userEmail);
-      if (raw) {
-        try {
-          const s = JSON.parse(raw);
-          if (s && s.email && s.role && (Date.now()-s.ts < 8*60*60*1000)) {
-            return {valid:true, role:s.role, name:s.name||s.email, email:s.email};
-          }
-          sp.deleteProperty('sess_'+userEmail);
-        } catch(e) { sp.deleteProperty('sess_'+userEmail); }
-      }
-    }
-    
-    // ถ้าไม่มี session ของ effective user — ค้นหา session ที่ valid จากทุก key
+
+    // Don't use Session.getEffectiveUser() for lookup - it returns the sheet owner, not the actual user
+    // Instead, search through all stored sessions for a valid one
     const allProps = sp.getProperties();
     for (const key in allProps) {
       if (!key.startsWith('sess_')) continue;
       try {
         const s = JSON.parse(allProps[key]);
         if (s && s.email && s.role && (Date.now()-s.ts < 8*60*60*1000)) {
+          Logger.log('checkSession: Found valid session for ' + s.email);
           return {valid:true, role:s.role, name:s.name||s.email, email:s.email};
         }
       } catch(e) {}
     }
-    
+
     return {valid:false};
   } catch(e) { return {valid:false}; }
 }
@@ -1174,10 +1159,12 @@ function addRecord(data) {
       data.courses||'[]',  // JSON array ของชุดวิชาทั้งหมด
       status, fmtDate(now), sess.name||sess.email||'ผู้ใช้งาน',
     ];
+    const recorderName = sess.name||sess.email||'ผู้ใช้งาน';
     sheet.appendRow(row);
     const lr = sheet.getLastRow();
     if (lr%2===0) sheet.getRange(lr,1,1,row.length).setBackground('#f0f4f8');
-    logAudit('บันทึกพัสดุ', id+' | '+data.recType+' | นศ.'+data.studentId+' | '+data.courseCode);
+    // Pass the recorder name directly to ensure consistency with column AD
+    logAudit('บันทึกพัสดุ', id+' | '+data.recType+' | นศ.'+data.studentId+' | '+data.courseCode, recorderName, sess.email||'');
     return { success:true, id:id };
   } catch(e) { return { success:false, error:e.message }; }
 }
@@ -2778,7 +2765,7 @@ ${topProv.map((p,i)=>`  ${i+1}. ${p[0]}: ${p[1]} รายการ`).join('\n')
 // ============================================================
 const SH_AUDIT = 'Audit Log';
 
-function logAudit(action, detail) {
+function logAudit(action, detail, recorderName, recorderEmail) {
   try {
     const ss   = SpreadsheetApp.getActiveSpreadsheet();
     let sh     = ss.getSheetByName(SH_AUDIT);
@@ -2794,21 +2781,20 @@ function logAudit(action, detail) {
       }
     }
 
-    const sess = _sess();
-    let recName = '';
-    let recEmail = '';
+    // Use provided recorder name if given, otherwise fall back to session
+    let recName = recorderName || '';
+    let recEmail = recorderEmail || '';
 
-    // Use session name directly - it's already been properly authenticated
-    // Do NOT use Session.getEffectiveUser() as it returns the sheet owner, not the actual user
-    if (sess && sess.name) {
-      recName = sess.name;
+    if (!recName) {
+      const sess = _sess();
+      recName = sess.name || '';
       recEmail = sess.email || '';
-      Logger.log('logAudit: Using session name: ' + recName + ' (email: ' + recEmail + ')');
-    } else {
-      // Fallback only if session is completely missing
+    }
+
+    if (!recName) {
       recName = '(ระบบ)';
       recEmail = '';
-      Logger.log('logAudit: Session not available, using system default');
+      Logger.log('logAudit: No recorder name available');
     }
 
     sh.appendRow([new Date(), recName, recEmail, action, detail||'']);
@@ -2816,7 +2802,7 @@ function logAudit(action, detail) {
     if (lr%2===0) sh.getRange(lr,1,1,5).setBackground('#f8f9fa');
     Logger.log('logAudit SUCCESS: action=' + action + ', recorder=' + recName);
   } catch(e) {
-    Logger.log('CRITICAL logAudit ERROR: ' + e.message + ' | action: ' + action + ' | detail: ' + detail);
+    Logger.log('CRITICAL logAudit ERROR: ' + e.message + ' | action: ' + action);
   }
 }
 
@@ -2916,59 +2902,126 @@ function debugAuditIssue() {
   }
 }
 
-function fixMissingAuditEntries() {
+function checkColumnAD() {
+  try {
+    const dataSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SH_DATA);
+    if (!dataSheet) return { error: 'ไม่พบ Sheet ข้อมูลพัสดุ' };
+
+    const dataRows = dataSheet.getDataRange().getValues();
+
+    // ตรวจสอบจำนวนแถว
+    Logger.log('Total rows in data sheet: ' + (dataRows.length - 1));
+
+    // ตรวจสอบจำนวน columns
+    Logger.log('Total columns: ' + dataRows[0].length);
+
+    // ดึง recorder names จาก column AD (index 29)
+    const recorders = {};
+    for (let i = 1; i < dataRows.length; i++) {
+      const recorder = dataRows[i][29] || ''; // Column 29 = column AD
+      if (recorder && recorder.trim()) {
+        recorders[recorder] = (recorders[recorder] || 0) + 1;
+      }
+    }
+
+    Logger.log('Unique recorders found:');
+    for (const name in recorders) {
+      Logger.log('  ' + name + ': ' + recorders[name] + ' records');
+    }
+
+    return {
+      success: true,
+      totalDataRows: dataRows.length - 1,
+      totalColumns: dataRows[0].length,
+      uniqueRecorders: recorders,
+      recorderCount: Object.keys(recorders).length
+    };
+  } catch(e) {
+    return { error: e.message };
+  }
+}
+
+function fixIncorrectAuditEntries() {
   if (!_autoRefreshSession()) return { error: 'SESSION_EXPIRED' };
   try {
     const dataSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SH_DATA);
     const auditSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SH_AUDIT);
+
     if (!dataSheet || !auditSheet) return { error: 'Missing sheets' };
 
-    const staffToCheck = ['วรรณี รัตนากร', 'หทัย เรืองเกษตรกิจ'];
-    const fixedCount = {};
+    let fixedCount = 0;
 
-    for (let staffName of staffToCheck) {
-      fixedCount[staffName] = 0;
+    // Get all data from parcel sheet
+    const dataRows = dataSheet.getDataRange().getValues();
+    const dataMap = {}; // Map record ID -> recorder name
 
-      if (dataSheet.getLastRow() > 1) {
-        const data = dataSheet.getDataRange().getValues();
-        for (let i = 1; i < data.length; i++) {
-          const recorder = data[i][29] || '';
-          if (recorder && recorder.includes(staffName)) {
-            const id = data[i][0] || '';
-            const recordDate = data[i][1] || new Date();
-            const recType = data[i][4] || '';
-            const studentId = data[i][7] || '';
-            const courseCode = data[i][6] || '';
+    for (let i = 1; i < dataRows.length; i++) {
+      const recordId = dataRows[i][0]; // Column A
+      const recorder = dataRows[i][29]; // Column AD (column 29)
+      if (recordId && recorder) {
+        dataMap[recordId] = recorder;
+      }
+    }
 
-            // Check if this entry already has an audit log
-            let hasAuditEntry = false;
-            if (auditSheet.getLastRow() > 1) {
-              const audit = auditSheet.getDataRange().getValues();
-              for (let j = 1; j < audit.length; j++) {
-                const auditName = audit[j][1] || '';
-                const auditDetail = audit[j][4] || '';
-                if (auditName && auditName.includes(staffName) && auditDetail && auditDetail.includes(id)) {
-                  hasAuditEntry = true;
-                  break;
-                }
-              }
-            }
+    // Get all audit entries
+    const auditRows = auditSheet.getDataRange().getValues();
 
-            // If no audit entry found, create one
-            if (!hasAuditEntry) {
-              auditSheet.appendRow([
-                recordDate,
-                staffName,
-                '',
-                'บันทึกพัสดุ',
-                id + ' | ' + recType + ' | นศ.' + studentId + ' | ' + courseCode
-              ]);
-              fixedCount[staffName]++;
-              Logger.log('Added audit entry for ' + staffName + ' record ' + id);
-            }
-          }
+    // Fix incorrect entries
+    for (let i = 1; i < auditRows.length; i++) {
+      const auditName = auditRows[i][1]; // Column B (ผู้ใช้)
+      const auditDetail = auditRows[i][4]; // Column E (รายละเอียด)
+
+      // Check if this is an incorrect entry showing stou.post
+      if (auditName && auditName.includes('stou.post')) {
+        // Try to extract record ID from detail
+        const recordId = auditDetail ? auditDetail.split(' | ')[0] : null;
+
+        if (recordId && dataMap[recordId]) {
+          const correctName = dataMap[recordId];
+          // Update the audit entry with correct name
+          auditSheet.getRange(i + 1, 2).setValue(correctName); // Column B
+          fixedCount++;
+          Logger.log('Fixed audit entry ' + recordId + ' → ' + correctName);
         }
       }
+    }
+
+    return { success: true, fixed: fixedCount, message: 'แก้ไข ' + fixedCount + ' รายการแล้ว' };
+  } catch(e) {
+    return { error: e.message };
+  }
+}
+
+function forceCreateAllAuditEntries() {
+  if (!_autoRefreshSession()) return { error: 'SESSION_EXPIRED' };
+  try {
+    const dataSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SH_DATA);
+    const auditSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SH_AUDIT);
+
+    if (!dataSheet || !auditSheet) return { error: 'Missing sheets' };
+
+    const dataRows = dataSheet.getDataRange().getValues();
+    let createdCount = 0;
+
+    // สร้าง entry สำหรับทุก record ที่มี recorder name
+    for (let i = 1; i < dataRows.length; i++) {
+      const recordId = dataRows[i][0]; // Column A - ID
+      const recordDate = dataRows[i][1]; // Column B - Date
+      const recType = dataRows[i][4]; // Column E - Type
+      const studentId = dataRows[i][7]; // Column H - Student ID
+      const courseCode = dataRows[i][6]; // Column G - Course Code
+      const recorder = dataRows[i][29]; // Column AD - Recorder Name
+
+      // Skip if no recorder name or invalid name
+      if (!recorder || !recorder.trim() || recorder === 'บันทึกแล้ว') {
+        continue;
+      }
+
+      // Create audit entry (ไม่ตรวจสอบว่ามี entry เก่าอยู่แล้ว)
+      const detail = recordId + ' | ' + recType + ' | นศ.' + studentId + ' | ' + courseCode;
+      auditSheet.appendRow([recordDate, recorder, '', 'บันทึกพัสดุ', detail]);
+      createdCount++;
+      Logger.log('Created audit entry: ' + recorder + ' - ' + recordId);
     }
 
     // Format audit log alternating rows
@@ -2980,7 +3033,7 @@ function fixMissingAuditEntries() {
       }
     }
 
-    return { success: true, fixed: fixedCount };
+    return { success: true, created: createdCount, message: 'สร้าง ' + createdCount + ' audit entries (บังคับ)' };
   } catch(e) {
     return { error: e.message };
   }
