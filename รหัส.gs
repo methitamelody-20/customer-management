@@ -1161,6 +1161,11 @@ function addRecord(data) {
     let status  = 'บันทึกแล้ว';
     if (data.send2Track) status = 'ส่งแล้วครั้งที่ 2';
     else if (data.send1Track) status = 'ส่งแล้วครั้งที่ 1';
+    // 30 columns: 0=id,1=date,2=term,3=year,4=recType,5=parcelType,6=courseCode,7=studentId,
+    // 8=prefix,9=firstName,10=lastName,11=houseNo,12=street,13=subDistrict,14=district,
+    // 15=province,16=zipCode,17=phone,18=cause,19=contactStatus,
+    // 20=send1Track,21=send1Date,22=send2Track,23=send2Date,
+    // 24=tags,25=remark,26=courses,27=status,28=updatedAt,29=recorder
     const row = [
       id, fmtDate(now), data.term, data.year, data.recType, data.parcelType||'',
       data.courseCode||'', data.studentId||'', data.prefix||'',
@@ -1170,7 +1175,6 @@ function addRecord(data) {
       data.cause||'', data.contactStatus||'',
       data.send1Track||'', data.send1Date||'',
       data.send2Track||'', data.send2Date||'',
-      '', '', '', '',  // send3Track, send3Date (reserved)
       data.tags||'', data.remark||'',
       data.courses||'[]',  // JSON array ของชุดวิชาทั้งหมด
       status, fmtDate(now), sess.name||sess.email||'ผู้ใช้งาน',
@@ -1181,6 +1185,54 @@ function addRecord(data) {
     logAudit('บันทึกพัสดุ', id+' | '+data.recType+' | นศ.'+data.studentId+' | '+data.courseCode);
     return { success:true, id:id };
   } catch(e) { return { success:false, error:e.message }; }
+}
+
+// กู้คืนข้อมูลที่ถูกบันทึกผิดคอลัมน์ (จาก bug ของ addRecord)
+// ย้ายข้อมูลจาก AE→AA, AC→Y, AB→Z, AF→AB, AG→AC, AH→AD
+function recoverShiftedColumns() {
+  if (!_autoRefreshSession()) return { success:false, error:'SESSION_EXPIRED' };
+  try {
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SH_DATA);
+    if (!sheet) return { success:false, error:'ไม่พบ Sheet' };
+    const lr = sheet.getLastRow();
+    if (lr < 2) return { success:true, recovered:0 };
+    // อ่านคอลัมน์ AA-AH (27-34) ของทุกแถว
+    const range = sheet.getRange(2, 25, lr-1, 10); // Y(25) ถึง AH(34)
+    const values = range.getValues();
+    let recovered = 0;
+    for (let i = 0; i < values.length; i++) {
+      const r = values[i];
+      // r[0]=Y(25 tags), r[1]=Z(26 remark), r[2]=AA(27 courses), r[3]=AB(28 status),
+      // r[4]=AC(29 updatedAt), r[5]=AD(30 recorder), r[6]=AE(31), r[7]=AF(32), r[8]=AG(33), r[9]=AH(34)
+      // ถ้า AE(idx 6) มี JSON และ AA(idx 2) ว่าง = ข้อมูลผิดคอลัมน์
+      const aeVal = String(r[6] || '');
+      const aaVal = String(r[2] || '');
+      if (aeVal && aeVal.startsWith('[') && !aaVal) {
+        // ข้อมูลผิดคอลัมน์ — ย้ายกลับ
+        const tags = String(r[0] || '');     // Y → ต้องเป็น tags
+        const remark = String(r[1] || '');   // Z → ต้องเป็น remark
+        const courses = aeVal;                // AE → AA (courses JSON)
+        const status = String(r[7] || '');   // AF → AB (status)
+        const updatedAt = r[8] || '';        // AG → AC (updatedAt)
+        const recorder = String(r[9] || ''); // AH → AD (recorder)
+        // เขียนคอลัมน์ที่ถูกต้อง Y(25) ถึง AD(30)
+        sheet.getRange(i+2, 25).setValue(tags);      // Y = tags (เดิม)
+        sheet.getRange(i+2, 26).setValue(remark);    // Z = remark (เดิม)
+        sheet.getRange(i+2, 27).setValue(courses);   // AA = courses JSON
+        sheet.getRange(i+2, 28).setValue(status);    // AB = status
+        sheet.getRange(i+2, 29).setValue(updatedAt); // AC = updatedAt
+        sheet.getRange(i+2, 30).setValue(recorder);  // AD = recorder
+        // ล้าง AE(31) ถึง AH(34) ที่ไม่ใช้
+        sheet.getRange(i+2, 31, 1, 4).clearContent();
+        recovered++;
+      }
+    }
+    logAudit('กู้คืนข้อมูลคอลัมน์', 'แก้ไข ' + recovered + ' แถว');
+    return { success:true, recovered:recovered };
+  } catch(e) {
+    Logger.log('recoverShiftedColumns error: ' + e.message);
+    return { success:false, error:e.message };
+  }
 }
 
 var _recordsCache = null;
@@ -2014,8 +2066,14 @@ function inviteUser(email, role, name, perms) {
         + 'หากท่านไม่ได้รับคำเชิญนี้ กรุณาเพิกเฉยต่ออีเมลนี้\n\n'
         + 'ขอแสดงความนับถือ\n'
         + 'ผู้ดูแลระบบ มสธ.';
-      MailApp.sendEmail(email, subject, body);
-      return { success:true, emailSent:true };
+      try {
+        GmailApp.sendEmail(email, subject, body);
+        return { success:true, emailSent:true };
+      } catch(gmailErr) {
+        // Fallback to MailApp if GmailApp fails
+        MailApp.sendEmail(email, subject, body);
+        return { success:true, emailSent:true };
+      }
     } catch(emailErr) {
       return { success:true, emailSent:false, setupUrl:setpwUrl, message:'ไม่สามารถส่งอีเมลได้ กรุณาส่งลิงก์ด้านล่างให้ผู้ใช้: ' + setpwUrl };
     }
@@ -2046,8 +2104,13 @@ function resendUserInvite(email) {
             + 'หากท่านไม่ได้ร้องขอ กรุณาเพิกเฉยต่ออีเมลนี้\n\n'
             + 'ขอแสดงความนับถือ\n'
             + 'ผู้ดูแลระบบ มสธ.';
-          MailApp.sendEmail(email, subject, body);
-          return { success:true, emailSent:true };
+          try {
+            GmailApp.sendEmail(email, subject, body);
+            return { success:true, emailSent:true };
+          } catch(gmailErr) {
+            MailApp.sendEmail(email, subject, body);
+            return { success:true, emailSent:true };
+          }
         } catch(emailErr) {
           return { success:true, emailSent:false, setupUrl:setpwUrl, message:'ไม่สามารถส่งอีเมลได้ กรุณาส่งลิงก์ด้านล่างให้ผู้ใช้: ' + setpwUrl };
         }
@@ -3877,4 +3940,108 @@ function deleteExternalStaff(email) {
     }
     return { success:false, error:'ไม่พบผู้ใช้' };
   } catch(e) { return { success:false, error:e.message }; }
+}
+
+function diagnosticCheckRows315To329() {
+  if (!_autoRefreshSession()) return { success:false, error:'SESSION_EXPIRED' };
+  try {
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SH_DATA);
+    if (!sheet) return { success:false, error:'ไม่พบ Sheet' };
+
+    const diagnosis = [];
+    // Check rows 315-329 (which are rows 316-330 in the sheet, accounting for header)
+    const startRow = 316; // row 315 in data (row 316 in sheet including header)
+    const endRow = 330;
+
+    for (let row = startRow; row <= endRow; row++) {
+      const values = sheet.getRange(row, 1, 1, 35).getValues()[0];
+      const rowNum = row - 1; // Convert to data row number
+
+      // Get column data (0-indexed)
+      const id = String(values[0] || '');
+      const courseCode = String(values[6] || '');
+      const studentId = String(values[7] || '');
+      const firstName = String(values[9] || '');
+      const lastName = String(values[10] || '');
+
+      // Column AA (27 in 1-indexed) = index 26 in 0-indexed array
+      const coursesAA = String(values[26] || '');
+
+      // Columns that might have shifted data (AE-AH = indices 30-33)
+      const columnAE = String(values[30] || '');
+      const columnAF = String(values[31] || '');
+      const columnAG = String(values[32] || '');
+      const columnAH = String(values[33] || '');
+
+      // Parse courses JSON if it exists
+      let coursesInfo = 'ERROR: no JSON found';
+      let coursesHasTrack = false;
+      try {
+        const cs = JSON.parse(coursesAA || '[]');
+        if (cs.length > 0) {
+          coursesInfo = 'JSON_OK: ' + cs.length + ' courses';
+          // Check if courses have track property
+          coursesHasTrack = cs.some(function(c) { return c.track; });
+        } else {
+          coursesInfo = 'JSON_EMPTY: empty array';
+        }
+      } catch(e) {
+        coursesInfo = 'JSON_INVALID: ' + e.message;
+      }
+
+      diagnosis.push({
+        row: rowNum,
+        id: id,
+        studentId: studentId,
+        firstName: firstName,
+        lastName: lastName,
+        courseCode: courseCode,
+        coursesAALength: coursesAA.length,
+        coursesAAInfo: coursesInfo,
+        coursesAAHasTrack: coursesHasTrack,
+        coursesAAPreview: coursesAA.substring(0, 150),
+        hasShiftedData: (columnAE.startsWith('[') && !coursesAA.trim()),
+        columnAEPreview: columnAE.substring(0, 100),
+        columnAFPreview: columnAF.substring(0, 50),
+        columnAGPreview: columnAG.substring(0, 50),
+        columnAHPreview: columnAH.substring(0, 50)
+      });
+    }
+
+    return { success:true, rows: diagnosis };
+  } catch(e) {
+    Logger.log('diagnosticCheckRows315To329 error: ' + e.message);
+    return { success:false, error:e.message };
+  }
+}
+
+function runDiagnosticsAndRecover() {
+  if (!_autoRefreshSession()) return { success:false, error:'SESSION_EXPIRED' };
+  try {
+    // First, run diagnostics
+    const diag = diagnosticCheckRows315To329();
+    if (!diag.success) return diag;
+
+    // Count rows with shifted data
+    const shiftedRows = diag.rows.filter(function(r) { return r.hasShiftedData; });
+    const needsRecovery = shiftedRows.length > 0;
+
+    let recoveryResult = { skipped: true };
+    if (needsRecovery) {
+      // Run recovery for shifted columns
+      recoveryResult = recoverShiftedColumns();
+    }
+
+    return {
+      success: true,
+      totalRowsChecked: diag.rows.length,
+      rowsWithShiftedData: shiftedRows.length,
+      shiftedRowNumbers: shiftedRows.map(function(r) { return r.row; }),
+      diagnostics: diag.rows,
+      recoveryResult: recoveryResult
+    };
+  } catch(e) {
+    Logger.log('runDiagnosticsAndRecover error: ' + e.message);
+    return { success:false, error:e.message };
+  }
 }

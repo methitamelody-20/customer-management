@@ -2480,14 +2480,10 @@ tbody td{padding:12px;vertical-align:middle}
 
 <script>
 // ============================================================
-// SETPW PARAMS — extract from URL parameters
+// SETPW PARAMS — injected from server via doGet() template vars
 // ============================================================
-function getUrlParam(param) {
-  const url = new URL(window.location);
-  return url.searchParams.get(param) || '';
-}
-var _SETPW_TOKEN = getUrlParam('token');
-var _SETPW_EMAIL = getUrlParam('email');
+var _SETPW_TOKEN = '<?= setpwToken ?>';
+var _SETPW_EMAIL = '<?= setpwEmail ?>';
 
 // ============================================================
 // STATE
@@ -7973,6 +7969,8 @@ function saveReturnRecord() {
   const cause = document.getElementById('ret_cause').value.trim();
   if (!cause) { showToast('กรุณาเลือกสาเหตุ', 'error'); return; }
 
+  const parcelDateEl = document.getElementById('ret_parcel_date');
+  const parcelDate = getDateISOValue(parcelDateEl);
   const data = {
     crmId: document.getElementById('ret_crm_id').value,
     cause: cause,
@@ -7983,9 +7981,10 @@ function saveReturnRecord() {
     address: document.getElementById('ret_address').value,
     notes: document.getElementById('ret_notes').value,
     parcelTrack: document.getElementById('ret_parcel_track').value.trim(),
-    parcelDate: getDateISOValue(document.getElementById('ret_parcel_date')),
+    parcelDate: parcelDate,
     type: 'return'
   };
+  console.log('[DEBUG saveReturnRecord] parcelTrack='+data.parcelTrack+' parcelDate='+parcelDate+' raw='+parcelDateEl.value);
 
   google.script.run
     .withSuccessHandler(function(res) {
@@ -8057,6 +8056,7 @@ function saveLoanRecord() {
     parcelDate: getDateISOValue(document.getElementById('loan_parcel_date')),
     type: 'loan'
   };
+  console.log('[DEBUG saveLoanRecord] parcelTrack='+data.parcelTrack+' parcelDate='+data.parcelDate);
 
   google.script.run
     .withSuccessHandler(function(res) {
@@ -8126,6 +8126,7 @@ function saveSpecialResendRecord() {
     parcelDate: getDateISOValue(document.getElementById('special_parcel_date')),
     type: 'special_resend'
   };
+  console.log('[DEBUG saveSpecialRecord] parcelTrack='+data.parcelTrack+' parcelDate='+data.parcelDate);
 
   google.script.run
     .withSuccessHandler(function(res) {
@@ -8270,6 +8271,33 @@ function saveParcelEdit() {
     })
     .withFailureHandler(showError)
     .updateRecordCourseParcels(recordId, coursesJson);
+}
+
+// Admin Diagnostics: Call from browser console with runDiagnostics()
+function runDiagnostics() {
+  console.log('Running diagnostics for rows 315-329...');
+  google.script.run
+    .withSuccessHandler(function(res) {
+      if (res.success) {
+        console.log('✅ Diagnostics completed');
+        console.log('Total rows checked:', res.totalRowsChecked);
+        console.log('Rows with shifted data:', res.rowsWithShiftedData);
+        if (res.rowsWithShiftedData > 0) {
+          console.log('Shifted row numbers:', res.shiftedRowNumbers);
+          console.log('Recovery result:', res.recoveryResult);
+        }
+        console.log('Full diagnostics:', res.diagnostics);
+        showToast('✅ ตรวจสอบและกู้คืนข้อมูลเสร็จ (ดูรายละเอียดใน Console)', 'success');
+      } else {
+        console.error('❌ Diagnostics failed:', res.error);
+        showToast('❌ ' + res.error, 'error');
+      }
+    })
+    .withFailureHandler(function(err) {
+      console.error('❌ Script error:', err);
+      showToast('❌ ' + err, 'error');
+    })
+    .runDiagnosticsAndRecover();
 }
 </script>
 </body>
