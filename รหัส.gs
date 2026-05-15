@@ -1170,6 +1170,7 @@ function addRecord(data) {
       data.cause||'', data.contactStatus||'',
       data.send1Track||'', data.send1Date||'',
       data.send2Track||'', data.send2Date||'',
+      '', '', '', '',  // send3Track, send3Date (reserved)
       data.tags||'', data.remark||'',
       data.courses||'[]',  // JSON array ของชุดวิชาทั้งหมด
       status, fmtDate(now), sess.name||sess.email||'ผู้ใช้งาน',
@@ -1194,8 +1195,8 @@ function getRecords(filters) {
     const lr    = sheet.getLastRow();
     if (lr < 2) return [];
 
-    // ดึงทุกคอลัมน์ที่มีข้อมูล
-    const numCols = sheet.getLastColumn();
+    // ดึงทุก column ที่ใช้ (ต้อง 34 columns สำหรับข้อมูลพัสดุ)
+    const numCols = Math.min(sheet.getLastColumn(), 35);
     const rawRows = sheet.getRange(2,1,lr-1,numCols).getValues();
     const rows = [];
     for (let i = 0; i < rawRows.length; i++) {
@@ -1242,12 +1243,16 @@ function getRecords(filters) {
         send1Date:   D(r[21]),
         send2Track:  S(r[22]),
         send2Date:   D(r[23]),
-        tags:        S(r[24]),
-        remark:      S(r[25]),
-        courses:     S(r[26]) || '[]',
-        status:      S(r[27]),
-        updatedAt:   D(r[28]),
-        recorder:    S(r[29]),
+        send3Track:  S(r[24]),
+        send3Date:   D(r[25]),
+        send4Track:  S(r[26]),
+        send4Date:   D(r[27]),
+        tags:        S(r[28]),
+        remark:      S(r[29]),
+        courses:     S(r[30]) || '[]',
+        status:      S(r[31]),
+        updatedAt:   D(r[32]),
+        recorder:    S(r[33]),
       });
     }
 
@@ -1337,29 +1342,6 @@ function searchStudent(query) {
   const records = getRecords({ search:q });
   const crm = getCrmTickets({ search:q });
   return { records: Array.isArray(records)?records:[], crm: Array.isArray(crm)?crm:[] };
-}
-
-function searchStudentById(studentId, term) {
-  // Search by student ID with optional term filter (read-only)
-  if (!studentId || studentId.trim().length < 2) return { records:[], crm:[] };
-  const sid = studentId.trim();
-  const t = term ? term.trim() : '';
-
-  // Get records and filter by student ID
-  const allRecords = getRecords({});
-  const filtered = allRecords.filter(function(r) {
-    if ((r.studentId || '').trim() !== sid) return false;
-    if (t && (r.term || '').trim() !== t) return false;
-    return true;
-  });
-
-  // Get CRM tickets for this student
-  const crm = getCrmTickets({ search: sid });
-
-  return {
-    records: Array.isArray(filtered) ? filtered : [],
-    crm: Array.isArray(crm) ? crm : []
-  };
 }
 
 // ============================================================
@@ -1717,7 +1699,7 @@ function getInvestigationByRefId(refId) {
   }
 }
 
-function updateRecordParcel(recordId, send1Track, send1Date, send2Track, send2Date) {
+function updateRecordParcel(recordId, send1Track, send1Date, send2Track, send2Date, send3Track, send3Date) {
   if (!_autoRefreshSession()) return { success:false, error:'SESSION_EXPIRED' };
   try {
     const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SH_DATA);
@@ -1726,16 +1708,19 @@ function updateRecordParcel(recordId, send1Track, send1Date, send2Track, send2Da
     const data = sheet.getDataRange().getValues();
     for (let i = 1; i < data.length; i++) {
       if (String(data[i][0] || '').trim() === String(recordId || '').trim()) {
-        // Column indices (1-based): 21=send1Track, 22=send1Date, 23=send2Track, 24=send2Date
-        if (send1Track !== undefined) sheet.getRange(i + 1, 21).setValue(send1Track);
-        if (send1Date  !== undefined) sheet.getRange(i + 1, 22).setValue(send1Date);
-        if (send2Track !== undefined) sheet.getRange(i + 1, 23).setValue(send2Track);
-        if (send2Date  !== undefined) sheet.getRange(i + 1, 24).setValue(send2Date);
+        // Found the record
+        // Column indices (1-based for getRange): 21=send1Track, 22=send1Date, 23=send2Track, 24=send2Date, 25=send3Track, 26=send3Date
+        if (send1Track) sheet.getRange(i + 1, 21).setValue(send1Track);
+        if (send1Date) sheet.getRange(i + 1, 22).setValue(send1Date);
+        if (send2Track) sheet.getRange(i + 1, 23).setValue(send2Track);
+        if (send2Date) sheet.getRange(i + 1, 24).setValue(send2Date);
+        if (send3Track) sheet.getRange(i + 1, 25).setValue(send3Track);
+        if (send3Date) sheet.getRange(i + 1, 26).setValue(send3Date);
 
-        // Update timestamp at column 29 (updatedAt)
+        // Update timestamp
         sheet.getRange(i + 1, 29).setValue(new Date());
 
-        logAudit('แก้ไขเลขพัสดุ', recordId + ' | send1: ' + send1Track + ' | send2: ' + send2Track);
+        logAudit('แก้ไขเลขพัสดุ', recordId + ' | send1: ' + send1Track + ' | send2: ' + send2Track + ' | send3: ' + send3Track);
         return { success:true, message:'อัปเดตเลขพัสดุแล้ว' };
       }
     }
@@ -1743,46 +1728,6 @@ function updateRecordParcel(recordId, send1Track, send1Date, send2Track, send2Da
     return { success:false, error:'ไม่พบรายการ ' + recordId };
   } catch(e) {
     Logger.log('updateRecordParcel error: ' + e.message);
-    return { success:false, error:e.message };
-  }
-}
-
-function updateRecordCourseParcels(recordId, coursesJson) {
-  if (!_autoRefreshSession()) return { success:false, error:'SESSION_EXPIRED' };
-  try {
-    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SH_DATA);
-    if (!sheet) return { success:false, error:'ไม่พบ Sheet ข้อมูลพัสดุ' };
-
-    const data = sheet.getDataRange().getValues();
-    for (let i = 1; i < data.length; i++) {
-      if (String(data[i][0] || '').trim() === String(recordId || '').trim()) {
-        // Update courses JSON at column 27 (1-based = index 26)
-        sheet.getRange(i + 1, 27).setValue(coursesJson);
-
-        // Also sync send1/send2 from first two courses for backward compat
-        try {
-          const courses = JSON.parse(coursesJson || '[]');
-          if (courses[0]) {
-            sheet.getRange(i + 1, 21).setValue(courses[0].track || '');
-            sheet.getRange(i + 1, 22).setValue(courses[0].date  || '');
-          }
-          if (courses[1]) {
-            sheet.getRange(i + 1, 23).setValue(courses[1].track || '');
-            sheet.getRange(i + 1, 24).setValue(courses[1].date  || '');
-          }
-        } catch(e2) {}
-
-        // Update timestamp at column 29
-        sheet.getRange(i + 1, 29).setValue(new Date());
-
-        logAudit('แก้ไขเลขพัสดุ (courses)', recordId + ' | ' + coursesJson.substring(0, 100));
-        return { success:true, message:'อัปเดตเลขพัสดุแล้ว' };
-      }
-    }
-
-    return { success:false, error:'ไม่พบรายการ ' + recordId };
-  } catch(e) {
-    Logger.log('updateRecordCourseParcels error: ' + e.message);
     return { success:false, error:e.message };
   }
 }
@@ -1848,55 +1793,37 @@ function saveFollowUpRecord(data) {
     const searchStudentId = String(data.studentId || '').trim();
 
     for (let i = 1; i < dataRows.length; i++) {
-      const rowStudentId = String(dataRows[i][7] || '').trim();
-      if (rowStudentId !== searchStudentId) continue;
-
-      // Check courseCode column
       const rowCourse = String(dataRows[i][6] || '').trim();
-      if (rowCourse === searchCourse) { existingRowIndex = i; break; }
-
-      // Also check inside courses JSON
-      try {
-        const rowCourses = JSON.parse(String(dataRows[i][26] || '[]'));
-        if (Array.isArray(rowCourses) && rowCourses.some(function(c) { return (c.code||c) === searchCourse; })) {
-          existingRowIndex = i; break;
-        }
-      } catch(e) {}
+      const rowStudentId = String(dataRows[i][7] || '').trim();
+      if (rowCourse === searchCourse && rowStudentId === searchStudentId) {
+        existingRowIndex = i;
+        break;
+      }
     }
 
     let recordId = null;
 
     if (existingRowIndex !== -1) {
-      // UPDATE existing row
+      // UPDATE existing row - add follow-up info to columns 30+
       recordId = String(dataRows[existingRowIndex][0] || '');
+      dataSheet.getRange(existingRowIndex + 1, 30).setValue(data.type || '');
+      dataSheet.getRange(existingRowIndex + 1, 31).setValue(data.cause || '');
+      dataSheet.getRange(existingRowIndex + 1, 32).setValue(followUpDate);
+      dataSheet.getRange(existingRowIndex + 1, 33).setValue(followUpStatus);
 
-      // Update courses JSON with new parcel data for the matching course
+      // Update parcel info (columns 21-24)
       if (data.parcelTrack || data.parcelDate) {
-        let courses = [];
-        try { courses = JSON.parse(String(dataRows[existingRowIndex][26] || '[]')); } catch(e) {}
-        if (!Array.isArray(courses) || courses.length === 0) {
-          // Build from courseCode
-          const cc = String(dataRows[existingRowIndex][6] || '');
-          courses = cc.split(',').map(function(s) { return { code: s.trim() }; }).filter(function(c) { return c.code; });
-          if (courses.length === 0) courses = [{ code: cc }];
+        const send1Track = String(dataRows[existingRowIndex][20] || '').trim();
+        if (!send1Track) {
+          // send1 is empty, update send1 columns
+          dataSheet.getRange(existingRowIndex + 1, 21).setValue(data.parcelTrack || '');
+          dataSheet.getRange(existingRowIndex + 1, 22).setValue(data.parcelDate || '');
+        } else {
+          // send1 is filled, update send2 columns
+          dataSheet.getRange(existingRowIndex + 1, 23).setValue(data.parcelTrack || '');
+          dataSheet.getRange(existingRowIndex + 1, 24).setValue(data.parcelDate || '');
         }
-        // Find course index matching data.course, or use first
-        let courseIdx = courses.findIndex(function(c) { return (c.code || c) === searchCourse; });
-        if (courseIdx === -1) courseIdx = 0;
-        courses[courseIdx] = Object.assign({}, courses[courseIdx], {
-          track: data.parcelTrack || '',
-          date:  data.parcelDate  || ''
-        });
-        dataSheet.getRange(existingRowIndex + 1, 27).setValue(JSON.stringify(courses));
-
-        // Sync send1/send2 columns from first two courses
-        if (courses[0]) { dataSheet.getRange(existingRowIndex + 1, 21).setValue(courses[0].track || ''); dataSheet.getRange(existingRowIndex + 1, 22).setValue(courses[0].date || ''); }
-        if (courses[1]) { dataSheet.getRange(existingRowIndex + 1, 23).setValue(courses[1].track || ''); dataSheet.getRange(existingRowIndex + 1, 24).setValue(courses[1].date || ''); }
       }
-
-      // Update status and timestamp
-      dataSheet.getRange(existingRowIndex + 1, 28).setValue('ส่งแล้ว');
-      dataSheet.getRange(existingRowIndex + 1, 29).setValue(new Date());
 
       logAudit('บันทึก Follow-up (อัปเดต)', data.crmId + ' | ' + data.type + ' | นศ.' + data.studentId);
     } else {
@@ -1905,14 +1832,6 @@ function saveFollowUpRecord(data) {
       const pfx = {return:'P', loan:'L', special_resend:'S'}[data.type] || 'P';
       recordId = pfx + Utilities.formatDate(now, 'Asia/Bangkok', 'yyyyMMdd') + '-' + (dataSheet.getLastRow() + 1);
 
-      // Embed parcel data in courses JSON
-      const coursesArr = [{ code: data.course || '', track: data.parcelTrack || '', date: data.parcelDate || '' }];
-
-      // 30 columns: 0=id,1=date,2=term,3=year,4=recType,5=parcelType,6=courseCode,7=studentId,
-      // 8=prefix,9=firstName,10=lastName,11=houseNo,12=street,13=subDistrict,14=district,
-      // 15=province,16=zipCode,17=phone,18=cause,19=contactStatus,
-      // 20=send1Track,21=send1Date,22=send2Track,23=send2Date,
-      // 24=tags,25=remark,26=courses,27=status,28=updatedAt,29=recorder
       const newRow = [
         recordId, fmtDate(now), '', '', data.type, '',
         data.course || '', data.studentId || '', '',
@@ -1922,7 +1841,8 @@ function saveFollowUpRecord(data) {
         data.cause || '', '',
         data.parcelTrack || '', data.parcelDate || '',
         '', '',
-        '', '', JSON.stringify(coursesArr), 'ส่งแล้ว', fmtDate(now), recorderName
+        '', '',
+        JSON.stringify([data.course]), 'บันทึกแล้ว', fmtDate(now), recorderName
       ];
 
       dataSheet.appendRow(newRow);
@@ -2783,41 +2703,36 @@ function logAudit(action, detail) {
     const ss   = SpreadsheetApp.getActiveSpreadsheet();
     let sh     = ss.getSheetByName(SH_AUDIT);
     if (!sh) {
-      try {
-        sh = ss.insertSheet(SH_AUDIT);
-        sh.appendRow(['วันที่','ผู้ใช้','อีเมล','การกระทำ','รายละเอียด']);
-        const hr=sh.getRange(1,1,1,5);hr.setBackground('#1a3a5c');hr.setFontColor('#fff');hr.setFontWeight('bold');
-        sh.setFrozenRows(1);
-      } catch(shErr) {
-        Logger.log('logAudit: Failed to create Audit Log sheet: ' + shErr.message);
-        return;
-      }
+      sh = ss.insertSheet(SH_AUDIT);
+      sh.appendRow(['วันที่','ผู้ใช้','อีเมล','การกระทำ','รายละเอียด']);
+      const hr=sh.getRange(1,1,1,5);hr.setBackground('#1a3a5c');hr.setFontColor('#fff');hr.setFontWeight('bold');
+      sh.setFrozenRows(1);
     }
-
     const sess = _sess();
-    let recName = '';
-    let recEmail = '';
-
-    // Use session name directly - it's already been properly authenticated
-    // Do NOT use Session.getEffectiveUser() as it returns the sheet owner, not the actual user
-    if (sess && sess.name) {
-      recName = sess.name;
-      recEmail = sess.email || '';
-      Logger.log('logAudit: Using session name: ' + recName + ' (email: ' + recEmail + ')');
-    } else {
-      // Fallback only if session is completely missing
-      recName = '(ระบบ)';
-      recEmail = '';
-      Logger.log('logAudit: Session not available, using system default');
+    var recEmail = '';
+    var recName  = '';
+    try { recEmail = Session.getEffectiveUser().getEmail() || ''; } catch(ex) {}
+    // Look up name from users sheet by email
+    if (recEmail) {
+      try {
+        var uSh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SH_USERS);
+        if (uSh) {
+          var uData = uSh.getDataRange().getValues();
+          for (var ui = 1; ui < uData.length; ui++) {
+            if ((uData[ui][0]||'').toLowerCase().trim() === recEmail.toLowerCase().trim()) {
+              recName = uData[ui][3] || recEmail;
+              break;
+            }
+          }
+          if (!recName) recName = recEmail;
+        }
+      } catch(ex) { recName = recEmail; }
     }
-
+    if (!recName) { recName = sess.name||'ระบบ'; recEmail = sess.email||''; }
     sh.appendRow([new Date(), recName, recEmail, action, detail||'']);
     const lr = sh.getLastRow();
     if (lr%2===0) sh.getRange(lr,1,1,5).setBackground('#f8f9fa');
-    Logger.log('logAudit SUCCESS: action=' + action + ', recorder=' + recName);
-  } catch(e) {
-    Logger.log('CRITICAL logAudit ERROR: ' + e.message + ' | action: ' + action + ' | detail: ' + detail);
-  }
+  } catch(e) {}
 }
 
 function getAuditLog(limit) {
@@ -2831,159 +2746,6 @@ function getAuditLog(limit) {
       date:r[0]?fmtDate(r[0]):'', name:r[1], email:r[2], action:r[3], detail:r[4]
     }));
   } catch(e) { return { error:e.message }; }
-}
-
-function debugAuditIssue() {
-  if (!_autoRefreshSession()) return { error: 'SESSION_EXPIRED' };
-  try {
-    const dataSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SH_DATA);
-    const auditSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SH_AUDIT);
-    const usersSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SH_USERS);
-
-    const staffNames = ['วรรณี รัตนากร', 'หทัย เรืองเกษตรกิจ'];
-    const results = {
-      staffData: {},
-      auditLogSample: [],
-      usersSheetCheck: {}
-    };
-
-    // Check users sheet for these staff members
-    if (usersSheet && usersSheet.getLastRow() > 1) {
-      const usersData = usersSheet.getDataRange().getValues();
-      for (let staffName of staffNames) {
-        results.usersSheetCheck[staffName] = {
-          found: false,
-          email: null,
-          role: null
-        };
-        for (let i = 1; i < usersData.length; i++) {
-          if ((usersData[i][3] || '').includes(staffName)) {
-            results.usersSheetCheck[staffName].found = true;
-            results.usersSheetCheck[staffName].email = usersData[i][0];
-            results.usersSheetCheck[staffName].role = usersData[i][2];
-          }
-        }
-      }
-    }
-
-    // Check data sheet for their records (column AD = column 29)
-    if (dataSheet && dataSheet.getLastRow() > 1) {
-      const data = dataSheet.getDataRange().getValues();
-      for (let staffName of staffNames) {
-        results.staffData[staffName] = {
-          recordCount: 0,
-          recordIds: [],
-          recordDates: []
-        };
-        for (let i = 1; i < data.length; i++) {
-          const recorder = data[i][29] || '';
-          if (recorder.includes(staffName)) {
-            results.staffData[staffName].recordCount++;
-            results.staffData[staffName].recordIds.push(data[i][0]);
-            results.staffData[staffName].recordDates.push(data[i][1]);
-          }
-        }
-      }
-    }
-
-    // Check audit log - get recent 100 entries
-    if (auditSheet && auditSheet.getLastRow() > 1) {
-      const auditData = auditSheet.getDataRange().getValues();
-      const recentCount = Math.min(100, auditData.length - 1);
-      for (let i = Math.max(1, auditData.length - recentCount); i < auditData.length; i++) {
-        const name = auditData[i][1] || '';
-        const email = auditData[i][2] || '';
-        const action = auditData[i][3] || '';
-        const detail = auditData[i][4] || '';
-
-        for (let staffName of staffNames) {
-          if (name.includes(staffName) || name.includes('stou.post')) {
-            results.auditLogSample.push({
-              date: auditData[i][0],
-              name: name,
-              email: email,
-              action: action,
-              detail: detail.substring(0, 100)
-            });
-          }
-        }
-      }
-    }
-
-    return { success: true, data: results };
-  } catch(e) {
-    return { error: e.message, stack: e.stack };
-  }
-}
-
-function fixMissingAuditEntries() {
-  if (!_autoRefreshSession()) return { error: 'SESSION_EXPIRED' };
-  try {
-    const dataSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SH_DATA);
-    const auditSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SH_AUDIT);
-    if (!dataSheet || !auditSheet) return { error: 'Missing sheets' };
-
-    const staffToCheck = ['วรรณี รัตนากร', 'หทัย เรืองเกษตรกิจ'];
-    const fixedCount = {};
-
-    for (let staffName of staffToCheck) {
-      fixedCount[staffName] = 0;
-
-      if (dataSheet.getLastRow() > 1) {
-        const data = dataSheet.getDataRange().getValues();
-        for (let i = 1; i < data.length; i++) {
-          const recorder = data[i][29] || '';
-          if (recorder && recorder.includes(staffName)) {
-            const id = data[i][0] || '';
-            const recordDate = data[i][1] || new Date();
-            const recType = data[i][4] || '';
-            const studentId = data[i][7] || '';
-            const courseCode = data[i][6] || '';
-
-            // Check if this entry already has an audit log
-            let hasAuditEntry = false;
-            if (auditSheet.getLastRow() > 1) {
-              const audit = auditSheet.getDataRange().getValues();
-              for (let j = 1; j < audit.length; j++) {
-                const auditName = audit[j][1] || '';
-                const auditDetail = audit[j][4] || '';
-                if (auditName && auditName.includes(staffName) && auditDetail && auditDetail.includes(id)) {
-                  hasAuditEntry = true;
-                  break;
-                }
-              }
-            }
-
-            // If no audit entry found, create one
-            if (!hasAuditEntry) {
-              auditSheet.appendRow([
-                recordDate,
-                staffName,
-                '',
-                'บันทึกพัสดุ',
-                id + ' | ' + recType + ' | นศ.' + studentId + ' | ' + courseCode
-              ]);
-              fixedCount[staffName]++;
-              Logger.log('Added audit entry for ' + staffName + ' record ' + id);
-            }
-          }
-        }
-      }
-    }
-
-    // Format audit log alternating rows
-    if (auditSheet.getLastRow() > 1) {
-      for (let i = 2; i <= auditSheet.getLastRow(); i++) {
-        if (i % 2 === 0) {
-          auditSheet.getRange(i, 1, 1, 5).setBackground('#f8f9fa');
-        }
-      }
-    }
-
-    return { success: true, fixed: fixedCount };
-  } catch(e) {
-    return { error: e.message };
-  }
 }
 
 // เพิ่ม audit ใน addRecord
