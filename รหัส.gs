@@ -35,8 +35,8 @@ function doGet(e) {
       .addMetaTag('viewport','width=device-width,initial-scale=1');
   }
   const tpl = HtmlService.createTemplateFromFile('Mainsystem');
-  tpl.setpwToken = '';
-  tpl.setpwEmail = '';
+  tpl.setpwToken = params.token || '';
+  tpl.setpwEmail = params.email || '';
   return tpl.evaluate()
     .setTitle('ระบบจัดการและติดตามเอกสารการสอน มสธ.')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
