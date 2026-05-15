@@ -1340,6 +1340,35 @@ function searchStudent(query) {
   return { records: Array.isArray(records)?records:[], crm: Array.isArray(crm)?crm:[] };
 }
 
+function searchStudentById(studentId, term) {
+  // Search by student ID and optional term
+  if (!_autoRefreshSession()) return { error:'SESSION_EXPIRED' };
+  try {
+    if (!studentId || studentId.trim().length < 2) {
+      return { records:[], crm:[] };
+    }
+
+    const q = studentId.trim();
+    const records = getRecords({ search:q });
+    let crm = getCrmTickets({ search:q });
+
+    // If term is provided, also filter by term
+    if (term && term.trim()) {
+      const t = term.trim();
+      if (Array.isArray(records)) {
+        records = records.filter(r => (r.term || '').toString() === t);
+      }
+    }
+
+    return {
+      records: Array.isArray(records) ? records : [],
+      crm: Array.isArray(crm) ? crm : []
+    };
+  } catch(e) {
+    return { error: e.message };
+  }
+}
+
 // ============================================================
 // CRM
 // ============================================================
