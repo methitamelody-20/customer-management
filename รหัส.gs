@@ -1187,6 +1187,54 @@ function addRecord(data) {
   } catch(e) { return { success:false, error:e.message }; }
 }
 
+// กู้คืนข้อมูลที่ถูกบันทึกผิดคอลัมน์ (จาก bug ของ addRecord)
+// ย้ายข้อมูลจาก AE→AA, AC→Y, AB→Z, AF→AB, AG→AC, AH→AD
+function recoverShiftedColumns() {
+  if (!_autoRefreshSession()) return { success:false, error:'SESSION_EXPIRED' };
+  try {
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SH_DATA);
+    if (!sheet) return { success:false, error:'ไม่พบ Sheet' };
+    const lr = sheet.getLastRow();
+    if (lr < 2) return { success:true, recovered:0 };
+    // อ่านคอลัมน์ AA-AH (27-34) ของทุกแถว
+    const range = sheet.getRange(2, 25, lr-1, 10); // Y(25) ถึง AH(34)
+    const values = range.getValues();
+    let recovered = 0;
+    for (let i = 0; i < values.length; i++) {
+      const r = values[i];
+      // r[0]=Y(25 tags), r[1]=Z(26 remark), r[2]=AA(27 courses), r[3]=AB(28 status),
+      // r[4]=AC(29 updatedAt), r[5]=AD(30 recorder), r[6]=AE(31), r[7]=AF(32), r[8]=AG(33), r[9]=AH(34)
+      // ถ้า AE(idx 6) มี JSON และ AA(idx 2) ว่าง = ข้อมูลผิดคอลัมน์
+      const aeVal = String(r[6] || '');
+      const aaVal = String(r[2] || '');
+      if (aeVal && aeVal.startsWith('[') && !aaVal) {
+        // ข้อมูลผิดคอลัมน์ — ย้ายกลับ
+        const tags = String(r[0] || '');     // Y → ต้องเป็น tags
+        const remark = String(r[1] || '');   // Z → ต้องเป็น remark
+        const courses = aeVal;                // AE → AA (courses JSON)
+        const status = String(r[7] || '');   // AF → AB (status)
+        const updatedAt = r[8] || '';        // AG → AC (updatedAt)
+        const recorder = String(r[9] || ''); // AH → AD (recorder)
+        // เขียนคอลัมน์ที่ถูกต้อง Y(25) ถึง AD(30)
+        sheet.getRange(i+2, 25).setValue(tags);      // Y = tags (เดิม)
+        sheet.getRange(i+2, 26).setValue(remark);    // Z = remark (เดิม)
+        sheet.getRange(i+2, 27).setValue(courses);   // AA = courses JSON
+        sheet.getRange(i+2, 28).setValue(status);    // AB = status
+        sheet.getRange(i+2, 29).setValue(updatedAt); // AC = updatedAt
+        sheet.getRange(i+2, 30).setValue(recorder);  // AD = recorder
+        // ล้าง AE(31) ถึง AH(34) ที่ไม่ใช้
+        sheet.getRange(i+2, 31, 1, 4).clearContent();
+        recovered++;
+      }
+    }
+    logAudit('กู้คืนข้อมูลคอลัมน์', 'แก้ไข ' + recovered + ' แถว');
+    return { success:true, recovered:recovered };
+  } catch(e) {
+    Logger.log('recoverShiftedColumns error: ' + e.message);
+    return { success:false, error:e.message };
+  }
+}
+
 var _recordsCache = null;
 var _recordsCacheTime = 0;
 const CACHE_TTL = 60000; // 60 seconds cache
