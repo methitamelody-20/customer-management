@@ -1861,9 +1861,13 @@ function saveFollowUpRecord(data) {
         '',                          // 25: send3Date
         '',                          // 26: send4Track
         '',                          // 27: send4Date
-        JSON.stringify([data.course]), // 28: tags
+        '',                          // 28: tags
         '',                          // 29: remark
-        '',                          // 30: courses
+        JSON.stringify([{            // 30: courses (with track and date for display)
+          code: data.course || '',
+          track: data.parcelTrack || '',
+          date: data.parcelDate || ''
+        }]),
         'บันทึกแล้ว',               // 31: status
         fmtDate(now),                // 32: updatedAt
         recorderName                 // 33: recorder
