@@ -1979,7 +1979,7 @@ function inviteUser(email, role, name, perms) {
       + 'หากท่านไม่ได้รับคำเชิญนี้ กรุณาเพิกเฉยต่ออีเมลนี้\n\n'
       + 'ขอแสดงความนับถือ\n'
       + 'ผู้ดูแลระบบ มสธ.';
-    GmailApp.sendEmail(email, subject, body);
+    MailApp.sendEmail(email, subject, body);
     logAudit('เชิญผู้ใช้', email + ' | ' + role);
     return { success:true };
   } catch(e) { return { success:false, error:e.message }; }
@@ -2008,7 +2008,7 @@ function resendUserInvite(email) {
           + 'หากท่านไม่ได้ร้องขอ กรุณาเพิกเฉยต่ออีเมลนี้\n\n'
           + 'ขอแสดงความนับถือ\n'
           + 'ผู้ดูแลระบบ มสธ.';
-        GmailApp.sendEmail(email, subject, body);
+        MailApp.sendEmail(email, subject, body);
         return { success:true };
       }
     }
@@ -2730,7 +2730,7 @@ ${topProv.map((p,i)=>`  ${i+1}. ${p[0]}: ${p[1]} รายการ`).join('\n')
 ผู้สั่งรายงาน: ${sess.name||sess.email}
 วันที่: ${fmtDate(now)}`;
 
-    GmailApp.sendEmail(sess.email, subject, body);
+    MailApp.sendEmail(sess.email, subject, body);
     return { success:true, email:sess.email };
   } catch(e) { return { success:false, error:e.message }; }
 }
