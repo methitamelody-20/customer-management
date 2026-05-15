@@ -3941,3 +3941,76 @@ function deleteExternalStaff(email) {
     return { success:false, error:'ไม่พบผู้ใช้' };
   } catch(e) { return { success:false, error:e.message }; }
 }
+
+function diagnosticCheckRows315To329() {
+  if (!_autoRefreshSession()) return { success:false, error:'SESSION_EXPIRED' };
+  try {
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SH_DATA);
+    if (!sheet) return { success:false, error:'ไม่พบ Sheet' };
+
+    const diagnosis = [];
+    // Check rows 315-329 (which are rows 316-330 in the sheet, accounting for header)
+    const startRow = 316; // row 315 in data (row 316 in sheet including header)
+    const endRow = 330;
+
+    for (let row = startRow; row <= endRow; row++) {
+      const values = sheet.getRange(row, 1, 1, 35).getValues()[0];
+      const rowNum = row - 1; // Convert to data row number
+
+      // Get column data (0-indexed)
+      const id = String(values[0] || '');
+      const courseCode = String(values[6] || '');
+      const studentId = String(values[7] || '');
+      const firstName = String(values[9] || '');
+      const lastName = String(values[10] || '');
+
+      // Column AA (27 in 1-indexed) = index 26 in 0-indexed array
+      const coursesAA = String(values[26] || '');
+
+      // Columns that might have shifted data (AE-AH = indices 30-33)
+      const columnAE = String(values[30] || '');
+      const columnAF = String(values[31] || '');
+      const columnAG = String(values[32] || '');
+      const columnAH = String(values[33] || '');
+
+      // Parse courses JSON if it exists
+      let coursesInfo = 'ERROR: no JSON found';
+      let coursesHasTrack = false;
+      try {
+        const cs = JSON.parse(coursesAA || '[]');
+        if (cs.length > 0) {
+          coursesInfo = 'JSON_OK: ' + cs.length + ' courses';
+          // Check if courses have track property
+          coursesHasTrack = cs.some(function(c) { return c.track; });
+        } else {
+          coursesInfo = 'JSON_EMPTY: empty array';
+        }
+      } catch(e) {
+        coursesInfo = 'JSON_INVALID: ' + e.message;
+      }
+
+      diagnosis.push({
+        row: rowNum,
+        id: id,
+        studentId: studentId,
+        firstName: firstName,
+        lastName: lastName,
+        courseCode: courseCode,
+        coursesAALength: coursesAA.length,
+        coursesAAInfo: coursesInfo,
+        coursesAAHasTrack: coursesHasTrack,
+        coursesAAPreview: coursesAA.substring(0, 150),
+        hasShiftedData: (columnAE.startsWith('[') && !coursesAA.trim()),
+        columnAEPreview: columnAE.substring(0, 100),
+        columnAFPreview: columnAF.substring(0, 50),
+        columnAGPreview: columnAG.substring(0, 50),
+        columnAHPreview: columnAH.substring(0, 50)
+      });
+    }
+
+    return { success:true, rows: diagnosis };
+  } catch(e) {
+    Logger.log('diagnosticCheckRows315To329 error: ' + e.message);
+    return { success:false, error:e.message };
+  }
+}
