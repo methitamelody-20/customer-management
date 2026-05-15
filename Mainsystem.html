@@ -3707,7 +3707,7 @@ function renderList(rows) {
 }
 
 function renderListRows(rows, startIdx) {
-  const canDel=currentRole==='superadmin';
+  const canDel=currentRole==='superadmin'||currentRole==='staff';
   const now=new Date(); const todayStr=formatDate(now).split(' ')[0];
   document.getElementById('listBody').innerHTML=rows.map(function(r,i){
     var coursesTxt = r.courseCode||'-';
@@ -3731,7 +3731,7 @@ function renderListRows(rows, startIdx) {
     var isNew=r.date&&r.date.toString().split(' ')[0]===todayStr;
     var nb=isNew?'<span style="background:var(--accent);color:var(--navy);border-radius:20px;font-size:9px;font-weight:700;padding:1px 6px;margin-left:4px">NEW</span>':'';
     var tags=r.tags?r.tags.split(',').filter(Boolean):[];
-    var delBtn=canDel?('<button class="btn btn-sm" style="background:var(--red);color:#fff;font-size:11px;padding:4px 8px" onclick="deleteItem(\''+r.id+'\')">🗑️</button>'):'—';
+    var delBtn=canDel?('<button class="btn btn-sm" style="background:var(--red);color:#fff;font-size:11px;padding:4px 8px" onclick="return deleteItem(\''+r.id+'\')">🗑️</button>'):'—';
     var printBtn='<button class="btn btn-outline btn-sm" title="พิมพ์" onclick="printById(\''+r.id+'\')" style="font-size:11px;padding:4px 8px">🖨️</button>';
     var statusOpts=['ส่งใหม่แล้ว','รอดำเนินการ','อื่นๆ'];
     var statusCell='<select style="font-size:11px;padding:3px 6px;border:1px solid #ccc;border-radius:4px;max-width:110px" onchange="quickUpdateStatus(\''+r.id+'\',this.value)">'
@@ -3782,8 +3782,8 @@ function updateListPagination() {
 }
 
 function deleteItem(id) {
-  if(currentRole!=='superadmin'){showToast('เฉพาะ Super Admin เท่านั้น','error');return;}
-  if(!confirm('ยืนยันการลบรายการ '+id+' ?'))return;
+  if(currentRole!=='superadmin'&&currentRole!=='staff'){showToast('ไม่มีสิทธิลบข้อมูล','error');return false;}
+  if(!confirm('ยืนยันการลบรายการ '+id+' ?'))return false;
   google.script.run
     .withSuccessHandler(function(res){
       if(res.success){showToast('ลบสำเร็จ','success');loadList();}
@@ -3791,6 +3791,7 @@ function deleteItem(id) {
     })
     .withFailureHandler(showError)
     .deleteRecord(id);
+  return false;
 }
 
 function quickUpdateStatus(id, status) {
