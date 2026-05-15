@@ -5267,7 +5267,13 @@ function submitAddUser() {
     .withSuccessHandler(res=>{
       if(btn){btn.disabled=false;btn.textContent='📨 ส่งคำเชิญทางอีเมล';}
       if(res.success){
-        showToast(`✅ ส่งคำเชิญถึง "${email}" แล้ว — รอผู้ใช้ตั้งรหัสผ่านทางอีเมล`,'success');
+        if(res.emailSent){
+          showToast(`✅ ส่งคำเชิญถึง "${email}" แล้ว — รอผู้ใช้ตั้งรหัสผ่านทางอีเมล`,'success');
+        } else {
+          const msg=`⚠️ เพิ่มผู้ใช้สำเร็จ แต่ไม่สามารถส่งอีเมลได้\n\nคัดลอกลิงก์นี้แล้วส่งให้ผู้ใช้:\n\n${res.setupUrl}`;
+          showToast(msg,'warning');
+          console.log('Setup URL:', res.setupUrl);
+        }
         document.getElementById('addUserCard').style.display='none';
         ['nuName','nuEmail'].forEach(id=>document.getElementById(id).value='');
         loadUsersTable();

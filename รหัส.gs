@@ -1971,17 +1971,21 @@ function inviteUser(email, role, name, perms) {
     sheet.appendRow([email.toLowerCase(), '', role, name, false, '', perms||'', token, fmtDate(expires)]);
     const scriptUrl = ScriptApp.getService().getUrl();
     const setpwUrl = scriptUrl + '?page=setpw&token=' + token + '&email=' + encodeURIComponent(email);
-    const subject = '[มสธ.] คำเชิญเข้าใช้งานระบบจัดการเอกสาร มสธ.';
-    const body = 'เรียน ' + name + '\n\n'
-      + 'ท่านได้รับสิทธิ์เข้าใช้งานระบบจัดการและติดตามเอกสารการสอน มสธ. ในบทบาท: ' + role + '\n\n'
-      + 'กรุณาคลิกลิงก์ด้านล่างเพื่อตั้งรหัสผ่าน (ลิงก์ใช้ได้ 72 ชม.):\n\n'
-      + setpwUrl + '\n\n'
-      + 'หากท่านไม่ได้รับคำเชิญนี้ กรุณาเพิกเฉยต่ออีเมลนี้\n\n'
-      + 'ขอแสดงความนับถือ\n'
-      + 'ผู้ดูแลระบบ มสธ.';
-    MailApp.sendEmail(email, subject, body);
     logAudit('เชิญผู้ใช้', email + ' | ' + role);
-    return { success:true };
+    try {
+      const subject = '[มสธ.] คำเชิญเข้าใช้งานระบบจัดการเอกสาร มสธ.';
+      const body = 'เรียน ' + name + '\n\n'
+        + 'ท่านได้รับสิทธิ์เข้าใช้งานระบบจัดการและติดตามเอกสารการสอน มสธ. ในบทบาท: ' + role + '\n\n'
+        + 'กรุณาคลิกลิงก์ด้านล่างเพื่อตั้งรหัสผ่าน (ลิงก์ใช้ได้ 72 ชม.):\n\n'
+        + setpwUrl + '\n\n'
+        + 'หากท่านไม่ได้รับคำเชิญนี้ กรุณาเพิกเฉยต่ออีเมลนี้\n\n'
+        + 'ขอแสดงความนับถือ\n'
+        + 'ผู้ดูแลระบบ มสธ.';
+      MailApp.sendEmail(email, subject, body);
+      return { success:true, emailSent:true };
+    } catch(emailErr) {
+      return { success:true, emailSent:false, setupUrl:setpwUrl, message:'ไม่สามารถส่งอีเมลได้ กรุณาส่งลิงก์ด้านล่างให้ผู้ใช้: ' + setpwUrl };
+    }
   } catch(e) { return { success:false, error:e.message }; }
 }
 
@@ -2001,15 +2005,19 @@ function resendUserInvite(email) {
         const scriptUrl = ScriptApp.getService().getUrl();
         const setpwUrl = scriptUrl + '?page=setpw&token=' + token + '&email=' + encodeURIComponent(email);
         const name = data[i][3] || email;
-        const subject = '[มสธ.] ลิงก์ตั้งรหัสผ่านใหม่ — ระบบจัดการเอกสาร มสธ.';
-        const body = 'เรียน ' + name + '\n\n'
-          + 'กรุณาคลิกลิงก์ด้านล่างเพื่อตั้งรหัสผ่านใหม่ (ลิงก์ใช้ได้ 72 ชม.):\n\n'
-          + setpwUrl + '\n\n'
-          + 'หากท่านไม่ได้ร้องขอ กรุณาเพิกเฉยต่ออีเมลนี้\n\n'
-          + 'ขอแสดงความนับถือ\n'
-          + 'ผู้ดูแลระบบ มสธ.';
-        MailApp.sendEmail(email, subject, body);
-        return { success:true };
+        try {
+          const subject = '[มสธ.] ลิงก์ตั้งรหัสผ่านใหม่ — ระบบจัดการเอกสาร มสธ.';
+          const body = 'เรียน ' + name + '\n\n'
+            + 'กรุณาคลิกลิงก์ด้านล่างเพื่อตั้งรหัสผ่านใหม่ (ลิงก์ใช้ได้ 72 ชม.):\n\n'
+            + setpwUrl + '\n\n'
+            + 'หากท่านไม่ได้ร้องขอ กรุณาเพิกเฉยต่ออีเมลนี้\n\n'
+            + 'ขอแสดงความนับถือ\n'
+            + 'ผู้ดูแลระบบ มสธ.';
+          MailApp.sendEmail(email, subject, body);
+          return { success:true, emailSent:true };
+        } catch(emailErr) {
+          return { success:true, emailSent:false, setupUrl:setpwUrl, message:'ไม่สามารถส่งอีเมลได้ กรุณาส่งลิงก์ด้านล่างให้ผู้ใช้: ' + setpwUrl };
+        }
       }
     }
     return { success:false, error:'ไม่พบ Email' };
