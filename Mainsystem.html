@@ -445,6 +445,9 @@ tbody td{padding:12px;vertical-align:middle}
 </head>
 <body>
 
+<!-- Datalist for prefix autocomplete -->
+<datalist id="prefixList"></datalist>
+
 <!-- LOGIN -->
 <div id="setpwScreen" style="display:none;position:fixed;inset:0;z-index:10000;background:linear-gradient(135deg,#0D47A1,#1565C0);display:none;align-items:center;justify-content:center">
   <div class="login-box">
@@ -666,7 +669,7 @@ tbody td{padding:12px;vertical-align:middle}
           <div class="card-sec">👤 ข้อมูลนักศึกษา</div>
           <div class="form-grid g4">
             <div class="fg"><label class="flbl">รหัสนักศึกษา<span class="req">*</span></label><input class="finput" id="rt_sid" placeholder="6400012345" oninput="onSidInput('rt_',this.value)"></div>
-            <div class="fg"><label class="flbl">คำนำหน้า</label><select class="fsel" id="rt_prefix"><option value="">-- เลือก --</option></select></div>
+            <div class="fg"><label class="flbl">คำนำหน้า</label><input type="text" class="finput" id="rt_prefix" placeholder="นาย/นาง/นางสาว/อื่นๆ" list="prefixList"></div>
             <div class="fg"><label class="flbl">ชื่อ<span class="req">*</span></label><input class="finput" id="rt_fname" placeholder="ชื่อ"></div>
             <div class="fg"><label class="flbl">นามสกุล<span class="req">*</span></label><input class="finput" id="rt_lname" placeholder="นามสกุล"></div>
           </div>
@@ -793,7 +796,7 @@ tbody td{padding:12px;vertical-align:middle}
           <div class="card-sec">👤 ข้อมูลนักศึกษา</div>
           <div class="form-grid g4">
             <div class="fg"><label class="flbl">รหัสนักศึกษา<span class="req">*</span></label><input class="finput" id="ld_sid" placeholder="6400012345" oninput="onSidInput('ld_',this.value)"></div>
-            <div class="fg"><label class="flbl">คำนำหน้า</label><select class="fsel" id="ld_prefix"><option value="">-- เลือก --</option></select></div>
+            <div class="fg"><label class="flbl">คำนำหน้า</label><input type="text" class="finput" id="ld_prefix" placeholder="นาย/นาง/นางสาว/อื่นๆ" list="prefixList"></div>
             <div class="fg"><label class="flbl">ชื่อ<span class="req">*</span></label><input class="finput" id="ld_fname" placeholder="ชื่อ"></div>
             <div class="fg"><label class="flbl">นามสกุล<span class="req">*</span></label><input class="finput" id="ld_lname" placeholder="นามสกุล"></div>
           </div>
@@ -925,7 +928,7 @@ tbody td{padding:12px;vertical-align:middle}
           <div class="card-sec">👤 ข้อมูลนักศึกษา</div>
           <div class="form-grid g4">
             <div class="fg"><label class="flbl">รหัสนักศึกษา<span class="req">*</span></label><input class="finput" id="sp_sid" placeholder="6400012345" oninput="onSidInput('sp_',this.value)"></div>
-            <div class="fg"><label class="flbl">คำนำหน้า</label><select class="fsel" id="sp_prefix"><option value="">-- เลือก --</option></select></div>
+            <div class="fg"><label class="flbl">คำนำหน้า</label><input type="text" class="finput" id="sp_prefix" placeholder="นาย/นาง/นางสาว/อื่นๆ" list="prefixList"></div>
             <div class="fg"><label class="flbl">ชื่อ<span class="req">*</span></label><input class="finput" id="sp_fname" placeholder="ชื่อ"></div>
             <div class="fg"><label class="flbl">นามสกุล<span class="req">*</span></label><input class="finput" id="sp_lname" placeholder="นามสกุล"></div>
           </div>
@@ -3055,11 +3058,16 @@ function populateDropdowns() {
     el.innerHTML='<option value="">-- เลือก --</option>';
     (settings.parcelTypes||[]).forEach(function(t){el.innerHTML+='<option>'+t+'</option>';});
   });
-  ['rt_prefix','ld_prefix','sp_prefix'].forEach(function(id){
-    var el=document.getElementById(id); if(!el)return;
-    el.innerHTML='<option value="">-- เลือก --</option>';
-    (settings.prefixes||[]).forEach(function(p){el.innerHTML+='<option>'+p+'</option>';});
-  });
+  // Populate prefix datalist (for autocomplete in text inputs)
+  var prefixList = document.getElementById('prefixList');
+  if(prefixList) {
+    prefixList.innerHTML = '';
+    (settings.prefixes||[]).forEach(function(p){
+      var opt = document.createElement('option');
+      opt.value = p;
+      prefixList.appendChild(opt);
+    });
+  }
   // สาเหตุตีคืน — hardcoded เสมอ ไม่ขึ้นกับ Sheet
   var RETURN_CAUSES = ['จ่าหน้าไม่ชัดเจน','ไม่มีเลขที่บ้านตามจ่าหน้า','ไม่ยอมรับ','ไม่มีผู้รับตามจ่าหน้า','ไม่มารับภายในกำหนด','ไม่มีจ่าหน้าหรือจ่าหน้าสูญหาย','ย้ายไม่ทราบที่อยู่ใหม่','อื่นๆ'];
   var rc=document.getElementById('rt_cause');
