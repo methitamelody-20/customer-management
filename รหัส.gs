@@ -1779,7 +1779,7 @@ function updateRecordCourseParcels(recordId, coursesJson) {
           sheet.getRange(i + 1, 24).setValue(courses[1].date || '');
         }
         sheet.getRange(i + 1, 29).setValue(fmtDate(new Date()));
-        logAudit('แก้ไขเลขพัสดุ', recordId + ' | ' + coursesJson.substring(0, 80));
+        logAudit('แก้ไขเลขพัสดุ', recordId + ' | ' + (coursesJson || '').substring(0, 80));
         return { success:true };
       }
     }
