@@ -67,15 +67,16 @@ function login(email, password) {
       const rowRole   = (data[i][2]||'').toString().trim();
       const rowName   = (data[i][3]||'').toString().trim();
       const rowActive = data[i][4];
+      const rowPerms  = (data[i][6]||'').toString().trim();
       if (rowEmail === email.toLowerCase().trim()) {
         if (!rowActive) return { success:false, error:'บัญชีนี้ถูกระงับ' };
         if (hashPw(password) === rowHash) {
           // ใช้ ScriptProperties + key = email (ตรงกับ checkSession)
-          const sessData = {email:rowEmail, role:rowRole, name:rowName, ts:Date.now()};
+          const sessData = {email:rowEmail, role:rowRole, name:rowName, perms:rowPerms, ts:Date.now()};
           PropertiesService.getScriptProperties().setProperty('sess_'+rowEmail, JSON.stringify(sessData));
           sheet.getRange(i+1, 6).setValue(fmtDate(new Date()));
           Logger.log('Login success: '+rowEmail+' role='+rowRole);
-          return { success:true, role:rowRole, name:rowName, email:rowEmail };
+          return { success:true, role:rowRole, name:rowName, email:rowEmail, perms:rowPerms };
         }
         return { success:false, error:'รหัสผ่านไม่ถูกต้อง' };
       }
@@ -103,13 +104,13 @@ function checkSession() {
         try {
           const s = JSON.parse(raw);
           if (s && s.email && s.role && (Date.now()-s.ts < 8*60*60*1000)) {
-            return {valid:true, role:s.role, name:s.name||s.email, email:s.email};
+            return {valid:true, role:s.role, name:s.name||s.email, email:s.email, perms:s.perms||''};
           }
           sp.deleteProperty('sess_'+userEmail);
         } catch(e) { sp.deleteProperty('sess_'+userEmail); }
       }
     }
-    
+
     // ถ้าไม่มี session ของ effective user — ค้นหา session ที่ valid จากทุก key
     const allProps = sp.getProperties();
     for (const key in allProps) {
@@ -117,7 +118,7 @@ function checkSession() {
       try {
         const s = JSON.parse(allProps[key]);
         if (s && s.email && s.role && (Date.now()-s.ts < 8*60*60*1000)) {
-          return {valid:true, role:s.role, name:s.name||s.email, email:s.email};
+          return {valid:true, role:s.role, name:s.name||s.email, email:s.email, perms:s.perms||''};
         }
       } catch(e) {}
     }
