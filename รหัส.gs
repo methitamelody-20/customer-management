@@ -1833,16 +1833,40 @@ function saveFollowUpRecord(data) {
       recordId = pfx + Utilities.formatDate(now, 'Asia/Bangkok', 'yyyyMMdd') + '-' + (dataSheet.getLastRow() + 1);
 
       const newRow = [
-        recordId, fmtDate(now), '', '', data.type, '',
-        data.course || '', data.studentId || '', '',
-        '', '',
-        '', '', '', '',
-        '', '', data.phone || '',
-        data.cause || '', '',
-        data.parcelTrack || '', data.parcelDate || '',
-        '', '',
-        '', '',
-        JSON.stringify([data.course]), 'บันทึกแล้ว', fmtDate(now), recorderName
+        recordId,                    // 0: id
+        fmtDate(now),                // 1: date
+        '',                          // 2: term
+        '',                          // 3: year
+        data.type,                   // 4: recType
+        '',                          // 5: parcelType
+        data.course || '',           // 6: courseCode
+        data.studentId || '',        // 7: studentId
+        '',                          // 8: prefix
+        '',                          // 9: firstName
+        '',                          // 10: lastName
+        '',                          // 11: houseNo
+        '',                          // 12: street
+        '',                          // 13: subDistrict
+        '',                          // 14: district
+        '',                          // 15: province
+        '',                          // 16: zipCode
+        data.phone || '',            // 17: phone
+        data.cause || '',            // 18: cause
+        '',                          // 19: contactStatus
+        data.parcelTrack || '',      // 20: send1Track
+        data.parcelDate || '',       // 21: send1Date
+        '',                          // 22: send2Track
+        '',                          // 23: send2Date
+        '',                          // 24: send3Track
+        '',                          // 25: send3Date
+        '',                          // 26: send4Track
+        '',                          // 27: send4Date
+        JSON.stringify([data.course]), // 28: tags
+        '',                          // 29: remark
+        '',                          // 30: courses
+        'บันทึกแล้ว',               // 31: status
+        fmtDate(now),                // 32: updatedAt
+        recorderName                 // 33: recorder
       ];
 
       dataSheet.appendRow(newRow);
