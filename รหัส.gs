@@ -2014,8 +2014,14 @@ function inviteUser(email, role, name, perms) {
         + 'หากท่านไม่ได้รับคำเชิญนี้ กรุณาเพิกเฉยต่ออีเมลนี้\n\n'
         + 'ขอแสดงความนับถือ\n'
         + 'ผู้ดูแลระบบ มสธ.';
-      MailApp.sendEmail(email, subject, body);
-      return { success:true, emailSent:true };
+      try {
+        GmailApp.sendEmail(email, subject, body);
+        return { success:true, emailSent:true };
+      } catch(gmailErr) {
+        // Fallback to MailApp if GmailApp fails
+        MailApp.sendEmail(email, subject, body);
+        return { success:true, emailSent:true };
+      }
     } catch(emailErr) {
       return { success:true, emailSent:false, setupUrl:setpwUrl, message:'ไม่สามารถส่งอีเมลได้ กรุณาส่งลิงก์ด้านล่างให้ผู้ใช้: ' + setpwUrl };
     }
@@ -2046,8 +2052,13 @@ function resendUserInvite(email) {
             + 'หากท่านไม่ได้ร้องขอ กรุณาเพิกเฉยต่ออีเมลนี้\n\n'
             + 'ขอแสดงความนับถือ\n'
             + 'ผู้ดูแลระบบ มสธ.';
-          MailApp.sendEmail(email, subject, body);
-          return { success:true, emailSent:true };
+          try {
+            GmailApp.sendEmail(email, subject, body);
+            return { success:true, emailSent:true };
+          } catch(gmailErr) {
+            MailApp.sendEmail(email, subject, body);
+            return { success:true, emailSent:true };
+          }
         } catch(emailErr) {
           return { success:true, emailSent:false, setupUrl:setpwUrl, message:'ไม่สามารถส่งอีเมลได้ กรุณาส่งลิงก์ด้านล่างให้ผู้ใช้: ' + setpwUrl };
         }
