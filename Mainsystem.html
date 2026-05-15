@@ -8272,6 +8272,33 @@ function saveParcelEdit() {
     .withFailureHandler(showError)
     .updateRecordCourseParcels(recordId, coursesJson);
 }
+
+// Admin Diagnostics: Call from browser console with runDiagnostics()
+function runDiagnostics() {
+  console.log('Running diagnostics for rows 315-329...');
+  google.script.run
+    .withSuccessHandler(function(res) {
+      if (res.success) {
+        console.log('✅ Diagnostics completed');
+        console.log('Total rows checked:', res.totalRowsChecked);
+        console.log('Rows with shifted data:', res.rowsWithShiftedData);
+        if (res.rowsWithShiftedData > 0) {
+          console.log('Shifted row numbers:', res.shiftedRowNumbers);
+          console.log('Recovery result:', res.recoveryResult);
+        }
+        console.log('Full diagnostics:', res.diagnostics);
+        showToast('✅ ตรวจสอบและกู้คืนข้อมูลเสร็จ (ดูรายละเอียดใน Console)', 'success');
+      } else {
+        console.error('❌ Diagnostics failed:', res.error);
+        showToast('❌ ' + res.error, 'error');
+      }
+    })
+    .withFailureHandler(function(err) {
+      console.error('❌ Script error:', err);
+      showToast('❌ ' + err, 'error');
+    })
+    .runDiagnosticsAndRecover();
+}
 </script>
 </body>
 </html>

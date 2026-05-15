@@ -4014,3 +4014,34 @@ function diagnosticCheckRows315To329() {
     return { success:false, error:e.message };
   }
 }
+
+function runDiagnosticsAndRecover() {
+  if (!_autoRefreshSession()) return { success:false, error:'SESSION_EXPIRED' };
+  try {
+    // First, run diagnostics
+    const diag = diagnosticCheckRows315To329();
+    if (!diag.success) return diag;
+
+    // Count rows with shifted data
+    const shiftedRows = diag.rows.filter(function(r) { return r.hasShiftedData; });
+    const needsRecovery = shiftedRows.length > 0;
+
+    let recoveryResult = { skipped: true };
+    if (needsRecovery) {
+      // Run recovery for shifted columns
+      recoveryResult = recoverShiftedColumns();
+    }
+
+    return {
+      success: true,
+      totalRowsChecked: diag.rows.length,
+      rowsWithShiftedData: shiftedRows.length,
+      shiftedRowNumbers: shiftedRows.map(function(r) { return r.row; }),
+      diagnostics: diag.rows,
+      recoveryResult: recoveryResult
+    };
+  } catch(e) {
+    Logger.log('runDiagnosticsAndRecover error: ' + e.message);
+    return { success:false, error:e.message };
+  }
+}
