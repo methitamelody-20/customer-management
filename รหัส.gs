@@ -1243,16 +1243,12 @@ function getRecords(filters) {
         send1Date:   D(r[21]),
         send2Track:  S(r[22]),
         send2Date:   D(r[23]),
-        send3Track:  S(r[24]),
-        send3Date:   D(r[25]),
-        send4Track:  S(r[26]),
-        send4Date:   D(r[27]),
-        tags:        S(r[28]),
-        remark:      S(r[29]),
-        courses:     S(r[30]) || '[]',
-        status:      S(r[31]),
-        updatedAt:   D(r[32]),
-        recorder:    S(r[33]),
+        tags:        S(r[24]),
+        remark:      S(r[25]),
+        courses:     S(r[26]) || '[]',
+        status:      S(r[27]),
+        updatedAt:   D(r[28]),
+        recorder:    S(r[29]),
       });
     }
 
@@ -1832,45 +1828,24 @@ function saveFollowUpRecord(data) {
       const pfx = {return:'P', loan:'L', special_resend:'S'}[data.type] || 'P';
       recordId = pfx + Utilities.formatDate(now, 'Asia/Bangkok', 'yyyyMMdd') + '-' + (dataSheet.getLastRow() + 1);
 
+      // Embed parcel data in courses JSON
+      const coursesArr = [{ code: data.course || '', track: data.parcelTrack || '', date: data.parcelDate || '' }];
+
+      // 30 columns: 0=id,1=date,2=term,3=year,4=recType,5=parcelType,6=courseCode,7=studentId,
+      // 8=prefix,9=firstName,10=lastName,11=houseNo,12=street,13=subDistrict,14=district,
+      // 15=province,16=zipCode,17=phone,18=cause,19=contactStatus,
+      // 20=send1Track,21=send1Date,22=send2Track,23=send2Date,
+      // 24=tags,25=remark,26=courses,27=status,28=updatedAt,29=recorder
       const newRow = [
-        recordId,                    // 0: id
-        fmtDate(now),                // 1: date
-        '',                          // 2: term
-        '',                          // 3: year
-        data.type,                   // 4: recType
-        '',                          // 5: parcelType
-        data.course || '',           // 6: courseCode
-        data.studentId || '',        // 7: studentId
-        '',                          // 8: prefix
-        '',                          // 9: firstName
-        '',                          // 10: lastName
-        '',                          // 11: houseNo
-        '',                          // 12: street
-        '',                          // 13: subDistrict
-        '',                          // 14: district
-        '',                          // 15: province
-        '',                          // 16: zipCode
-        data.phone || '',            // 17: phone
-        data.cause || '',            // 18: cause
-        '',                          // 19: contactStatus
-        data.parcelTrack || '',      // 20: send1Track
-        data.parcelDate || '',       // 21: send1Date
-        '',                          // 22: send2Track
-        '',                          // 23: send2Date
-        '',                          // 24: send3Track
-        '',                          // 25: send3Date
-        '',                          // 26: send4Track
-        '',                          // 27: send4Date
-        '',                          // 28: tags
-        '',                          // 29: remark
-        JSON.stringify([{            // 30: courses (with track and date for display)
-          code: data.course || '',
-          track: data.parcelTrack || '',
-          date: data.parcelDate || ''
-        }]),
-        'บันทึกแล้ว',               // 31: status
-        fmtDate(now),                // 32: updatedAt
-        recorderName                 // 33: recorder
+        recordId, fmtDate(now), '', '', data.type, '',
+        data.course || '', data.studentId || '', '',
+        '', '',
+        '', '', '', '',
+        '', '', data.phone || '',
+        data.cause || '', '',
+        data.parcelTrack || '', data.parcelDate || '',
+        '', '',
+        '', '', JSON.stringify(coursesArr), 'ส่งแล้ว', fmtDate(now), recorderName
       ];
 
       dataSheet.appendRow(newRow);
