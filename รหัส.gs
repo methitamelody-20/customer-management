@@ -1161,6 +1161,11 @@ function addRecord(data) {
     let status  = 'บันทึกแล้ว';
     if (data.send2Track) status = 'ส่งแล้วครั้งที่ 2';
     else if (data.send1Track) status = 'ส่งแล้วครั้งที่ 1';
+    // 30 columns: 0=id,1=date,2=term,3=year,4=recType,5=parcelType,6=courseCode,7=studentId,
+    // 8=prefix,9=firstName,10=lastName,11=houseNo,12=street,13=subDistrict,14=district,
+    // 15=province,16=zipCode,17=phone,18=cause,19=contactStatus,
+    // 20=send1Track,21=send1Date,22=send2Track,23=send2Date,
+    // 24=tags,25=remark,26=courses,27=status,28=updatedAt,29=recorder
     const row = [
       id, fmtDate(now), data.term, data.year, data.recType, data.parcelType||'',
       data.courseCode||'', data.studentId||'', data.prefix||'',
@@ -1170,7 +1175,6 @@ function addRecord(data) {
       data.cause||'', data.contactStatus||'',
       data.send1Track||'', data.send1Date||'',
       data.send2Track||'', data.send2Date||'',
-      '', '', '', '',  // send3Track, send3Date (reserved)
       data.tags||'', data.remark||'',
       data.courses||'[]',  // JSON array ของชุดวิชาทั้งหมด
       status, fmtDate(now), sess.name||sess.email||'ผู้ใช้งาน',
