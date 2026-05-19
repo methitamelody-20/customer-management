@@ -8300,5 +8300,123 @@ function runDiagnostics() {
     .runDiagnosticsAndRecover();
 }
 </script>
+
+
+<!-- ====================================================================
+  STOU CRM — Theme & icon patch (drop-in)
+  วิธีใช้: paste block นี้ "ก่อน </body>" ของไฟล์ HTML ทั้ง 3 ตัว
+  (Mainsystem.html, CRM_Public.html, ExternalStaffDashboard.html)
+  ไม่ต้องแก้ CSS หรือ JS เดิม.
+==================================================================== -->
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style id="stou-theme-patch">
+:root{
+  --font:'Noto Sans Thai',system-ui,-apple-system,'Segoe UI',sans-serif !important;
+  --font-h:'Noto Sans Thai',system-ui,-apple-system,'Segoe UI',sans-serif !important;
+  --on-surface:#0F172A;--on-surface-variant:#5A6478;
+  --outline-variant:#DDE1E7;--surface-variant:#EEF1F4;
+  --shadow-0:none;
+  --shadow-1:0 1px 2px rgba(15,23,42,.06),0 2px 4px rgba(15,23,42,.04);
+  --shadow-2:0 3px 8px rgba(15,23,42,.08),0 1px 3px rgba(15,23,42,.06);
+  --shadow-3:0 10px 24px rgba(15,23,42,.10),0 3px 8px rgba(15,23,42,.06);
+  --shadow-4:0 22px 48px rgba(15,23,42,.14),0 8px 18px rgba(15,23,42,.08);
+  --shadow:var(--shadow-2);
+  --r:14px;--rsm:10px;
+}
+html,body{font-family:'Noto Sans Thai',system-ui,sans-serif;font-size:14.5px;-webkit-font-smoothing:antialiased}
+.card{border-radius:14px;box-shadow:var(--shadow-2);border:1px solid rgba(15,23,42,.08)}
+.btn,.btn-primary,.btn-outline,.btn-success,.btn-danger,.submit-btn,.login-btn{
+  border-radius:10px !important;letter-spacing:.1px;text-transform:none !important
+}
+.btn-sm{border-radius:10px !important}.btn-xs{border-radius:8px !important}
+.finput,.fsel,.ftextarea{border-radius:10px}
+.badge,.role-badge{border-radius:8px;letter-spacing:.3px;white-space:nowrap}
+.sidebar{background:#FFFFFF;border-right:1px solid rgba(15,23,42,.08)}
+.nav-btn{border-radius:8px;font-size:13.5px}
+.nav-btn:hover{background:var(--surface-variant);color:var(--on-surface)}
+.nav-btn.active{background:var(--primary-container);color:var(--on-primary-container);font-weight:600}
+.ch-logo{width:24px;height:24px;border-radius:6px;display:inline-block;vertical-align:middle;object-fit:contain}
+.ch-logo.sm{width:18px;height:18px;border-radius:4px}
+.ch-card .ch-logo{display:block;margin:0 auto 4px}
+</style>
+
+<script>
+(function(){
+  // LINE official logo (64x64 PNG, base64-inlined)
+  var LINE_SRC = 'data:image/png;base64,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';
+  // Facebook official "f" mark (SVG data URI)
+  var FB_SRC = 'data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20256%20256%22%3E%3Crect%20width%3D%22256%22%20height%3D%22256%22%20rx%3D%2256%22%20fill%3D%22%231877F2%22%3E%3C%2Frect%3E%3Cpath%20d%3D%22M179.16%20167.79%20185.65%20128h-38.31V102.07c0-10.89%205.34-21.51%2022.45-21.51h17.36V46.67s-15.75-2.69-30.81-2.69c-31.43%200-51.97%2019.04-51.97%2053.5V128H68.99v39.79h35.38V256h43.46v-88.21h31.33z%22%20fill%3D%22%23FFFFFF%22%3E%3C%2Fpath%3E%3C%2Fsvg%3E';
+
+  function buildImg(src, alt, cls){
+    var img = document.createElement('img');
+    img.src = src; img.alt = alt;
+    img.className = 'ch-logo' + (cls ? ' ' + cls : '');
+    return img;
+  }
+
+  function swapLineEmoji(root){
+    // Replace any standalone 💚 in elements that look like channel icons or chips
+    // (kept conservative: only swaps when 💚 is the entire text content of the node)
+    var walker = document.createTreeWalker(root || document.body, NodeFilter.SHOW_TEXT, null);
+    var nodes = [], n;
+    while ((n = walker.nextNode())) nodes.push(n);
+    nodes.forEach(function(node){
+      var t = (node.nodeValue || '').trim();
+      if (t === '\u{1F49A}' || t === '💚') {
+        var parent = node.parentNode;
+        if (!parent) return;
+        // figure out a sensible size class from the parent
+        var cls = '';
+        if (parent.classList.contains('ch-ico')) {
+          // big icon inside channel card
+          parent.innerHTML = '';
+          parent.appendChild(buildImg(LINE_SRC, 'LINE'));
+        } else {
+          // inline: small variant
+          var img = buildImg(LINE_SRC, 'LINE', 'sm');
+          parent.replaceChild(img, node);
+        }
+      }
+    });
+  }
+
+  function addFacebookChannel(){
+    // Add a Facebook card after the LINE card if found in CRM_Public's channel grid
+    var grid = document.querySelector('.ch-grid');
+    if (!grid) return;
+    if (grid.querySelector('[data-ch="facebook"]')) return; // already added
+    var lineCard = grid.querySelector('#ch_line');
+    var fbCard = document.createElement('div');
+    fbCard.className = 'ch-card';
+    fbCard.id = 'ch_facebook';
+    fbCard.setAttribute('data-ch', 'facebook');
+    fbCard.onclick = function(){ if (window.selCh) window.selCh('facebook'); };
+    fbCard.innerHTML =
+      '<div class="ch-ico"><img class="ch-logo" src="' + FB_SRC + '" alt="Facebook"></div>' +
+      '<div class="ch-lbl">Facebook</div>';
+    if (lineCard && lineCard.nextSibling) {
+      grid.insertBefore(fbCard, lineCard.nextSibling);
+    } else {
+      grid.appendChild(fbCard);
+    }
+  }
+
+  function applyAll(){
+    swapLineEmoji();
+    addFacebookChannel();
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', applyAll);
+  } else {
+    applyAll();
+  }
+
+  // ถ้ามีการ render ticket list ใหม่ภายหลัง (Apps Script SPA), เรียกใหม่ได้ที่:
+  window.__stouRefreshIcons = applyAll;
+})();
+</script>
+<!-- ==================================================================== -->
+
 </body>
 </html>
