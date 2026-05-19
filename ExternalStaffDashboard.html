@@ -706,6 +706,10 @@ function exportTickets() {
 </script>
 
 
+
+
+
+
 <!-- ====================================================================
   STOU CRM — Theme & icon patch (drop-in)
   วิธีใช้: paste block นี้ "ก่อน </body>" ของไฟล์ HTML ทั้ง 3 ตัว
@@ -808,6 +812,17 @@ html,body{font-family:'Noto Sans Thai',system-ui,sans-serif;font-size:14.5px;-we
   function applyAll(){
     swapLineEmoji();
     addFacebookChannel();
+    reorderNav();
+  }
+
+  function reorderNav(){
+    // Move "รายการทั้งหมด" (data-page="list") to right after "Dashboard" (data-page="dash")
+    var dashBtn = document.querySelector('.nav-btn[data-page="dash"]');
+    var listBtn = document.querySelector('.nav-btn[data-page="list"]');
+    if (!dashBtn || !listBtn) return;
+    if (listBtn.previousElementSibling === dashBtn) return; // already in place
+    listBtn.parentNode.removeChild(listBtn);
+    dashBtn.parentNode.insertBefore(listBtn, dashBtn.nextSibling);
   }
 
   if (document.readyState === 'loading') {
