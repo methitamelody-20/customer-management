@@ -4379,6 +4379,7 @@ function renderCrmList(items) {
           +'</select>'
         +'</div>'
         +'<div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">'
+          +'<button class="btn btn-outline btn-xs" data-cid="'+cid+'" onclick="editCrmTicket(this.dataset.cid)">✏️ แก้ไข</button>'
           +'<button class="btn btn-outline btn-xs" data-cid="'+cid+'" onclick="prefillFromCrm(this.dataset.cid,\'return\')">↩️ ตีคืน</button>'
           +'<button class="btn btn-outline btn-xs" data-cid="'+cid+'" onclick="prefillFromCrm(this.dataset.cid,\'lend\')">📤 ให้ยืม</button>'
           +'<button class="btn btn-outline btn-xs" data-cid="'+cid+'" onclick="prefillFromCrm(this.dataset.cid,\'special\')">⭐ ส่งใหม่พิเศษ</button>'
@@ -4610,6 +4611,87 @@ function copyCrmLink() {
       showToast('✅ คัดลอก URL แล้ว','success');
     });
   }
+}
+
+function editCrmTicket(cid) {
+  var ticket = allCrm.find(function(c){return c.id === cid;});
+  if(!ticket){showToast('❌ ไม่พบรายการ','error');return;}
+
+  var modal = document.createElement('div');
+  modal.className = 'modal-overlay';
+  modal.innerHTML = `<div class="modal" style="max-width:700px">
+    <div class="modal-title">✏️ แก้ไขปัญหา CRM
+      <button onclick="this.closest('.modal-overlay').remove()" style="float:right;border:none;background:none;font-size:20px;cursor:pointer">✕</button>
+    </div>
+    <div style="max-height:70vh;overflow-y:auto;padding:20px 0">
+      <div class="form-grid g2">
+        <div class="fg full"><label class="flbl">รหัส (ไม่สามารถแก้ไข)</label><input class="finput" value="${ticket.id||''}" disabled style="background:#f5f5f5"></div>
+        <div class="fg"><label class="flbl">ชื่อผู้แจ้ง</label><input class="finput" id="edit_name" value="${(ticket.reporterName||'').replace(/"/g,'&quot;')}"></div>
+        <div class="fg"><label class="flbl">รหัสนักศึกษา</label><input class="finput" id="edit_sid" value="${(ticket.studentId||'').replace(/"/g,'&quot;')}"></div>
+        <div class="fg"><label class="flbl">อีเมล</label><input class="finput" type="email" id="edit_email" value="${(ticket.reporterEmail||'').replace(/"/g,'&quot;')}"></div>
+        <div class="fg"><label class="flbl">เบอร์โทร</label><input class="finput" id="edit_phone" value="${(ticket.reporterPhone||'').replace(/"/g,'&quot;')}"></div>
+        <div class="fg"><label class="flbl">ประเภทปัญหา</label><input class="finput" id="edit_ptype" value="${(ticket.issueType||'').replace(/"/g,'&quot;')}"></div>
+        <div class="fg full"><label class="flbl">รายละเอียดปัญหา</label><textarea class="ftextarea" id="edit_detail" style="min-height:100px">${(ticket.detail||'').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</textarea></div>
+        <div class="fg"><label class="flbl">ช่องทาง</label>
+          <select class="fsel" id="edit_channel">
+            <option value="phone" ${ticket.channel==='phone'?'selected':''}>📞 โทรศัพท์</option>
+            <option value="line" ${ticket.channel==='line'?'selected':''}>💚 LINE</option>
+            <option value="letter" ${ticket.channel==='letter'?'selected':''}>✉️ จดหมาย</option>
+            <option value="walkin" ${ticket.channel==='walkin'?'selected':''}>🚶 มาด้วยตนเอง</option>
+            <option value="online" ${ticket.channel==='online'?'selected':''}>🌐 ออนไลน์</option>
+          </select>
+        </div>
+        <div class="fg"><label class="flbl">ความเร่งด่วน</label>
+          <select class="fsel" id="edit_priority">
+            <option value="normal" ${ticket.priority==='normal'?'selected':''}>⚪ ปกติ</option>
+            <option value="high" ${ticket.priority==='high'?'selected':''}>🟡 สำคัญ</option>
+            <option value="urgent" ${ticket.priority==='urgent'?'selected':''}>🔴 เร่งด่วน</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;padding:20px 0;border-top:1px solid var(--outline)">
+      <button class="btn btn-primary" onclick="saveCrmEdit('${cid}',this)">💾 บันทึก</button>
+      <button class="btn btn-outline" onclick="this.closest('.modal-overlay').remove()">ยกเลิก</button>
+    </div>
+  </div>`;
+  document.body.appendChild(modal);
+}
+
+function saveCrmEdit(cid, btnEl) {
+  var name = document.getElementById('edit_name').value.trim();
+  var detail = document.getElementById('edit_detail').value.trim();
+
+  if(!name){showToast('กรุณากรอกชื่อผู้แจ้ง','error');return;}
+  if(!detail){showToast('กรุณากรอกรายละเอียดปัญหา','error');return;}
+
+  if(btnEl){btnEl.disabled=true;btnEl.textContent='⏳ กำลังบันทึก...';}
+
+  google.script.run
+    .withSuccessHandler(function(res){
+      if(btnEl){btnEl.disabled=false;btnEl.textContent='💾 บันทึก';}
+      if(res.success){
+        showToast('✅ อัปเดตแล้ว','success');
+        document.querySelector('.modal-overlay').remove();
+        loadCrm();
+      } else {
+        showToast('❌ '+res.error,'error');
+      }
+    })
+    .withFailureHandler(function(e){
+      if(btnEl){btnEl.disabled=false;btnEl.textContent='💾 บันทึก';}
+      showError(e);
+    })
+    .updateCrmTicket(cid, {
+      reporterName: name,
+      studentId: document.getElementById('edit_sid').value.trim(),
+      reporterEmail: document.getElementById('edit_email').value.trim(),
+      reporterPhone: document.getElementById('edit_phone').value.trim(),
+      issueType: document.getElementById('edit_ptype').value.trim(),
+      detail: detail,
+      channel: document.getElementById('edit_channel').value,
+      priority: document.getElementById('edit_priority').value
+    });
 }
 
 function showExtDashLink() {

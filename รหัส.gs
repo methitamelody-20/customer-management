@@ -1454,6 +1454,36 @@ function addCrmTicket(data) {
   } catch(e) { return { success:false, error:e.message }; }
 }
 
+function updateCrmTicket(crmId, data) {
+  if (!_autoRefreshSession()) return { success:false, error:'ไม่มีสิทธิ์' };
+  try {
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SH_CRM);
+    if (!sheet) return { success:false, error:'ไม่พบ CRM Sheet' };
+
+    const sheetData = sheet.getDataRange().getValues();
+    for (let i = 1; i < sheetData.length; i++) {
+      if (String(sheetData[i][0] || '') === String(crmId || '')) {
+        // Update fields: col index 2=name, 3=sid, 4=email, 5=phone, 11=issueType, 12=detail, 13=channel, 14=priority
+        if (data.reporterName) sheet.getRange(i+1, 3).setValue(data.reporterName);
+        if (data.studentId !== undefined) sheet.getRange(i+1, 4).setValue(data.studentId);
+        if (data.reporterEmail !== undefined) sheet.getRange(i+1, 5).setValue(data.reporterEmail);
+        if (data.reporterPhone !== undefined) sheet.getRange(i+1, 6).setValue(data.reporterPhone);
+        if (data.issueType !== undefined) sheet.getRange(i+1, 12).setValue(data.issueType);
+        if (data.detail) sheet.getRange(i+1, 13).setValue(data.detail);
+        if (data.channel) sheet.getRange(i+1, 14).setValue(data.channel);
+        if (data.priority) sheet.getRange(i+1, 15).setValue(data.priority);
+
+        logAudit('แก้ไข CRM', crmId + ' | ' + (data.reporterName||''));
+        return { success:true };
+      }
+    }
+    return { success:false, error:'ไม่พบรายการ ' + crmId };
+  } catch(e) {
+    Logger.log('updateCrmTicket error: ' + e.message);
+    return { success:false, error:e.message };
+  }
+}
+
 function bulkImportCrmTickets(dataList) {
   if (!_autoRefreshSession()) return { success:false, error:'ไม่มีสิทธิ์' };
   try {
