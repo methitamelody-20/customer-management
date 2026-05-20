@@ -495,6 +495,7 @@ tbody td{padding:12px;vertical-align:middle}
     <nav class="nav">
       <div class="nav-sec">ภาพรวม</div>
       <button class="nav-btn active" onclick="go('dash',this)" data-page="dash"><span class="ic">📊</span>Dashboard</button>
+      <button class="nav-btn" onclick="go('list',this)" data-page="list"><span class="ic">📋</span>รายการทั้งหมด</button>
       <button class="nav-btn" onclick="go('search',this)" data-page="search"><span class="ic">🔍</span>ค้นหาข้อมูล นศ.</button>
 
       <div class="nav-sec" style="margin-top:6px">บันทึกรายการ</div>
@@ -517,7 +518,6 @@ tbody td{padding:12px;vertical-align:middle}
       <button class="nav-btn" onclick="showExtDashLink()" style="color:var(--sky);font-size:11px;padding:6px 10px">
         <span class="ic">🔗</span>ลิ้งค์ Dashboard ภายนอก
       </button>
-      <button class="nav-btn" onclick="go('list',this)" data-page="list"><span class="ic">📋</span>รายการทั้งหมด</button>
       <button class="nav-btn" onclick="go('labels',this)" data-page="labels"><span class="ic">🖨️</span>พิมพ์ใบจ่าหน้า</button>
       <button class="nav-btn" onclick="go('invest',this)" data-page="invest"><span class="ic">🔎</span>สอบสวนไปรษณีย์</button>
 
@@ -1424,6 +1424,7 @@ tbody td{padding:12px;vertical-align:middle}
                       <option value="online">🌐 ออนไลน์</option>
                     </select>
                   </div>
+                  <div class="fg"><label class="flbl">วันที่แจ้งปัญหา</label><input class="finput" id="cm_report_date" type="date"></div>
                   <div class="fg"><label class="flbl">ประเภทปัญหา<span class="req">*</span></label>
                     <select class="fsel" id="cm_ptype"><option value="">-- เลือก --</option></select>
                   </div>
@@ -2488,7 +2489,7 @@ var _SETPW_EMAIL = '<?= setpwEmail ?>';
 // ============================================================
 // STATE
 // ============================================================
-let currentRole='', currentUser='', currentEmail='';
+let currentRole='', currentUser='', currentEmail='', currentPerms='';
 let settings={parcelTypes:[],returnCauses:[],prefixes:[],terms:[]};
 let allYears=[], allTags=[];
 let tagSelectedColor=0;
@@ -2692,7 +2693,7 @@ window.onload = function() {
       clearTimeout(loginTimeout);
       sessionChecked = true;
       if (sess && sess.valid) {
-        currentRole=sess.role; currentUser=sess.name; currentEmail=sess.email;
+        currentRole=sess.role; currentUser=sess.name; currentEmail=sess.email; currentPerms=sess.perms||'';
         applySession();
         loadSettings();
       } else {
@@ -2905,7 +2906,7 @@ function doLogin() {
             localStorage.removeItem('stou_saved_pass');
           }
         } catch(err) {}
-        currentRole=res.role; currentUser=res.name; currentEmail=res.email;
+        currentRole=res.role; currentUser=res.name; currentEmail=res.email; currentPerms=res.perms||'';
         // บันทึก email/pass สำหรับ auto-refresh session (ถ้า remember)
         try {
           const remember = document.getElementById('lgRemember').checked;
@@ -2941,15 +2942,34 @@ function applySession() {
   const badge=document.getElementById('roleLabel');
   badge.textContent={superadmin:'Super Admin',staff:'Staff',viewer:'Viewer'}[currentRole]||currentRole;
   badge.className='role-badge '+currentRole;
-  // ซ่อนเมนูตาม role
-  if(currentRole==='viewer'){
+
+  // ซ่อนเมนู superadmin สำหรับคนที่ไม่ใช่ superadmin
+  if(currentRole!=='superadmin'){
+    document.querySelectorAll('.nav-superadmin').forEach(el=>el.style.display='none');
+  }
+
+  // ใช้สิทธิ์เฉพาะผู้ใช้ — ถ้า perms ตั้งไว้ ให้แสดงเฉพาะเมนูที่อนุญาต
+  // ถ้าไม่มี perms ให้ fallback ตาม role
+  const permList = (currentPerms||'').split(',').map(p=>p.trim()).filter(Boolean);
+  if(permList.length > 0 && currentRole !== 'superadmin'){
+    // ซ่อนเมนูทั้งหมดที่ไม่อยู่ใน perm list
+    document.querySelectorAll('[data-page]').forEach(function(el){
+      const pageId = el.getAttribute('data-page');
+      if(!permList.includes(pageId)) el.style.display='none';
+    });
+    // ถ้า dashboard ไม่อยู่ในสิทธิ์ ให้ไปหน้าแรกที่อนุญาต
+    if(!permList.includes('dash') && permList[0]){
+      setTimeout(function(){
+        const firstBtn = document.querySelector('[data-page="'+permList[0]+'"]');
+        if(firstBtn) firstBtn.click();
+      }, 100);
+    }
+  } else if(currentRole==='viewer'){
+    // Fallback เดิม: viewer ไม่เห็นเมนูบันทึก
     ['rec-return','rec-lend','rec-special'].forEach(p=>{
       const b=document.querySelector(`[data-page="${p}"]`);
       if(b) b.style.display='none';
     });
-  }
-  if(currentRole!=='superadmin'){
-    document.querySelectorAll('.nav-superadmin').forEach(el=>el.style.display='none');
   }
 }
 
@@ -4727,7 +4747,7 @@ function toggleCrmForm() {
   if (!isOpen) {
     // reset form เมื่อเปิด
     ['cm_name','cm_sid','cm_email','cm_phone','cm_detail','cm_year','cm_ptype_other',
-     'cm_hno','cm_street','cm_sub','cm_dist','cm_prov','cm_zip'].forEach(function(id){
+     'cm_hno','cm_street','cm_sub','cm_dist','cm_prov','cm_zip','cm_report_date'].forEach(function(id){
       var el=document.getElementById(id); if(el) el.value='';
     });
     ['cm_branch','cm_plan','cm_ptype','cm_assignee'].forEach(function(id){
@@ -4759,6 +4779,7 @@ function submitCrmTicket(btnEl) {
   }
   var detail   = document.getElementById('cm_detail').value.trim();
   var ch       = document.getElementById('cm_ch').value;
+  var reportDate = (document.getElementById('cm_report_date')?.value||'').trim();
   var term     = document.getElementById('cm_term').value;
   var year     = document.getElementById('cm_year').value.trim();
   var priority = document.getElementById('cm_priority').value;
@@ -4836,7 +4857,7 @@ function submitCrmTicket(btnEl) {
 
         // reset form
         ['cm_name','cm_sid','cm_email','cm_phone','cm_detail','cm_year','cm_ptype_other',
-         'cm_hno','cm_street','cm_sub','cm_dist','cm_prov','cm_zip'].forEach(function(id){
+         'cm_hno','cm_street','cm_sub','cm_dist','cm_prov','cm_zip','cm_report_date'].forEach(function(id){
           var el=document.getElementById(id);if(el)el.value='';
         });
         ['cm_branch','cm_plan','cm_ptype','cm_assignee'].forEach(function(id){
@@ -4853,7 +4874,7 @@ function submitCrmTicket(btnEl) {
       reporterName:name, studentId:sid, reporterEmail:email, reporterPhone:phone,
       department:branch,
       educationLevel:document.getElementById('cm_edu')?.value||'',
-      issueType:ptype, detail:detail, channel:ch, term:term, year:year, priority:priority,
+      issueType:ptype, detail:detail, channel:ch, reportDate:reportDate, term:term, year:year, priority:priority,
       courses: JSON.stringify(courses), tags:tags, recorderName:currentUser,
       assigneeName:assignee, plan:plan,
     });

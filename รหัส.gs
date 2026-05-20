@@ -67,15 +67,16 @@ function login(email, password) {
       const rowRole   = (data[i][2]||'').toString().trim();
       const rowName   = (data[i][3]||'').toString().trim();
       const rowActive = data[i][4];
+      const rowPerms  = (data[i][6]||'').toString().trim();
       if (rowEmail === email.toLowerCase().trim()) {
         if (!rowActive) return { success:false, error:'บัญชีนี้ถูกระงับ' };
         if (hashPw(password) === rowHash) {
           // ใช้ ScriptProperties + key = email (ตรงกับ checkSession)
-          const sessData = {email:rowEmail, role:rowRole, name:rowName, ts:Date.now()};
+          const sessData = {email:rowEmail, role:rowRole, name:rowName, perms:rowPerms, ts:Date.now()};
           PropertiesService.getScriptProperties().setProperty('sess_'+rowEmail, JSON.stringify(sessData));
           sheet.getRange(i+1, 6).setValue(fmtDate(new Date()));
           Logger.log('Login success: '+rowEmail+' role='+rowRole);
-          return { success:true, role:rowRole, name:rowName, email:rowEmail };
+          return { success:true, role:rowRole, name:rowName, email:rowEmail, perms:rowPerms };
         }
         return { success:false, error:'รหัสผ่านไม่ถูกต้อง' };
       }
@@ -103,13 +104,13 @@ function checkSession() {
         try {
           const s = JSON.parse(raw);
           if (s && s.email && s.role && (Date.now()-s.ts < 8*60*60*1000)) {
-            return {valid:true, role:s.role, name:s.name||s.email, email:s.email};
+            return {valid:true, role:s.role, name:s.name||s.email, email:s.email, perms:s.perms||''};
           }
           sp.deleteProperty('sess_'+userEmail);
         } catch(e) { sp.deleteProperty('sess_'+userEmail); }
       }
     }
-    
+
     // ถ้าไม่มี session ของ effective user — ค้นหา session ที่ valid จากทุก key
     const allProps = sp.getProperties();
     for (const key in allProps) {
@@ -117,7 +118,7 @@ function checkSession() {
       try {
         const s = JSON.parse(allProps[key]);
         if (s && s.email && s.role && (Date.now()-s.ts < 8*60*60*1000)) {
-          return {valid:true, role:s.role, name:s.name||s.email, email:s.email};
+          return {valid:true, role:s.role, name:s.name||s.email, email:s.email, perms:s.perms||''};
         }
       } catch(e) {}
     }
@@ -1435,6 +1436,7 @@ function addCrmTicket(data) {
     const assigneeName = data.assigneeName || (sess.valid ? sess.name||sess.email : '');
     const recorderName = data.recorderName || (sess.valid ? sess.name||sess.email : 'ผู้แจ้งออนไลน์');
     const source = data.source || (sess.valid ? 'admin' : 'external');
+    const reportDate = data.reportDate ? fmtDate(new Date(data.reportDate)) : '';
     const row   = [
       id, fmtDate(now), data.reporterName||'', data.studentId||'',
       data.reporterEmail||'', data.reporterPhone||'', data.department||'',
@@ -1442,7 +1444,7 @@ function addCrmTicket(data) {
       data.courses||'', data.issueType||'', data.detail||'',
       data.channel||'online', data.priority||'normal',
       data.tags||'', 'open', assigneeName, '', '[]',
-      recorderName, source, data.plan||'', data.org||'',
+      recorderName, source, data.plan||'', data.org||'', reportDate,
     ];
     sheet.appendRow(row);
     const lr = sheet.getLastRow();
@@ -1472,6 +1474,7 @@ function bulkImportCrmTickets(dataList) {
         const now = new Date();
         const id = 'CRM-' + Utilities.formatDate(now,'Asia/Bangkok','yyyyMMdd') + '-' + (sheet.getLastRow() + i);
         const assigneeName = data.assigneeName || '';
+        const reportDate = data.reportDate ? fmtDate(new Date(data.reportDate)) : '';
         const row = [
           id, fmtDate(now), data.reporterName||'', data.studentId||'',
           data.reporterEmail||'', data.reporterPhone||'', data.department||'',
@@ -1479,7 +1482,7 @@ function bulkImportCrmTickets(dataList) {
           data.courses||'', data.issueType||'', data.detail||'',
           data.channel||'online', data.priority||'normal',
           data.tags||'', 'open', assigneeName, '', '[]',
-          recorderName, 'admin', data.org||'',
+          recorderName, 'admin', data.org||'', reportDate,
         ];
         sheet.appendRow(row);
         successCount++;
@@ -2255,9 +2258,9 @@ function setupSystem() {
   let cm = ss.getSheetByName(SH_CRM);
   if (!cm) {
     cm = ss.insertSheet(SH_CRM);
-    // col: 1-21=ข้อมูล, 22=แหล่งที่มา(source), 23=แผนการศึกษา(plan), 24=หน่วยงาน(org)
-    cm.appendRow(['รหัส','วันที่','ชื่อผู้แจ้ง','รหัสนักศึกษา','อีเมล','เบอร์โทร','หน่วยงาน/สาขา','ระดับการศึกษา','ภาค','ปี','ชุดวิชา','ประเภทปัญหา','รายละเอียด','ช่องทาง','ความเร่งด่วน','Tags','สถานะ','ผู้รับเรื่อง','อีเมลผู้รับเรื่อง','ประวัติการตอบ','ผู้บันทึก','แหล่งที่มา','แผนการศึกษา','หน่วยงานภายนอก']);
-    const ch=cm.getRange(1,1,1,24);ch.setBackground('#1a3a5c');ch.setFontColor('#fff');ch.setFontWeight('bold');
+    // col: 1-21=ข้อมูล, 22=แหล่งที่มา(source), 23=แผนการศึกษา(plan), 24=หน่วยงาน(org), 25=วันที่แจ้ง(reportDate)
+    cm.appendRow(['รหัส','วันที่','ชื่อผู้แจ้ง','รหัสนักศึกษา','อีเมล','เบอร์โทร','หน่วยงาน/สาขา','ระดับการศึกษา','ภาค','ปี','ชุดวิชา','ประเภทปัญหา','รายละเอียด','ช่องทาง','ความเร่งด่วน','Tags','สถานะ','ผู้รับเรื่อง','อีเมลผู้รับเรื่อง','ประวัติการตอบ','ผู้บันทึก','แหล่งที่มา','แผนการศึกษา','หน่วยงานภายนอก','วันที่แจ้งปัญหา']);
+    const ch=cm.getRange(1,1,1,25);ch.setBackground('#1a3a5c');ch.setFontColor('#fff');ch.setFontWeight('bold');
     cm.setFrozenRows(1);
   } else {
     // Migrate existing sheet: ensure correct column layout
@@ -2274,6 +2277,10 @@ function setupSystem() {
     if (!headers[23]) {
       cm.getRange(1, 24).setValue('หน่วยงานภายนอก');
       cm.getRange(1, 24).setBackground('#1a3a5c').setFontColor('#fff').setFontWeight('bold');
+    }
+    if (!headers[24]) {
+      cm.getRange(1, 25).setValue('วันที่แจ้งปัญหา');
+      cm.getRange(1, 25).setBackground('#1a3a5c').setFontColor('#fff').setFontWeight('bold');
     }
   }
 
