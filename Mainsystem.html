@@ -2950,26 +2950,29 @@ function applySession() {
 
   // ใช้สิทธิ์เฉพาะผู้ใช้ — ถ้า perms ตั้งไว้ ให้แสดงเฉพาะเมนูที่อนุญาต
   // ถ้าไม่มี perms ให้ fallback ตาม role
+  const roleDefaults = {
+    viewer: ['dash','search','list','crm'],
+    staff: ['dash','search','rec-return','rec-lend','rec-special','list','labels','crm','crm-list','crm-dashboard','tasks'],
+    superadmin: [] // superadmin sees all
+  };
   const permList = (currentPerms||'').split(',').map(p=>p.trim()).filter(Boolean);
-  if(permList.length > 0 && currentRole !== 'superadmin'){
-    // ซ่อนเมนูทั้งหมดที่ไม่อยู่ใน perm list
-    document.querySelectorAll('[data-page]').forEach(function(el){
-      const pageId = el.getAttribute('data-page');
-      if(!permList.includes(pageId)) el.style.display='none';
-    });
-    // ถ้า dashboard ไม่อยู่ในสิทธิ์ ให้ไปหน้าแรกที่อนุญาต
-    if(!permList.includes('dash') && permList[0]){
-      setTimeout(function(){
-        const firstBtn = document.querySelector('[data-page="'+permList[0]+'"]');
-        if(firstBtn) firstBtn.click();
-      }, 100);
+  const allowedPages = permList.length > 0 ? permList : (roleDefaults[currentRole]||[]);
+
+  // ซ่อนเมนูตามสิทธิ์
+  document.querySelectorAll('[data-page]').forEach(function(el){
+    const pageId = el.getAttribute('data-page');
+    // Superadmin sees all, others see only their allowed pages
+    if(currentRole !== 'superadmin' && !allowedPages.includes(pageId)){
+      el.style.display='none';
     }
-  } else if(currentRole==='viewer'){
-    // Fallback เดิม: viewer ไม่เห็นเมนูบันทึก
-    ['rec-return','rec-lend','rec-special'].forEach(p=>{
-      const b=document.querySelector(`[data-page="${p}"]`);
-      if(b) b.style.display='none';
-    });
+  });
+
+  // ถ้า dashboard ไม่อยู่ในสิทธิ์ ให้ไปหน้าแรกที่อนุญาต
+  if(currentRole !== 'superadmin' && !allowedPages.includes('dash') && allowedPages[0]){
+    setTimeout(function(){
+      const firstBtn = document.querySelector('[data-page="'+allowedPages[0]+'"]');
+      if(firstBtn) firstBtn.click();
+    }, 100);
   }
 }
 
@@ -5343,7 +5346,7 @@ function buildPermGrid(role) {
     {id:'admin-report',label:'📊 สรุปงานเจ้าหน้าที่'},{id:'audit',label:'📋 Audit Log'},{id:'settings',label:'⚙️ ตั้งค่าระบบ'},{id:'stats',label:'📈 สถิติของฉัน'},{id:'tasks',label:'✅ จัดการงาน'},
     {id:'tags',label:'🏷️ จัดการ Tag'},{id:'users',label:'👥 จัดการผู้ใช้งาน'},
   ];
-  const defaults={viewer:['dash','search','list','crm'],staff:['dash','search','rec-return','rec-lend','rec-special','list','labels','crm'],superadmin:ALL_PAGES.map(p=>p.id)};
+  const defaults={viewer:['dash','search','list','crm'],staff:['dash','search','rec-return','rec-lend','rec-special','list','labels','crm','crm-list','crm-dashboard','tasks'],superadmin:ALL_PAGES.map(p=>p.id)};
   const def=defaults[role]||[];
   el.innerHTML=ALL_PAGES.map(p=>`
     <label style="display:flex;align-items:center;gap:8px;padding:8px 12px;border:1.5px solid var(--gray1);border-radius:var(--rsm);cursor:pointer;font-size:13px;background:#fff">
