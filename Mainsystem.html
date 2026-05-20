@@ -1424,6 +1424,7 @@ tbody td{padding:12px;vertical-align:middle}
                       <option value="online">🌐 ออนไลน์</option>
                     </select>
                   </div>
+                  <div class="fg"><label class="flbl">วันที่แจ้งปัญหา</label><input class="finput" id="cm_report_date" type="date"></div>
                   <div class="fg"><label class="flbl">ประเภทปัญหา<span class="req">*</span></label>
                     <select class="fsel" id="cm_ptype"><option value="">-- เลือก --</option></select>
                   </div>
@@ -4746,7 +4747,7 @@ function toggleCrmForm() {
   if (!isOpen) {
     // reset form เมื่อเปิด
     ['cm_name','cm_sid','cm_email','cm_phone','cm_detail','cm_year','cm_ptype_other',
-     'cm_hno','cm_street','cm_sub','cm_dist','cm_prov','cm_zip'].forEach(function(id){
+     'cm_hno','cm_street','cm_sub','cm_dist','cm_prov','cm_zip','cm_report_date'].forEach(function(id){
       var el=document.getElementById(id); if(el) el.value='';
     });
     ['cm_branch','cm_plan','cm_ptype','cm_assignee'].forEach(function(id){
@@ -4778,6 +4779,7 @@ function submitCrmTicket(btnEl) {
   }
   var detail   = document.getElementById('cm_detail').value.trim();
   var ch       = document.getElementById('cm_ch').value;
+  var reportDate = (document.getElementById('cm_report_date')?.value||'').trim();
   var term     = document.getElementById('cm_term').value;
   var year     = document.getElementById('cm_year').value.trim();
   var priority = document.getElementById('cm_priority').value;
@@ -4855,7 +4857,7 @@ function submitCrmTicket(btnEl) {
 
         // reset form
         ['cm_name','cm_sid','cm_email','cm_phone','cm_detail','cm_year','cm_ptype_other',
-         'cm_hno','cm_street','cm_sub','cm_dist','cm_prov','cm_zip'].forEach(function(id){
+         'cm_hno','cm_street','cm_sub','cm_dist','cm_prov','cm_zip','cm_report_date'].forEach(function(id){
           var el=document.getElementById(id);if(el)el.value='';
         });
         ['cm_branch','cm_plan','cm_ptype','cm_assignee'].forEach(function(id){
@@ -4872,7 +4874,7 @@ function submitCrmTicket(btnEl) {
       reporterName:name, studentId:sid, reporterEmail:email, reporterPhone:phone,
       department:branch,
       educationLevel:document.getElementById('cm_edu')?.value||'',
-      issueType:ptype, detail:detail, channel:ch, term:term, year:year, priority:priority,
+      issueType:ptype, detail:detail, channel:ch, reportDate:reportDate, term:term, year:year, priority:priority,
       courses: JSON.stringify(courses), tags:tags, recorderName:currentUser,
       assigneeName:assignee, plan:plan,
     });
