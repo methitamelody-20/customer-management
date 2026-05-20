@@ -2943,15 +2943,14 @@ function applySession() {
   badge.textContent={superadmin:'Super Admin',staff:'Staff',viewer:'Viewer'}[currentRole]||currentRole;
   badge.className='role-badge '+currentRole;
 
-  // ซ่อนเมนู superadmin สำหรับคนที่ไม่ใช่ superadmin
-  if(currentRole!=='superadmin'){
+  if(currentRole === 'superadmin'){
+    // Superadmin sees everything - explicitly show all nav items
+    document.querySelectorAll('[data-page], .nav-superadmin').forEach(el=>el.style.display='');
+  } else {
+    // Hide superadmin-only items for non-superadmin users
     document.querySelectorAll('.nav-superadmin').forEach(el=>el.style.display='none');
-  }
 
-  // ใช้สิทธิ์เฉพาะผู้ใช้ — ถ้า perms ตั้งไว้ ให้แสดงเฉพาะเมนูที่อนุญาต
-  // ถ้าไม่มี perms ให้ fallback ตาม role
-  // Superadmin จะข้ามการตรวจสอบสิทธิ์ทั้งหมด เห็นเมนูทั้งหมด
-  if(currentRole !== 'superadmin'){
+    // Apply role-based permission filtering for non-superadmin users
     const roleDefaults = {
       viewer: ['dash','search','list','crm'],
       staff: ['dash','search','rec-return','rec-lend','rec-special','list','labels','crm','crm-list','crm-dashboard','tasks']
@@ -2959,7 +2958,7 @@ function applySession() {
     const permList = (currentPerms||'').split(',').map(p=>p.trim()).filter(Boolean);
     const allowedPages = permList.length > 0 ? permList : (roleDefaults[currentRole]||[]);
 
-    // ซ่อนเมนูตามสิทธิ์
+    // Hide menu items not in allowed pages
     document.querySelectorAll('[data-page]').forEach(function(el){
       const pageId = el.getAttribute('data-page');
       if(!allowedPages.includes(pageId)){
@@ -2967,7 +2966,7 @@ function applySession() {
       }
     });
 
-    // ถ้า dashboard ไม่อยู่ในสิทธิ์ ให้ไปหน้าแรกที่อนุญาต
+    // If dashboard not allowed, go to first allowed page
     if(!allowedPages.includes('dash') && allowedPages[0]){
       setTimeout(function(){
         const firstBtn = document.querySelector('[data-page="'+allowedPages[0]+'"]');
