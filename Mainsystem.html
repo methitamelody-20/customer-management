@@ -5344,6 +5344,7 @@ function buildPermGrid(role) {
     {id:'rec-return',label:'↩️ บันทึกพัสดุตีคืน'},{id:'rec-lend',label:'📤 บันทึกให้ยืม'},
     {id:'rec-special',label:'⭐ ส่งใหม่กรณีพิเศษ'},{id:'list',label:'📋 รายการทั้งหมด'},
     {id:'labels',label:'🖨️ พิมพ์ใบจ่าหน้า'},{id:'invest',label:'🔎 สอบสวนไปรษณีย์'},{id:'crm',label:'💬 CRM แจ้งปัญหา'},
+    {id:'crm-list',label:'📋 รายการรวมแจ้งปัญหา CRM'},{id:'crm-dashboard',label:'📊 Dashboard แจ้งปัญหา CRM'},
     {id:'admin-report',label:'📊 สรุปงานเจ้าหน้าที่'},{id:'audit',label:'📋 Audit Log'},{id:'settings',label:'⚙️ ตั้งค่าระบบ'},{id:'stats',label:'📈 สถิติของฉัน'},{id:'tasks',label:'✅ จัดการงาน'},
     {id:'tags',label:'🏷️ จัดการ Tag'},{id:'users',label:'👥 จัดการผู้ใช้งาน'},
   ];
@@ -5447,11 +5448,12 @@ function editUserModal(email, name, role, perms) {
     {id:'rec-return',label:'↩️ บันทึกพัสดุตีคืน'},{id:'rec-lend',label:'📤 บันทึกให้ยืม'},
     {id:'rec-special',label:'⭐ ส่งใหม่กรณีพิเศษ'},{id:'list',label:'📋 รายการทั้งหมด'},
     {id:'labels',label:'🖨️ พิมพ์ใบจ่าหน้า'},{id:'invest',label:'🔎 สอบสวนไปรษณีย์'},{id:'crm',label:'💬 CRM แจ้งปัญหา'},
+    {id:'crm-list',label:'📋 รายการรวมแจ้งปัญหา CRM'},{id:'crm-dashboard',label:'📊 Dashboard แจ้งปัญหา CRM'},
     {id:'admin-report',label:'📊 สรุปงานเจ้าหน้าที่'},{id:'audit',label:'📋 Audit Log'},{id:'settings',label:'⚙️ ตั้งค่าระบบ'},{id:'stats',label:'📈 สถิติของฉัน'},{id:'tasks',label:'✅ งานที่ได้รับมอบหมาย'},
     {id:'tags',label:'🏷️ จัดการ Tag'},{id:'users',label:'👥 จัดการผู้ใช้งาน'},
   ];
   const currentPerms = (perms||'').split(',').map(p=>p.trim()).filter(Boolean);
-  const defaults={viewer:['dash','search','list','crm'],staff:['dash','search','rec-return','rec-lend','rec-special','list','labels','crm','tasks'],superadmin:ALL_PAGES.map(p=>p.id)};
+  const defaults={viewer:['dash','search','list','crm'],staff:['dash','search','rec-return','rec-lend','rec-special','list','labels','crm','crm-list','crm-dashboard','tasks'],superadmin:ALL_PAGES.map(p=>p.id)};
 
   const checkboxHtml = ALL_PAGES.map(p=>`
     <label style="display:flex;align-items:center;gap:8px;padding:8px 12px;border:1.5px solid var(--gray1);border-radius:var(--rsm);cursor:pointer;font-size:13px;background:#fff">
@@ -5496,8 +5498,8 @@ function editUserModal(email, name, role, perms) {
 }
 
 function editRoleAutoFill(role) {
-  const ALL_PAGES=['dash','search','rec-return','rec-lend','rec-special','list','labels','invest','crm','admin-report','audit','settings','stats','tasks','tags','users'];
-  const defaults={viewer:['dash','search','list','crm'],staff:['dash','search','rec-return','rec-lend','rec-special','list','labels','crm','tasks'],superadmin:ALL_PAGES};
+  const ALL_PAGES=['dash','search','rec-return','rec-lend','rec-special','list','labels','invest','crm','crm-list','crm-dashboard','admin-report','audit','settings','stats','tasks','tags','users'];
+  const defaults={viewer:['dash','search','list','crm'],staff:['dash','search','rec-return','rec-lend','rec-special','list','labels','crm','crm-list','crm-dashboard','tasks'],superadmin:ALL_PAGES};
   const def = defaults[role] || [];
   document.querySelectorAll('.edit-perm-chk').forEach(function(chk){
     chk.checked = def.includes(chk.dataset.page);
