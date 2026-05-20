@@ -2944,8 +2944,10 @@ function applySession() {
   badge.className='role-badge '+currentRole;
 
   if(currentRole === 'superadmin'){
-    // Superadmin sees everything - explicitly show all nav items
-    document.querySelectorAll('[data-page], .nav-superadmin').forEach(el=>el.style.display='');
+    // Superadmin sees everything - explicitly show all nav items with flex display
+    document.querySelectorAll('[data-page]').forEach(el=>el.style.display='flex');
+    document.querySelectorAll('.nav-superadmin').forEach(el=>el.style.display='');
+    document.querySelectorAll('.nav-sec.nav-superadmin').forEach(el=>el.style.display='block');
   } else {
     // Hide superadmin-only items for non-superadmin users
     document.querySelectorAll('.nav-superadmin').forEach(el=>el.style.display='none');
