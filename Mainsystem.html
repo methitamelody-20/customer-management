@@ -2950,29 +2950,30 @@ function applySession() {
 
   // ใช้สิทธิ์เฉพาะผู้ใช้ — ถ้า perms ตั้งไว้ ให้แสดงเฉพาะเมนูที่อนุญาต
   // ถ้าไม่มี perms ให้ fallback ตาม role
-  const roleDefaults = {
-    viewer: ['dash','search','list','crm'],
-    staff: ['dash','search','rec-return','rec-lend','rec-special','list','labels','crm','crm-list','crm-dashboard','tasks'],
-    superadmin: [] // superadmin sees all
-  };
-  const permList = (currentPerms||'').split(',').map(p=>p.trim()).filter(Boolean);
-  const allowedPages = permList.length > 0 ? permList : (roleDefaults[currentRole]||[]);
+  // Superadmin จะข้ามการตรวจสอบสิทธิ์ทั้งหมด เห็นเมนูทั้งหมด
+  if(currentRole !== 'superadmin'){
+    const roleDefaults = {
+      viewer: ['dash','search','list','crm'],
+      staff: ['dash','search','rec-return','rec-lend','rec-special','list','labels','crm','crm-list','crm-dashboard','tasks']
+    };
+    const permList = (currentPerms||'').split(',').map(p=>p.trim()).filter(Boolean);
+    const allowedPages = permList.length > 0 ? permList : (roleDefaults[currentRole]||[]);
 
-  // ซ่อนเมนูตามสิทธิ์
-  document.querySelectorAll('[data-page]').forEach(function(el){
-    const pageId = el.getAttribute('data-page');
-    // Superadmin sees all, others see only their allowed pages
-    if(currentRole !== 'superadmin' && !allowedPages.includes(pageId)){
-      el.style.display='none';
+    // ซ่อนเมนูตามสิทธิ์
+    document.querySelectorAll('[data-page]').forEach(function(el){
+      const pageId = el.getAttribute('data-page');
+      if(!allowedPages.includes(pageId)){
+        el.style.display='none';
+      }
+    });
+
+    // ถ้า dashboard ไม่อยู่ในสิทธิ์ ให้ไปหน้าแรกที่อนุญาต
+    if(!allowedPages.includes('dash') && allowedPages[0]){
+      setTimeout(function(){
+        const firstBtn = document.querySelector('[data-page="'+allowedPages[0]+'"]');
+        if(firstBtn) firstBtn.click();
+      }, 100);
     }
-  });
-
-  // ถ้า dashboard ไม่อยู่ในสิทธิ์ ให้ไปหน้าแรกที่อนุญาต
-  if(currentRole !== 'superadmin' && !allowedPages.includes('dash') && allowedPages[0]){
-    setTimeout(function(){
-      const firstBtn = document.querySelector('[data-page="'+allowedPages[0]+'"]');
-      if(firstBtn) firstBtn.click();
-    }, 100);
   }
 }
 
