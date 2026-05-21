@@ -4715,7 +4715,7 @@ function showExtDashLink() {
       +'</div>'
       +'<p style="font-size:13px;color:var(--gray3);margin-bottom:10px">ส่งลิ้งค์นี้ให้หน่วยงานภายนอก เพื่อให้เจ้าหน้าที่สมัครบัญชีและติดตามปัญหาที่แจ้งไว้</p>'
       +'<div style="display:flex;gap:8px;align-items:center">'
-        +'<input id="extDashUrl" class="finput" readonly style="flex:1;font-family:monospace;font-size:11px" value="กำลังโหลด...">'
+        +'<a id="extDashUrl" href="javascript:void(0)" style="flex:1;color:#1976d2;text-decoration:none;font-size:12px;word-break:break-all;padding:8px;border:1px solid #e0e0e0;border-radius:4px;display:inline-block">กำลังโหลด...</a>'
         +'<button class="btn btn-primary btn-sm" onclick="copyExtDashUrl()">📋 คัดลอก</button>'
       +'</div>'
       +'<div style="margin-top:14px;background:#e8f4fd;border-radius:8px;padding:10px 14px;font-size:12px;color:#1565c0">'
@@ -4726,22 +4726,22 @@ function showExtDashLink() {
   }
   m.classList.remove('hidden');
   var urlEl = document.getElementById('extDashUrl');
-  if (urlEl) urlEl.value = 'กำลังโหลด...';
+  if (urlEl) { urlEl.textContent = 'กำลังโหลด...'; urlEl.href = 'javascript:void(0)'; }
   google.script.run
     .withSuccessHandler(function(res) {
-      if (!res.success) { if(urlEl) urlEl.value='ไม่พบ URL — กรุณา Deploy ใหม่'; return; }
+      if (!res.success) { if(urlEl) { urlEl.textContent='ไม่พบ URL — กรุณา Deploy ใหม่'; urlEl.href='javascript:void(0)'; } return; }
       var url = res.url.replace('?page=crm', '?page=ext_staff');
-      if (urlEl) urlEl.value = url;
+      if (urlEl) { urlEl.textContent = url; urlEl.href = url; urlEl.target = '_blank'; }
     })
-    .withFailureHandler(function(){ if(urlEl) urlEl.value='เกิดข้อผิดพลาด'; })
+    .withFailureHandler(function(){ if(urlEl) { urlEl.textContent='เกิดข้อผิดพลาด'; urlEl.href='javascript:void(0)'; } })
     .getPublicUrl();
 }
 function copyExtDashUrl() {
   var el = document.getElementById('extDashUrl');
   if (!el) return;
-  el.select();
-  try { document.execCommand('copy'); } catch(e) {}
-  navigator.clipboard.writeText(el.value).catch(function(){});
+  var url = el.href || el.textContent;
+  if (url.startsWith('javascript:')) return;
+  navigator.clipboard.writeText(url).catch(function(){});
   showToast('✅ คัดลอก URL แล้ว','success');
 }
 
