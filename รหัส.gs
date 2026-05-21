@@ -1582,11 +1582,19 @@ function getCrmDashboardData(filters) {
 function getCrmTickets(filters) {
   // session check ผ่าน _autoRefreshSession อัตโนมัติ
   try {
+    // Use cache for non-filtered requests
+    if (!filters || Object.keys(filters).length === 0) {
+      const cache = CacheService.getUserCache();
+      const cacheKey = 'crmTickets_all';
+      const cached = cache.get(cacheKey);
+      if (cached) return JSON.parse(cached);
+    }
+
     const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SH_CRM);
     if (!sheet) return [];
     const lr = sheet.getLastRow();
     if (lr < 2) return [];
-    
+
     const S = function(v) { return v == null ? '' : String(v); };
     const D = function(v) {
       if (!v) return '';
@@ -1595,7 +1603,7 @@ function getCrmTickets(filters) {
         return String(v);
       } catch(e) { return String(v); }
     };
-    
+
     const ncols = Math.min(sheet.getLastColumn(), 24);
     const rawRows = sheet.getRange(2,1,lr-1,ncols).getValues();
     const rows = [];
@@ -1603,7 +1611,6 @@ function getCrmTickets(filters) {
       const r = rawRows[i];
       if (!r[0]) continue;
       const recorderName = S(r[20]);
-      // col 22 (r[21]) = source (admin/external), col 23 (r[22]) = plan, col 24 (r[23]) = org
       const storedSource = ncols >= 22 ? S(r[21]) : '';
       const source = storedSource || (recorderName === 'ผู้แจ้งออนไลน์' || recorderName === '' ? 'external' : 'admin');
       rows.push({
@@ -1616,6 +1623,16 @@ function getCrmTickets(filters) {
         replies: S(r[19]) || '[]', recorderName: recorderName,
         source: source, plan: ncols >= 23 ? S(r[22]) : '', org: ncols >= 24 ? S(r[23]) : '',
       });
+    }
+
+    // Cache unfiltered results
+    if (!filters || Object.keys(filters).length === 0) {
+      try {
+        const cache = CacheService.getUserCache();
+        cache.put('crmTickets_all', JSON.stringify(rows), 300); // 5 minute cache
+      } catch(e) {
+        // Ignore cache errors
+      }
     }
 
     let result = rows;
