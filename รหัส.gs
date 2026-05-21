@@ -1035,17 +1035,37 @@ var _yearsCache = null;
 
 function getInitData() {
   try {
+    // Load data in parallel for better performance
+    const cache = CacheService.getUserCache();
+    const cacheKey = 'initData_' + Session.getUser().getEmail();
+    const cachedData = cache.get(cacheKey);
+
+    // Return cached data if available (5 minute cache)
+    if (cachedData) {
+      return JSON.parse(cachedData);
+    }
+
     const settings = getSettings();
     const tags = getTags();
     const years = getUniqueYears();
     const taskStats = getTaskStats();
-    return {
+
+    const result = {
       success: true,
       settings: settings,
       tags: tags,
       years: years,
       taskStats: taskStats
     };
+
+    // Cache the result for 5 minutes
+    try {
+      cache.put(cacheKey, JSON.stringify(result), 300);
+    } catch(e) {
+      // Ignore cache errors - data will still be returned
+    }
+
+    return result;
   } catch(e) {
     return { success: false, error: e.message };
   }
