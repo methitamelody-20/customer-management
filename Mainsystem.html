@@ -1410,7 +1410,7 @@ tbody td{padding:12px;vertical-align:middle}
                     <div class="fg"><input class="finput" placeholder="ชื่อชุดวิชา (ถ้าทราบ)"></div>
                   </div>
                 </div>
-                <button class="add-course-btn" onclick="addCourseRow()" type="button">+ เพิ่มชุดวิชา</button>
+                <button class="add-course-btn" id="addCourseBtnInline" onclick="addCourseRow()" type="button">+ เพิ่มชุดวิชา</button>
               </div>
 
               <!-- ขวา: รายละเอียดปัญหา -->
@@ -5697,11 +5697,19 @@ function addCourseRow(){
     <div class="fg"><input class="finput" placeholder="ชื่อชุดวิชา"></div>
     <button class="btn btn-ghost btn-xs" onclick="removeCourseRow(this)" type="button">✕</button>`;
   document.getElementById('crmCourseRows').appendChild(row);
-  if(courseRowCount>=3)document.getElementById('addCourseBtn').style.display='none';
+  if(courseRowCount>=3){
+    const btn1=document.getElementById('addCourseBtn');
+    const btn2=document.getElementById('addCourseBtnInline');
+    if(btn1)btn1.style.display='none';
+    if(btn2)btn2.style.display='none';
+  }
 }
 function removeCourseRow(btn){
   btn.closest('.course-row').remove(); courseRowCount--;
-  document.getElementById('addCourseBtn').style.display='flex';
+  const btn1=document.getElementById('addCourseBtn');
+  const btn2=document.getElementById('addCourseBtnInline');
+  if(btn1)btn1.style.display='flex';
+  if(btn2)btn2.style.display='flex';
   document.querySelectorAll('#crmCourseRows .course-num').forEach((s,i)=>s.textContent=i+1);
 }
 
