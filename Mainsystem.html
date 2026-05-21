@@ -1627,6 +1627,7 @@ tbody td{padding:12px;vertical-align:middle}
               <tbody id="crmTopCourses"></tbody>
             </table>
           </div>
+          <div id="crmTopCoursesPagination" style="display:flex;align-items:center;justify-content:center;gap:8px;margin-top:12px;padding-top:12px;border-top:1px solid var(--gray1)"></div>
         </div>
       </div>
 
@@ -5222,7 +5223,13 @@ function renderCrmDashboard(tickets, stats) {
         backgroundColor: ['#ff9800', '#2196F3', '#4caf50', '#9e9e9e'],
       }]
     },
-    options: { responsive: true, plugins: { legend: { position: 'bottom' } } }
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { position: 'bottom' },
+        datalabels: { color: '#fff', font: { weight: 'bold' } }
+      }
+    }
   });
 
   // Issue Type Chart
@@ -5242,7 +5249,10 @@ function renderCrmDashboard(tickets, stats) {
     options: {
       responsive: true,
       indexAxis: 'y',
-      plugins: { legend: { display: false } },
+      plugins: {
+        legend: { display: false },
+        datalabels: { color: '#000', font: { weight: 'bold' }, anchor: 'end', align: 'right' }
+      },
       scales: { x: { beginAtZero: true } }
     }
   });
@@ -5259,7 +5269,13 @@ function renderCrmDashboard(tickets, stats) {
         backgroundColor: ['#3f51b5', '#009688', '#ff5722', '#673ab7', '#00bcd4'],
       }]
     },
-    options: { responsive: true, plugins: { legend: { position: 'bottom' } } }
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { position: 'bottom' },
+        datalabels: { color: '#fff', font: { weight: 'bold' } }
+      }
+    }
   });
 
   // Priority Chart
@@ -5276,20 +5292,47 @@ function renderCrmDashboard(tickets, stats) {
     },
     options: {
       responsive: true,
-      plugins: { legend: { display: false } },
+      plugins: {
+        legend: { display: false },
+        datalabels: { color: '#000', font: { weight: 'bold' }, anchor: 'end', align: 'top' }
+      },
       scales: { y: { beginAtZero: true } }
     }
   });
 
-  // Top Courses
-  const topCourses = Object.entries(courseCount)
-    .sort((a,b) => b[1] - a[1])
-    .slice(0, 10);
-  console.log('courseCount:', courseCount, 'topCourses:', topCourses);
-  const courseHtml = topCourses.map(([code, count]) =>
-    `<tr><td style="padding:8px">${code}</td><td style="padding:8px;text-align:center;font-weight:600">${count}</td></tr>`
-  ).join('');
-  document.getElementById('crmTopCourses').innerHTML = courseHtml || '<tr><td colspan="2" style="padding:8px;text-align:center;color:var(--gray3)">ไม่มีข้อมูล</td></tr>';
+  // Top Courses with Pagination
+  window._allCourses = Object.entries(courseCount)
+    .sort((a,b) => b[1] - a[1]);
+  window._coursesPage = 1;
+  const itemsPerPage = 10;
+
+  function displayCoursesPage(page) {
+    const start = (page - 1) * itemsPerPage;
+    const end = start + itemsPerPage;
+    const pageCourses = window._allCourses.slice(start, end);
+    const totalPages = Math.ceil(window._allCourses.length / itemsPerPage);
+
+    const courseHtml = pageCourses.map(([code, count]) =>
+      `<tr><td style="padding:8px">${code}</td><td style="padding:8px;text-align:center;font-weight:600">${count}</td></tr>`
+    ).join('');
+
+    document.getElementById('crmTopCourses').innerHTML = courseHtml || '<tr><td colspan="2" style="padding:8px;text-align:center;color:var(--gray3)">ไม่มีข้อมูล</td></tr>';
+
+    // Pagination buttons
+    if (window._allCourses.length > itemsPerPage) {
+      let paginationHtml = '';
+      if (page > 1) paginationHtml += `<button class="btn btn-outline btn-sm" onclick="displayCoursesPage(1)">« แรก</button>`;
+      if (page > 1) paginationHtml += `<button class="btn btn-outline btn-sm" onclick="displayCoursesPage(${page-1})">‹ ก่อนหน้า</button>`;
+      paginationHtml += `<span style="font-size:13px;color:var(--gray3)">หน้า ${page} / ${totalPages}</span>`;
+      if (page < totalPages) paginationHtml += `<button class="btn btn-outline btn-sm" onclick="displayCoursesPage(${page+1})">ถัดไป ›</button>`;
+      if (page < totalPages) paginationHtml += `<button class="btn btn-outline btn-sm" onclick="displayCoursesPage(${totalPages})">สุดท้าย »</button>`;
+      document.getElementById('crmTopCoursesPagination').innerHTML = paginationHtml;
+    } else {
+      document.getElementById('crmTopCoursesPagination').innerHTML = '';
+    }
+  }
+
+  displayCoursesPage(1);
 }
 
 // ============================================================
