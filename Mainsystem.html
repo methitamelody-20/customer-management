@@ -402,7 +402,7 @@ tbody td{padding:12px;vertical-align:middle}
 /* PRINT */
 @page{size:A4 landscape;margin:0}
 @media print{
-  #loginScreen,.sidebar,.topbar,.filter-bar,.btn-row,.no-print{display:none!important}
+  #loginScreen,.sidebar,.topbar,.filter-bar,.btn-row,.no-print,.sec-head{display:none!important}
   .main{overflow:visible}.content{padding:0!important;overflow:visible}
   body{background:#fff;margin:0;padding:0}
   /* ใบจ่าหน้า: 1 ใบต่อ 1 หน้า A4 แนวนอน, จัดกึ่งกลาง */
@@ -4052,7 +4052,7 @@ function renderLabels(rows) {
     }
     var courseCounter = '';
     var addr = (r.houseNo||'') + (r.street?' ถ.'+r.street:'') +
-               '<br>ต.' + (r.subDistrict||'') + ' อ.' + (r.district||'') +
+               '<br>' + (r.subDistrict||'') + ' ' + (r.district||'') +
                '<br>จ.' + (r.province||'') + ' ' + (r.zipCode||'') +
                (r.phone?'<br>โทร. '+r.phone:'');
 
@@ -4126,7 +4126,7 @@ function printAllLabels(r) {
         +bookInfo
         +'<div class="la">'
           +(r.houseNo||'')+((r.street?' ถ.'+r.street:''))
-          +'<br>ต.'+(r.subDistrict||'')+' อ.'+(r.district||'')+'<br>'
+          +'<br>'+(r.subDistrict||'')+' '+(r.district||'')+'<br>'
           +'จ.'+(r.province||'')+' '+(r.zipCode||'')
           +(r.phone?'<br>โทร. '+r.phone:'')
         +'</div>'
