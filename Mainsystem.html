@@ -5005,7 +5005,9 @@ function parseAndImportCrmExcel() {
         </div>`;
 
       window._crmImportData = rows;
-      showToast('✅ โหลดไฟล์เรียบร้อย','success');
+      showToast('✅ โหลดไฟล์เรียบร้อย - กำลังนำเข้า...','success');
+      // Auto-import after preview is shown
+      setTimeout(importCrmExcel, 800);
     } catch(err) {
       showToast('❌ ผิดพลาด: '+err.message,'error');
     }
