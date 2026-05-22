@@ -3938,15 +3938,19 @@ function loginExternalStaff(email, password) {
 
 function getExternalStaffTickets(email) {
   try {
+    // Security: Must filter by email - external staff should only see their own tickets
+    const emailL = (email||'').toLowerCase().trim();
+    if (!emailL) return []; // ✅ IMPORTANT: Return empty if no email provided
+
     const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SH_CRM);
     if (!sheet || sheet.getLastRow() < 2) return [];
     const rows = sheet.getRange(2,1,sheet.getLastRow()-1,24).getValues();
     const result = [];
-    const emailL = (email||'').toLowerCase().trim();
     for (let i = 0; i < rows.length; i++) {
       const r = rows[i];
       if (!r[0]) continue;
-      if ((r[4]||'').toLowerCase().trim() === emailL || (r[2]||'').toLowerCase().trim() === emailL) {
+      // Only show tickets where email matches exactly
+      if ((r[4]||'').toLowerCase().trim() === emailL) {
         result.push({
           id:String(r[0]),
           date:String(r[1]),

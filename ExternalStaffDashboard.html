@@ -563,6 +563,12 @@ function doLogout() {
 // DASHBOARD
 // ============================================================
 function loadDashboard() {
+  // Security: Only active users can access dashboard
+  if (!currentUser || currentUser.status !== 'active') {
+    showPage('authPage');
+    showAlert('loginAlert', 'กรุณาเข้าสู่ระบบด้วยบัญชีที่ได้รับการอนุมัติ', 'err');
+    return;
+  }
   showPage('dashPage');
   document.getElementById('dashUserName').textContent = (currentUser.name || currentUser.email) + ' (' + (currentUser.org || 'ภายนอก') + ')';
   loadTickets();
