@@ -662,7 +662,8 @@ function toggleCreateIssue() {
       prefill_email: currentUser.email || '',
       prefill_name:  currentUser.name  || '',
       prefill_phone: currentUser.phone || '',
-      prefill_org:   currentUser.org   || ''
+      prefill_org:   currentUser.org   || '',
+      t: Date.now() // Cache busting - force fresh load with new parameters
     });
     const iframe = document.getElementById('crmIframe');
     // Always update the iframe src with prefill parameters
