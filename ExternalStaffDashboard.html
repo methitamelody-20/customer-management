@@ -654,6 +654,17 @@ function parseReplies(raw) {
   try { return JSON.parse(raw || '[]'); } catch(e) { return []; }
 }
 
+function linkifyImages(text) {
+  // แปลง URL ของรูปภาพเป็น hyperlink และแสดงตัวอย่าง
+  if (!text) return '';
+  // รูปแบบ URL ของรูปภาพ
+  const urlRegex = /(https?:\/\/[^\s]+\.(?:jpg|jpeg|png|gif|webp|bmp|svg))/gi;
+  return String(text).replace(urlRegex, function(url) {
+    return '<a href="' + url + '" target="_blank" style="color:#2d7dd2;text-decoration:underline;word-break:break-all" title="คลิกเพื่อดูรูปภาพ">🖼️ ดูรูปภาพ</a>' +
+           '<div style="margin-top:8px;max-width:350px"><img src="' + url + '" style="max-width:100%;border-radius:6px;border:1px solid #ddd;box-shadow:0 2px 8px rgba(0,0,0,0.1)" onerror="this.parentElement.style.display=\'none\'"></div>';
+  });
+}
+
 function esc(s) {
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
@@ -784,7 +795,7 @@ function showDetailModal(index) {
       html += '<div style="background:#e8f4fd;border:1px solid #b8d9f5;border-radius:6px;padding:12px;margin-bottom:10px">'
         + '<strong style="color:var(--navy)">👤 ' + esc(reply.name||reply.by||'Admin') + '</strong>'
         + '<span style="color:var(--gray3);font-size:12px;margin-left:8px">' + esc(reply.time||reply.date||'') + '</span>'
-        + '<div style="margin-top:8px;color:var(--text);font-size:13px;line-height:1.6">' + esc(reply.text||'') + '</div>'
+        + '<div style="margin-top:8px;color:var(--text);font-size:13px;line-height:1.6">' + linkifyImages(reply.text||'') + '</div>'
         + '</div>';
     });
     html += '</div>';
@@ -878,7 +889,7 @@ function printTicketDetail() {
       html += '<div class="reply-item">'
         + '<span class="reply-author">👤 ' + esc(reply.name||reply.by||'Admin') + '</span>'
         + '<span class="reply-date">' + esc(reply.time||reply.date||'') + '</span>'
-        + '<div class="reply-text">' + esc(reply.text||'') + '</div>'
+        + '<div class="reply-text">' + linkifyImages(reply.text||'') + '</div>'
         + '</div>';
     });
     html += '</div>';
