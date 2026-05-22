@@ -665,9 +665,8 @@ function toggleCreateIssue() {
       prefill_org:   currentUser.org   || ''
     });
     const iframe = document.getElementById('crmIframe');
-    if (!iframe.src || iframe.src === window.location.href) {
-      iframe.src = base + '?' + p.toString();
-    }
+    // Always update the iframe src with prefill parameters
+    iframe.src = base + '?' + p.toString();
     card.scrollIntoView({behavior:'smooth', block:'start'});
   }
 }
