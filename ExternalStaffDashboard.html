@@ -262,18 +262,22 @@ html,body{min-height:100%;font-family:var(--font);color:var(--text);background:v
       <div class="stat-card green"><div class="stat-num" id="statClosed">—</div><div class="stat-lbl">Admin ตอบแล้ว / ปิด</div></div>
     </div>
 
-    <!-- Create new issue form -->
-    <div class="card" id="createIssueCard" style="display:none;background:linear-gradient(135deg,rgba(45,125,210,0.05),rgba(242,162,30,0.05));border:1.5px dashed var(--sky);padding:0;overflow:hidden">
-      <div style="display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:1px solid var(--gray1)">
-        <div class="card-title" style="margin-bottom:0">➕ แจ้งปัญหา/เรื่องร้องเรียนใหม่</div>
-        <button class="btn-outline" style="padding:6px 12px;font-size:12px" onclick="toggleCreateIssue()">ปิด</button>
+    <!-- Ticket Detail Modal -->
+    <div id="detailModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:1000;overflow-y:auto;padding:20px">
+      <div style="background:white;border-radius:12px;max-width:700px;margin:40px auto;padding:0;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,0.15)">
+        <div style="background:linear-gradient(135deg,var(--navy),var(--blue));padding:20px;color:#fff;display:flex;justify-content:space-between;align-items:center">
+          <h2 style="margin:0;font-size:18px;font-weight:700">📋 รายละเอียดเรื่อง</h2>
+          <button onclick="closeDetailModal()" style="background:none;border:none;color:#fff;font-size:24px;cursor:pointer;padding:0;width:30px;height:30px;display:flex;align-items:center;justify-content:center">×</button>
+        </div>
+        <div style="padding:24px">
+          <div id="detailContent" style="color:var(--text)"></div>
+          <div style="margin-top:24px;display:flex;gap:10px;justify-content:flex-end;border-top:1px solid var(--gray1);padding-top:16px">
+            <button class="btn-outline" onclick="printTicketDetail()">🖨️ พิมพ์</button>
+            <button class="btn-outline" onclick="exportTicketDetail()">⬇️ Export</button>
+            <button class="btn-outline" onclick="closeDetailModal()">ปิด</button>
+          </div>
+        </div>
       </div>
-      <iframe id="crmIframe"
-        src=""
-        style="width:100%;height:720px;border:none;display:block"
-        allow="forms"
-        title="ฟอร์มแจ้งปัญหา CRM">
-      </iframe>
     </div>
 
     <!-- Ticket list -->
@@ -312,6 +316,7 @@ html,body{min-height:100%;font-family:var(--font);color:var(--text);background:v
               <th>รายละเอียด</th>
               <th>สถานะ</th>
               <th>การตอบกลับ</th>
+              <th style="text-align:center;width:50px">การดำเนินการ</th>
             </tr>
           </thead>
           <tbody id="ticketBody"></tbody>
@@ -520,9 +525,9 @@ function loadDashboard() {
 
 function updateStats() {
   const total      = allTickets.length;
-  const open       = allTickets.filter(t => t.status === 'open').length;
-  const inProgress = allTickets.filter(t => t.status === 'in_progress').length;
-  const closed     = allTickets.filter(t => t.status === 'closed' || t.status === 'resolved').length;
+  const open       = allTickets.filter(t => ['open','รอดำเนินการ'].includes(String(t.status||'').toLowerCase().trim())).length;
+  const inProgress = allTickets.filter(t => ['in_progress','inprocess','กำลังดำเนินการ'].includes(String(t.status||'').toLowerCase().trim())).length;
+  const closed     = allTickets.filter(t => ['closed','resolved','ปิดแล้ว','แก้ไขแล้ว'].includes(String(t.status||'').toLowerCase().trim())).length;
   document.getElementById('statTotal').textContent      = total;
   document.getElementById('statOpen').textContent       = open;
   document.getElementById('statInProgress').textContent = inProgress;
@@ -603,6 +608,7 @@ function renderTickets() {
       + '<td style="max-width:200px;word-break:break-word">' + esc((t.detail||'').slice(0,80)) + (t.detail&&t.detail.length>80?'...':'') + '</td>'
       + '<td>' + (statusLabel[t.status] || '<span class="badge">' + esc(t.status||'') + '</span>') + '</td>'
       + '<td>' + replyHtml + '</td>'
+      + '<td style="text-align:center"><button class="btn-outline" style="padding:4px 8px;font-size:11px;width:auto" onclick="showDetailModal(' + i + ')">📄 ดู</button></td>'
       + '</tr>';
   }).join('');
 }
@@ -676,7 +682,7 @@ function exportTickets() {
   );
   if (!list.length) { alert('ไม่มีข้อมูลที่จะ Export'); return; }
 
-  const statusMap = { open: 'รอดำเนินการ', in_progress: 'กำลังดำเนินการ', closed: 'ปิดแล้ว', resolved: 'แก้ไขแล้ว' };
+  const statusMap = { open: 'รอดำเนินการ', in_progress: 'กำลังดำเนินการ', closed: 'ปิดแล้ว', resolved: 'แก้ไขแล้ว', inprocess: 'กำลังดำเนินการ' };
   const headers = ['#','รหัส','วันที่','ประเภทปัญหา','รายละเอียด','สถานะ','การตอบกลับล่าสุด'];
   const rows = list.map(function(t, i) {
     const replies = parseReplies(t.replies);
@@ -701,6 +707,145 @@ function exportTickets() {
   const now  = new Date();
   const fname = 'รายงานร้องเรียน_' + now.getFullYear() + ('0'+(now.getMonth()+1)).slice(-2) + ('0'+now.getDate()).slice(-2) + '.csv';
   a.href = url; a.download = fname; a.click();
+  URL.revokeObjectURL(url);
+}
+
+let currentDetailTicket = null;
+
+function showDetailModal(index) {
+  const list = getAllFilteredTickets();
+  if (index < 0 || index >= list.length) return;
+  currentDetailTicket = list[index];
+
+  const replies = parseReplies(currentDetailTicket.replies);
+  const statusMap = { open: 'รอดำเนินการ', in_progress: 'กำลังดำเนินการ', closed: 'ปิดแล้ว', resolved: 'แก้ไขแล้ว', inprocess: 'กำลังดำเนินการ' };
+
+  let html = '<div style="margin-bottom:20px">'
+    + '<div style="margin-bottom:16px"><strong style="color:var(--navy);font-size:14px">รหัสเรื่อง:</strong> <span style="font-family:monospace;color:var(--sky);font-weight:600">' + esc(currentDetailTicket.id) + '</span></div>'
+    + '<div style="margin-bottom:16px"><strong style="color:var(--navy);font-size:14px">ชื่อผู้แจ้ง:</strong> <span>' + esc(currentDetailTicket.reporterName) + '</span></div>'
+    + '<div style="margin-bottom:16px"><strong style="color:var(--navy);font-size:14px">วันที่แจ้ง:</strong> <span>' + esc(currentDetailTicket.date) + '</span></div>'
+    + '<div style="margin-bottom:16px"><strong style="color:var(--navy);font-size:14px">ประเภทปัญหา:</strong> <span>' + esc(currentDetailTicket.issueType) + '</span></div>'
+    + '<div style="margin-bottom:16px"><strong style="color:var(--navy);font-size:14px">สถานะ:</strong> ' + (statusLabel[currentDetailTicket.status] || '<span class="badge">' + esc(currentDetailTicket.status||'') + '</span>') + '</div>'
+    + '<div style="margin-bottom:16px;background:#f9f9f9;padding:14px;border-radius:6px;border-left:4px solid var(--sky)">'
+    + '<strong style="color:var(--navy);font-size:14px;display:block;margin-bottom:8px">รายละเอียด:</strong>'
+    + '<div style="color:var(--text);font-size:13px;line-height:1.6;white-space:pre-wrap">' + esc(currentDetailTicket.detail) + '</div>'
+    + '</div>';
+
+  if (replies.length > 0) {
+    html += '<div style="margin-top:20px;border-top:2px solid var(--gray1);padding-top:16px">'
+      + '<strong style="color:var(--navy);font-size:14px;display:block;margin-bottom:12px">📧 การตอบกลับ:</strong>';
+    replies.forEach(function(reply) {
+      html += '<div style="background:#e8f4fd;border:1px solid #b8d9f5;border-radius:6px;padding:12px;margin-bottom:10px">'
+        + '<strong style="color:var(--navy)">' + esc(reply.by||'Admin') + '</strong>'
+        + '<span style="color:var(--gray3);font-size:12px;margin-left:8px">' + esc(reply.date||'') + '</span>'
+        + '<div style="margin-top:8px;color:var(--text);font-size:13px;line-height:1.6">' + esc(reply.text||'') + '</div>'
+        + '</div>';
+    });
+    html += '</div>';
+  } else {
+    html += '<div style="margin-top:20px;padding:16px;background:#fff8e1;border-left:4px solid #ffc107;border-radius:6px;color:#856404;font-size:13px">'
+      + '⏳ ยังไม่มีการตอบกลับจาก Admin'
+      + '</div>';
+  }
+
+  html += '</div>';
+  document.getElementById('detailContent').innerHTML = html;
+  document.getElementById('detailModal').style.display = 'block';
+}
+
+function closeDetailModal() {
+  document.getElementById('detailModal').style.display = 'none';
+  currentDetailTicket = null;
+}
+
+function getAllFilteredTickets() {
+  const q = (document.getElementById('ticketSearch')?.value || '').toLowerCase();
+  const dateFrom = parseDateStr(document.getElementById('filterDateFrom')?.value);
+  const dateTo = parseDateStr(document.getElementById('filterDateTo')?.value);
+  let list = allTickets;
+  if (activeFilter !== 'all') list = list.filter(t => t.status === activeFilter);
+  if (q) list = list.filter(t =>
+    (t.issueType||'').toLowerCase().includes(q) ||
+    (t.detail||'').toLowerCase().includes(q) ||
+    (t.id||'').toLowerCase().includes(q)
+  );
+  if (dateFrom && !isNaN(dateFrom)) list = list.filter(function(t) {
+    var d = parseDateStr(t.date); return d && d >= dateFrom;
+  });
+  if (dateTo && !isNaN(dateTo)) {
+    var dateToEnd = new Date(dateTo); dateToEnd.setHours(23,59,59,999);
+    list = list.filter(function(t) { var d = parseDateStr(t.date); return d && d <= dateToEnd; });
+  }
+  return list;
+}
+
+function printTicketDetail() {
+  if (!currentDetailTicket) return;
+  const printWindow = window.open('', '', 'width=800,height=600');
+  const replies = parseReplies(currentDetailTicket.replies);
+  const statusMap = { open: 'รอดำเนินการ', in_progress: 'กำลังดำเนินการ', closed: 'ปิดแล้ว', resolved: 'แก้ไขแล้ว', inprocess: 'กำลังดำเนินการ' };
+
+  let html = '<html><head><meta charset="UTF-8"><title>รายละเอียดเรื่อง</title>'
+    + '<style>body{font-family:\'Sarabun\',Arial;margin:20px;color:#333} h1{color:#0f2744;font-size:20px;margin-bottom:20px}'
+    + '.info{margin-bottom:12px} .label{font-weight:700;color:#1a4a8a;width:120px;display:inline-block}'
+    + '.detail{background:#f9f9f9;padding:12px;border-radius:4px;margin:16px 0;white-space:pre-wrap;font-size:13px}'
+    + '.reply{background:#e8f4fd;border:1px solid #b8d9f5;padding:10px;margin-bottom:10px;border-radius:4px;font-size:13px}'
+    + '.reply-author{font-weight:700;color:#0f2744}'
+    + '@media print{body{margin:0}.no-print{display:none}}</style>'
+    + '</head><body><h1>รายละเอียดเรื่องร้องเรียน</h1>'
+    + '<div class="info"><span class="label">รหัส:</span> ' + esc(currentDetailTicket.id) + '</div>'
+    + '<div class="info"><span class="label">ชื่อผู้แจ้ง:</span> ' + esc(currentDetailTicket.reporterName) + '</div>'
+    + '<div class="info"><span class="label">วันที่:</span> ' + esc(currentDetailTicket.date) + '</div>'
+    + '<div class="info"><span class="label">ประเภท:</span> ' + esc(currentDetailTicket.issueType) + '</div>'
+    + '<div class="info"><span class="label">สถานะ:</span> ' + (statusMap[currentDetailTicket.status] || currentDetailTicket.status) + '</div>'
+    + '<div style="margin-top:20px;border-top:2px solid #ccc;padding-top:10px">'
+    + '<strong style="display:block;margin-bottom:10px">รายละเอียด:</strong>'
+    + '<div class="detail">' + esc(currentDetailTicket.detail) + '</div>';
+
+  if (replies.length > 0) {
+    html += '<strong style="display:block;margin:20px 0 10px;border-top:2px solid #ccc;padding-top:10px">การตอบกลับ:</strong>';
+    replies.forEach(function(r) {
+      html += '<div class="reply"><span class="reply-author">' + esc(r.by||'Admin') + '</span> (' + esc(r.date||'') + ')<br>' + esc(r.text||'') + '</div>';
+    });
+  }
+
+  html += '</div><div class="no-print" style="margin-top:20px;text-align:center"><button onclick="window.print()">พิมพ์</button> <button onclick="window.close()">ปิด</button></div></body></html>';
+  printWindow.document.write(html);
+  printWindow.document.close();
+  setTimeout(() => printWindow.print(), 500);
+}
+
+function exportTicketDetail() {
+  if (!currentDetailTicket) return;
+  const replies = parseReplies(currentDetailTicket.replies);
+  const statusMap = { open: 'รอดำเนินการ', in_progress: 'กำลังดำเนินการ', closed: 'ปิดแล้ว', resolved: 'แก้ไขแล้ว', inprocess: 'กำลังดำเนินการ' };
+
+  const rows = [
+    ['รหัสเรื่อง', currentDetailTicket.id],
+    ['ชื่อผู้แจ้ง', currentDetailTicket.reporterName],
+    ['วันที่แจ้ง', currentDetailTicket.date],
+    ['ประเภทปัญหา', currentDetailTicket.issueType],
+    ['สถานะ', statusMap[currentDetailTicket.status] || currentDetailTicket.status],
+    ['รายละเอียด', currentDetailTicket.detail],
+    ['']
+  ];
+
+  if (replies.length > 0) {
+    rows.push(['การตอบกลับ', '']);
+    replies.forEach(function(r) {
+      rows.push([r.by || 'Admin', r.text]);
+      rows.push([r.date, '']);
+    });
+  }
+
+  const csv = rows.map(row => row.map(v => '"' + String(v).replace(/"/g,'""') + '"').join(',')).join('\n');
+  const blob = new Blob(['﻿' + csv], {type:'text/csv;charset=utf-8'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const now = new Date();
+  a.href = url;
+  a.download = 'รายละเอียดเรื่อง_' + currentDetailTicket.id + '.csv';
+  a.click();
   URL.revokeObjectURL(url);
 }
 </script>
