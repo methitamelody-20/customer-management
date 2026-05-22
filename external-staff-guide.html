@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>คู่มือการใช้งานระบบติดตามปัญหาสำหรับสำนักงานภายนอก</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Sarabun', Arial, sans-serif;
+            line-height: 1.8;
+            color: #333;
+            background: #f5f5f5;
+            padding: 20px;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            padding: 40px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        header {
+            text-align: center;
+            margin-bottom: 40px;
+            border-bottom: 3px solid #1976d2;
+            padding-bottom: 20px;
+        }
+        h1 {
+            color: #0f2744;
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+        .subtitle {
+            color: #666;
+            font-size: 14px;
+        }
+        h2 {
+            color: #1976d2;
+            font-size: 20px;
+            margin-top: 35px;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #e0e0e0;
+        }
+        h3 {
+            color: #0f2744;
+            font-size: 16px;
+            margin-top: 20px;
+            margin-bottom: 10px;
+        }
+        .section {
+            margin-bottom: 30px;
+        }
+        .step {
+            background: #f9f9f9;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-left: 4px solid #1976d2;
+            border-radius: 4px;
+        }
+        .step-title {
+            font-weight: 700;
+            color: #0f2744;
+            margin-bottom: 8px;
+        }
+        .step-content {
+            color: #555;
+            line-height: 1.7;
+        }
+        .highlight {
+            background: #fff3cd;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 15px 0;
+            border-left: 4px solid #ffc107;
+        }
+        .highlight-title {
+            font-weight: 700;
+            color: #856404;
+            margin-bottom: 8px;
+        }
+        .note {
+            background: #e8f4fd;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 15px 0;
+            border-left: 4px solid #1976d2;
+        }
+        .note-title {
+            font-weight: 700;
+            color: #1565c0;
+            margin-bottom: 8px;
+        }
+        ul, ol {
+            margin-left: 20px;
+            margin-bottom: 15px;
+        }
+        li {
+            margin-bottom: 8px;
+        }
+        .screenshot-text {
+            font-style: italic;
+            color: #666;
+            font-size: 13px;
+            margin-top: 5px;
+        }
+        .button-guide {
+            display: inline-block;
+            background: #1976d2;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 4px;
+            font-size: 13px;
+            margin: 5px 0;
+        }
+        .tab {
+            display: inline-block;
+            background: #f0f0f0;
+            padding: 5px 12px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            margin: 2px 0;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+        }
+        th {
+            background: #f5f5f5;
+            font-weight: 700;
+            color: #0f2744;
+        }
+        .faq {
+            background: #f9f9f9;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 4px;
+        }
+        .faq-q {
+            font-weight: 700;
+            color: #0f2744;
+            margin-bottom: 8px;
+        }
+        .faq-a {
+            color: #555;
+            margin-left: 10px;
+        }
+        footer {
+            margin-top: 50px;
+            padding-top: 20px;
+            border-top: 2px solid #e0e0e0;
+            text-align: center;
+            color: #999;
+            font-size: 12px;
+        }
+        .toc {
+            background: #f5f9ff;
+            padding: 20px;
+            border-radius: 4px;
+            margin-bottom: 30px;
+        }
+        .toc-title {
+            font-weight: 700;
+            color: #0f2744;
+            margin-bottom: 10px;
+        }
+        .toc a {
+            color: #1976d2;
+            text-decoration: none;
+            display: block;
+            margin: 5px 0;
+        }
+        .toc a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📊 คู่มือการใช้งาน</h1>
+            <p class="subtitle">ระบบติดตามปัญหาสำหรับสำนักงานและหน่วยงานภายนอก</p>
+        </header>
+
+        <div class="toc">
+            <div class="toc-title">📑 สารบัญ</div>
+            <a href="#registration">1. การลงทะเบียน</a>
+            <a href="#password">2. การตั้งรหัสผ่าน</a>
+            <a href="#login">3. การเข้าสู่ระบบ</a>
+            <a href="#usage">4. การใช้งานระบบ</a>
+            <a href="#features">5. คุณสมบัติและฟังก์ชัน</a>
+            <a href="#faq">6. คำถามที่พบบ่อย</a>
+            <a href="#support">7. การติดต่อสอบถาม</a>
+        </div>
+
+        <!-- ส่วนที่ 1: การลงทะเบียน -->
+        <h2 id="registration">1️⃣ การลงทะเบียน</h2>
+        <div class="section">
+            <h3>ขั้นตอนการลงทะเบียนครั้งแรก</h3>
+
+            <div class="step">
+                <div class="step-title">ขั้นตอนที่ 1: เข้าถึงลิ้งค์ลงทะเบียน</div>
+                <div class="step-content">
+                    <p>ติดต่อสำนักงานสถาบันการศึกษา เพื่อขอ<strong>ลิ้งค์สำหรับลงทะเบียน</strong></p>
+                    <p>ลิ้งค์จะอยู่ในรูปแบบ: <span class="tab">https://script.google.com/...?page=ext_staff</span></p>
+                </div>
+            </div>
+
+            <div class="step">
+                <div class="step-title">ขั้นตอนที่ 2: คลิกลิ้งค์และเข้าสู่หน้าลงทะเบียน</div>
+                <div class="step-content">
+                    <p>1. คลิกลิ้งค์ที่ได้รับมา</p>
+                    <p>2. ระบบจะแสดงหน้าลงทะเบียนขึ้นมา</p>
+                    <p>3. คลิกปุ่ม <span class="button-guide">📝 ลงทะเบียน</span> (หรือ "สมัครสมาชิก")</p>
+                </div>
+            </div>
+
+            <div class="step">
+                <div class="step-title">ขั้นตอนที่ 3: กรอกข้อมูลลงทะเบียน</div>
+                <div class="step-content">
+                    <p>กรอกข้อมูลในแบบฟอร์ม:</p>
+                    <ul>
+                        <li><strong>อีเมล</strong> - ที่อยู่อีเมลที่ใช้งานได้จริง</li>
+                        <li><strong>รหัสผ่าน</strong> - ตั้งรหัสผ่านที่แข็งแรง (อย่างน้อย 8 ตัวอักษร)</li>
+                        <li><strong>ชื่อสถาบัน/หน่วยงาน</strong> - ชื่อสำนักงานหรือหน่วยงานของท่าน</li>
+                        <li><strong>ชื่อผู้ติดต่อ</strong> - ชื่อและนามสกุลของท่าน</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="step">
+                <div class="step-title">ขั้นตอนที่ 4: รอการอนุมัติจาก Admin</div>
+                <div class="step-content">
+                    <p>✅ หลังจากลงทะเบียนแล้ว</p>
+                    <p>⏳ ระบบจะส่งคำขอไปให้ Admin เพื่อตรวจสอบและอนุมัติ</p>
+                    <p>📧 Admin จะส่งอีเมลแจ้งการอนุมัติและลิ้งค์สำหรับตั้งรหัสผ่านใหม่</p>
+                </div>
+            </div>
+
+            <div class="highlight">
+                <div class="highlight-title">⚠️ ข้อควรระวัง</div>
+                <ul>
+                    <li>ใช้อีเมลที่ถูกต้อง เพราะ Admin จะส่งการแจ้งให้ที่อีเมลนี้</li>
+                    <li>หากไม่ได้รับอีเมลการอนุมัติภายใน 2-3 วัน ติดต่อ Admin โดยตรง</li>
+                    <li>อีเมลอาจอยู่ในโฟลเดอร์ Spam ให้ตรวจสอบด้วย</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- ส่วนที่ 2: การตั้งรหัสผ่าน -->
+        <h2 id="password">2️⃣ การตั้งรหัสผ่าน</h2>
+        <div class="section">
+            <h3>หลังจากได้รับการอนุมัติ</h3>
+
+            <div class="step">
+                <div class="step-title">ขั้นตอนที่ 1: ตรวจสอบอีเมลการอนุมัติ</div>
+                <div class="step-content">
+                    <p>Admin จะส่งอีเมลมาพร้อมกับ:</p>
+                    <ul>
+                        <li>ข้อความแจ้งว่าการลงทะเบียนอนุมัติแล้ว</li>
+                        <li><strong>ลิ้งค์สำหรับตั้งรหัสผ่าน</strong> (Password Setup Link)</li>
+                        <li>คำแนะนำเพิ่มเติม</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="step">
+                <div class="step-title">ขั้นตอนที่ 2: คลิกลิ้งค์ตั้งรหัสผ่าน</div>
+                <div class="step-content">
+                    <p>1. เปิดอีเมลและคลิกลิ้งค์ที่ส่งมา</p>
+                    <p>2. ลิ้งค์จะนำพาไปยังหน้าตั้งรหัสผ่าน</p>
+                    <p>3. กรอกรหัสผ่านใหม่ลงในช่อง "รหัสผ่าน"</p>
+                </div>
+            </div>
+
+            <div class="step">
+                <div class="step-title">ขั้นตอนที่ 3: บันทึกรหัสผ่าน</div>
+                <div class="step-content">
+                    <p>1. คลิกปุ่ม <span class="button-guide">💾 บันทึกรหัสผ่าน</span></p>
+                    <p>2. รอข้อความแจ้งความสำเร็จ</p>
+                    <p>3. ระบบจะพาไปยังหน้า Dashboard โดยอัตโนมัติ</p>
+                </div>
+            </div>
+
+            <div class="note">
+                <div class="note-title">💡 เคล็ดลับสำหรับรหัสผ่านที่ปลอดภัย</div>
+                <ul>
+                    <li>ใช้ตัวอักษร ตัวเลข และสัญลักษณ์ผสมกัน</li>
+                    <li>ไม่ใช้วันเดือนปีหรือชื่อเด็กเพศ</li>
+                    <li>ความยาวอย่างน้อย 8 ตัวอักษร ยิ่งยาวยิ่งปลอดภัย</li>
+                    <li>เก็บรหัสผ่านไว้ที่ปลอดภัย อย่าบอกใครอื่น</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- ส่วนที่ 3: การเข้าสู่ระบบ -->
+        <h2 id="login">3️⃣ การเข้าสู่ระบบ</h2>
+        <div class="section">
+            <h3>การเข้าใช้งานระบบประจำวัน</h3>
+
+            <div class="step">
+                <div class="step-title">ขั้นตอนที่ 1: เข้าหน้าลงชื่อเข้าใช้</div>
+                <div class="step-content">
+                    <p>1. ใช้ลิ้งค์เดียวกันที่ได้รับมา หรือ</p>
+                    <p>2. บันทึกลิ้งค์นี้ไว้ในบุ๊กมาร์ก (Bookmark) เพื่อใช้ครั้งต่อไป</p>
+                </div>
+            </div>
+
+            <div class="step">
+                <div class="step-title">ขั้นตอนที่ 2: กรอกข้อมูลเข้าสู่ระบบ</div>
+                <div class="step-content">
+                    <p>ช่อง "อีเมล" - ระบุอีเมลที่ลงทะเบียน</p>
+                    <p>ช่อง "รหัสผ่าน" - ระบุรหัสผ่านที่ตั้งไว้</p>
+                    <p style="margin-top: 10px;"><strong>☑️ จำรหัสผ่าน</strong> - (ทำเครื่องหมาย ถ้าต้องการให้ระบบจำรหัสผ่าน)</p>
+                </div>
+            </div>
+
+            <div class="step">
+                <div class="step-title">ขั้นตอนที่ 3: คลิกปุ่มเข้าสู่ระบบ</div>
+                <div class="step-content">
+                    <p>คลิกปุ่ม <span class="button-guide">🔐 เข้าสู่ระบบ</span></p>
+                    <p>รอสักครู่เพื่อให้ระบบโหลดข้อมูล</p>
+                    <p>✅ เมื่อสำเร็จ จะเข้าไปยัง Dashboard</p>
+                </div>
+            </div>
+
+            <div class="highlight">
+                <div class="highlight-title">⚠️ ถ้าลืมรหัสผ่าน</div>
+                <p>ติดต่อ Admin เพื่อขอตั้งรหัสผ่านใหม่ Admin จะส่งลิ้งค์มาที่อีเมลของท่าน</p>
+            </div>
+        </div>
+
+        <!-- ส่วนที่ 4: การใช้งานระบบ -->
+        <h2 id="usage">4️⃣ การใช้งานระบบ</h2>
+        <div class="section">
+            <h3>หน้า Dashboard หลัก</h3>
+
+            <div class="step">
+                <div class="step-title">🏠 ส่วนประกอบของหน้า Dashboard</div>
+                <div class="step-content">
+                    <table>
+                        <tr>
+                            <th>ส่วน</th>
+                            <th>คำอธิบาย</th>
+                        </tr>
+                        <tr>
+                            <td><strong>📊 แดชบอร์ด</strong></td>
+                            <td>แสดงสรุปสถิติของปัญหาทั้งหมด</td>
+                        </tr>
+                        <tr>
+                            <td><strong>📋 รายการปัญหา</strong></td>
+                            <td>รายการทั้งหมดของปัญหาที่ท่านแจ้งมา</td>
+                        </tr>
+                        <tr>
+                            <td><strong>🔍 ค้นหา</strong></td>
+                            <td>ค้นหาปัญหาตามเลขปัญหา ชื่อ หรือสถานะ</td>
+                        </tr>
+                        <tr>
+                            <td><strong>👤 โปรไฟล์</strong></td>
+                            <td>ดูและแก้ไขข้อมูลส่วนตัวของท่าน</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+
+            <h3>การดูรายการปัญหา</h3>
+
+            <div class="step">
+                <div class="step-title">ขั้นตอนที่ 1: เข้าไปที่แท็บ "📋 รายการปัญหา"</div>
+                <div class="step-content">
+                    <p>ระบบจะแสดงรายการปัญหาทั้งหมดที่ท่านแจ้งมา</p>
+                </div>
+            </div>
+
+            <div class="step">
+                <div class="step-title">ขั้นตอนที่ 2: ตัวกรองและค้นหา</div>
+                <div class="step-content">
+                    <p>ท่านสามารถกรองตามสถานะ:</p>
+                    <ul>
+                        <li><strong>🔴 เปิดอยู่</strong> - ปัญหาที่ยังไม่แก้ไข</li>
+                        <li><strong>🟡 กำลังดำเนินการ</strong> - ปัญหาที่อยู่ระหว่างการแก้ไข</li>
+                        <li><strong>🟢 แก้ไขแล้ว</strong> - ปัญหาที่แก้ไขเรียบร้อย</li>
+                        <li><strong>⚪ ปิดแล้ว</strong> - ปัญหาที่ปิดและเสร็จสิ้น</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="step">
+                <div class="step-title">ขั้นตอนที่ 3: คลิกที่ปัญหาเพื่อดูรายละเอียด</div>
+                <div class="step-content">
+                    <p>1. คลิกที่เลขปัญหา หรือชื่อปัญหา</p>
+                    <p>2. ระบบจะแสดงรายละเอียดทั้งหมด:</p>
+                    <ul>
+                        <li>เลขอ้างอิง</li>
+                        <li>วันที่แจ้ง</li>
+                        <li>ประเภทปัญหา</li>
+                        <li>รายละเอียด</li>
+                        <li>สถานะปัจจุบัน</li>
+                        <li>ความคิดเห็นจาก Admin</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="note">
+                <div class="note-title">💡 เคล็ดลับในการติดตาม</div>
+                <ul>
+                    <li>ตรวจสอบ Dashboard อย่างสม่ำเสมอเพื่อดูสถานะปัญหา</li>
+                    <li>ใช้ช่องค้นหาเพื่อค้นหาปัญหาเก่าได้อย่างรวดเร็ว</li>
+                    <li>สังเกตจำนวนปัญหาในแต่ละสถานะ</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- ส่วนที่ 5: คุณสมบัติและฟังก์ชัน -->
+        <h2 id="features">5️⃣ คุณสมบัติและฟังก์ชัน</h2>
+        <div class="section">
+            <h3>สิ่งที่ท่านสามารถทำได้ในระบบ</h3>
+
+            <div class="step">
+                <div class="step-title">📊 ดูแดชบอร์ด (Dashboard)</div>
+                <div class="step-content">
+                    <ul>
+                        <li>📈 จำนวนปัญหาทั้งหมดที่แจ้งมา</li>
+                        <li>📊 สัดส่วนของสถานะปัญหา (เปิด, กำลังดำเนินการ, แก้ไข, ปิด)</li>
+                        <li>📉 ประเภทปัญหาที่พบบ่อยที่สุด</li>
+                        <li>📅 ช่องทางติดต่อที่ใช้บ่อย</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="step">
+                <div class="step-title">🔍 ค้นหาปัญหา</div>
+                <div class="step-content">
+                    <p>ค้นหาด้วยวิธีต่างๆ:</p>
+                    <ul>
+                        <li>เลขปัญหา เช่น CRM-20260521-100</li>
+                        <li>ชื่อผู้แจ้ง</li>
+                        <li>ประเภทปัญหา</li>
+                        <li>สถานะปัญหา</li>
+                        <li>ช่วงเวลา (วันที่แจ้ง)</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="step">
+                <div class="step-title">💬 ดูความคิดเห็นและการตอบกลับ</div>
+                <div class="step-content">
+                    <p>ในรายละเอียดปัญหา ท่านสามารถ:</p>
+                    <ul>
+                        <li>อ่านความคิดเห็นจาก Admin</li>
+                        <li>ติดตามการแก้ไข</li>
+                        <li>เห็นวันที่อัปเดตล่าสุด</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="step">
+                <div class="step-title">⚙️ แก้ไขข้อมูลส่วนตัว</div>
+                <div class="step-content">
+                    <p>ในส่วน "โปรไฟล์" ท่านสามารถ:</p>
+                    <ul>
+                        <li>เปลี่ยนชื่อและข้อมูลติดต่อ</li>
+                        <li>อัปเดตอีเมลและเบอร์โทร</li>
+                        <li>เปลี่ยนรหัสผ่าน</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="highlight">
+                <div class="highlight-title">ℹ️ ข้อมูล</div>
+                <p>ท่านไม่สามารถแจ้งปัญหาโดยตรงในระบบนี้ ให้ติดต่อสำนักงานสถาบันการศึกษา เพื่อแจ้งปัญหา</p>
+            </div>
+        </div>
+
+        <!-- ส่วนที่ 6: คำถามที่พบบ่อย -->
+        <h2 id="faq">6️⃣ คำถามที่พบบ่อย (FAQ)</h2>
+        <div class="section">
+            <div class="faq">
+                <div class="faq-q">❓ ใช้เวลานานแค่ไหนในการอนุมัติการลงทะเบียน?</div>
+                <div class="faq-a">
+                    โดยปกติ Admin จะอนุมัติภายใน 1-2 วันทำการ หากยาวกว่านี้ให้ติดต่อสำนักงานสถาบันการศึกษา
+                </div>
+            </div>
+
+            <div class="faq">
+                <div class="faq-q">❓ ลิ้งค์ตั้งรหัสผ่านหมดอายุหรือไม่?</div>
+                <div class="faq-a">
+                    ใช่ ลิ้งค์ปกติจะใช้ได้เพียง 24 ชั่วโมง หากหมดอายุ ให้ติดต่อ Admin เพื่อขอลิ้งค์ใหม่
+                </div>
+            </div>
+
+            <div class="faq">
+                <div class="faq-q">❓ ถ้าลืมรหัสผ่านควรทำไง?</div>
+                <div class="faq-a">
+                    ติดต่อ Admin ระบุอีเมลของท่าน Admin จะส่งลิ้งค์สำหรับตั้งรหัสผ่านใหม่
+                </div>
+            </div>
+
+            <div class="faq">
+                <div class="faq-q">❓ ดูรายการปัญหาเก่าได้อย่างไร?</div>
+                <div class="faq-a">
+                    ไปที่แท็บ "📋 รายการปัญหา" และใช้ช่องค้นหาหรือตัวกรองเพื่อค้นหาปัญหาเก่า สามารถกรองตามวันที่ สถานะ หรือประเภท
+                </div>
+            </div>
+
+            <div class="faq">
+                <div class="faq-q">❓ สามารถแจ้งปัญหาในระบบนี้ได้หรือไม่?</div>
+                <div class="faq-a">
+                    ไม่ ระบบนี้ใช้เฉพาะการติดตามปัญหาที่แจ้งมาแล้ว สำหรับแจ้งปัญหาใหม่ ให้ติดต่อสำนักงานสถาบันการศึกษาโดยตรง
+                </div>
+            </div>
+
+            <div class="faq">
+                <div class="faq-q">❓ ทำไมปัญหาของฉันไม่ปรากฏในระบบ?</div>
+                <div class="faq-a">
+                    อาจเป็นเพราะ:<br>
+                    1. ปัญหาอาจไม่ได้ลงทะเบียนในระบบ<br>
+                    2. ระบบอาจยังอัปเดตข้อมูล (รอสักครู่แล้วรีเฟรช)<br>
+                    3. ตรวจสอบอีเมลของท่านว่าถูกต้อง<br>
+                    ติดต่อ Admin หากปัญหายังไม่แก้ไข
+                </div>
+            </div>
+
+            <div class="faq">
+                <div class="faq-q">❓ สามารถเปลี่ยนข้อมูลของปัญหาได้หรือไม่?</div>
+                <div class="faq-a">
+                    ท่านสามารถดูข้อมูลปัญหาได้เท่านั้น เพื่อแก้ไขข้อมูลให้ติดต่อ Admin
+                </div>
+            </div>
+
+            <div class="faq">
+                <div class="faq-q">❓ ต้องทำอะไรบ้างหลังจากเปลี่ยนรหัสผ่าน?</div>
+                <div class="faq-a">
+                    หลังจากเปลี่ยนรหัสผ่าน ระบบจะพาไปยัง Dashboard โดยอัตโนมัติ ท่านสามารถเริ่มใช้งานได้ทันที
+                </div>
+            </div>
+
+            <div class="faq">
+                <div class="faq-q">❓ เชื่อถือได้ไหมกับความปลอดภัยของข้อมูล?</div>
+                <div class="faq-a">
+                    ระบบใช้เทคโนโลยีที่ปลอดภัยจากบริษัท Google เข้ารหัสข้อมูล และมีระบบสำรองข้อมูล
+                </div>
+            </div>
+        </div>
+
+        <!-- ส่วนที่ 7: การติดต่อสอบถาม -->
+        <h2 id="support">7️⃣ การติดต่อสอบถาม</h2>
+        <div class="section">
+            <h3>หากมีปัญหาหรือคำถามเพิ่มเติม</h3>
+
+            <div class="note">
+                <div class="note-title">📞 ติดต่อ Admin/สำนักงานสถาบันการศึกษา</div>
+                <ul>
+                    <li>ระบุเลขปัญหา หรือเลขอ้างอิง (ถ้ามี)</li>
+                    <li>อธิบายปัญหาที่พบอย่างชัดเจน</li>
+                    <li>รอบเวลาทำการปกติ: จันทร์-ศุกร์ 08:30 - 16:30</li>
+                </ul>
+            </div>
+
+            <div class="highlight">
+                <div class="highlight-title">📧 สิ่งที่ควรมีเมื่อติดต่อ</div>
+                <ul>
+                    <li>อีเมลของท่าน</li>
+                    <li>ชื่อสถาบัน/หน่วยงาน</li>
+                    <li>รายละเอียดปัญหา</li>
+                    <li>ลิ้งค์หรือสกรีนชอต (ถ้าเป็นปัญหาทางเทคนิค)</li>
+                </ul>
+            </div>
+        </div>
+
+        <footer>
+            <p>📄 คู่มือการใช้งานระบบติดตามปัญหาสำหรับสำนักงานภายนอก</p>
+            <p>📅 อัปเดตเมื่อ: พฤษภาคม 2569</p>
+            <p>💻 เวอร์ชัน 1.0</p>
+        </footer>
+    </div>
+</body>
+</html>

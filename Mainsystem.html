@@ -402,7 +402,7 @@ tbody td{padding:12px;vertical-align:middle}
 /* PRINT */
 @page{size:A4 landscape;margin:0}
 @media print{
-  #loginScreen,.sidebar,.topbar,.filter-bar,.btn-row,.no-print{display:none!important}
+  #loginScreen,.sidebar,.topbar,.filter-bar,.btn-row,.no-print,.sec-head{display:none!important}
   .main{overflow:visible}.content{padding:0!important;overflow:visible}
   body{background:#fff;margin:0;padding:0}
   /* ใบจ่าหน้า: 1 ใบต่อ 1 หน้า A4 แนวนอน, จัดกึ่งกลาง */
@@ -1410,7 +1410,7 @@ tbody td{padding:12px;vertical-align:middle}
                     <div class="fg"><input class="finput" placeholder="ชื่อชุดวิชา (ถ้าทราบ)"></div>
                   </div>
                 </div>
-                <button class="add-course-btn" onclick="addCourseRow()" type="button">+ เพิ่มชุดวิชา</button>
+                <button class="add-course-btn" id="addCourseBtnInline" onclick="addCourseRow()" type="button">+ เพิ่มชุดวิชา</button>
               </div>
 
               <!-- ขวา: รายละเอียดปัญหา -->
@@ -4052,7 +4052,7 @@ function renderLabels(rows) {
     }
     var courseCounter = '';
     var addr = (r.houseNo||'') + (r.street?' ถ.'+r.street:'') +
-               '<br>ต.' + (r.subDistrict||'') + ' อ.' + (r.district||'') +
+               '<br>' + (r.subDistrict||'') + ' ' + (r.district||'') +
                '<br>จ.' + (r.province||'') + ' ' + (r.zipCode||'') +
                (r.phone?'<br>โทร. '+r.phone:'');
 
@@ -4126,7 +4126,7 @@ function printAllLabels(r) {
         +bookInfo
         +'<div class="la">'
           +(r.houseNo||'')+((r.street?' ถ.'+r.street:''))
-          +'<br>ต.'+(r.subDistrict||'')+' อ.'+(r.district||'')+'<br>'
+          +'<br>'+(r.subDistrict||'')+' '+(r.district||'')+'<br>'
           +'จ.'+(r.province||'')+' '+(r.zipCode||'')
           +(r.phone?'<br>โทร. '+r.phone:'')
         +'</div>'
@@ -5697,11 +5697,19 @@ function addCourseRow(){
     <div class="fg"><input class="finput" placeholder="ชื่อชุดวิชา"></div>
     <button class="btn btn-ghost btn-xs" onclick="removeCourseRow(this)" type="button">✕</button>`;
   document.getElementById('crmCourseRows').appendChild(row);
-  if(courseRowCount>=3)document.getElementById('addCourseBtn').style.display='none';
+  if(courseRowCount>=3){
+    const btn1=document.getElementById('addCourseBtn');
+    const btn2=document.getElementById('addCourseBtnInline');
+    if(btn1)btn1.style.display='none';
+    if(btn2)btn2.style.display='none';
+  }
 }
 function removeCourseRow(btn){
   btn.closest('.course-row').remove(); courseRowCount--;
-  document.getElementById('addCourseBtn').style.display='flex';
+  const btn1=document.getElementById('addCourseBtn');
+  const btn2=document.getElementById('addCourseBtnInline');
+  if(btn1)btn1.style.display='flex';
+  if(btn2)btn2.style.display='flex';
   document.querySelectorAll('#crmCourseRows .course-num').forEach((s,i)=>s.textContent=i+1);
 }
 

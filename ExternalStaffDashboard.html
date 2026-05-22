@@ -120,6 +120,12 @@ html,body{min-height:100%;font-family:var(--font);color:var(--text);background:v
 
 <!-- ===================== LOGIN/REGISTER PAGE ===================== -->
 <div class="page active" id="authPage">
+  <!-- Topbar with Guide button -->
+  <div class="dash-topbar">
+    <div></div>
+    <button class="btn-outline" style="padding:8px 16px;font-size:12px;color:#fff;background:transparent;border-color:rgba(255,255,255,0.4);white-space:nowrap;font-weight:600;transition:all 0.2s" onclick="openGuide()" title="คลิกเพื่อดูคู่มือการใช้งาน">📖 คู่มือการใช้งาน</button>
+  </div>
+
   <div class="auth-wrap">
     <div class="header">
       <div class="logo">
@@ -197,6 +203,12 @@ html,body{min-height:100%;font-family:var(--font);color:var(--text);background:v
 
 <!-- ===================== PENDING APPROVAL PAGE ===================== -->
 <div class="page" id="pendingPage">
+  <!-- Topbar with Guide button -->
+  <div class="dash-topbar">
+    <div></div>
+    <button class="btn-outline" style="padding:8px 16px;font-size:12px;color:#fff;background:transparent;border-color:rgba(255,255,255,0.4);white-space:nowrap;font-weight:600;transition:all 0.2s" onclick="openGuide()" title="คลิกเพื่อดูคู่มือการใช้งาน">📖 คู่มือการใช้งาน</button>
+  </div>
+
   <div class="auth-wrap">
     <div class="header">
       <div class="logo">
@@ -217,6 +229,12 @@ html,body{min-height:100%;font-family:var(--font);color:var(--text);background:v
 
 <!-- ===================== SET PASSWORD PAGE ===================== -->
 <div class="page" id="setPasswordPage">
+  <!-- Topbar with Guide button -->
+  <div class="dash-topbar">
+    <div></div>
+    <button class="btn-outline" style="padding:8px 16px;font-size:12px;color:#fff;background:transparent;border-color:rgba(255,255,255,0.4);white-space:nowrap;font-weight:600;transition:all 0.2s" onclick="openGuide()" title="คลิกเพื่อดูคู่มือการใช้งาน">📖 คู่มือการใช้งาน</button>
+  </div>
+
   <div class="auth-wrap">
     <div class="header">
       <div class="logo">
@@ -249,7 +267,8 @@ html,body{min-height:100%;font-family:var(--font);color:var(--text);background:v
     <h1>📊 Dashboard ติดตามปัญหาเอกสารการสอนเจ้าหน้าที่ — มสธ.</h1>
     <div class="user-info">
       <span id="dashUserName">—</span>
-      <button class="btn-outline" style="padding:6px 14px;font-size:12px;color:#fff;border-color:rgba(255,255,255,0.4)" onclick="doLogout()">ออกจากระบบ</button>
+      <button class="btn-outline" style="padding:6px 14px;font-size:12px;color:#fff;background:transparent;border-color:rgba(255,255,255,0.4);margin-right:6px" onclick="openGuide()">📖 คู่มือการใช้งาน</button>
+      <button class="btn-outline" style="padding:6px 14px;font-size:12px;color:#fff;background:transparent;border-color:rgba(255,255,255,0.4)" onclick="doLogout()">ออกจากระบบ</button>
     </div>
   </div>
 
@@ -262,10 +281,28 @@ html,body{min-height:100%;font-family:var(--font);color:var(--text);background:v
       <div class="stat-card green"><div class="stat-num" id="statClosed">—</div><div class="stat-lbl">Admin ตอบแล้ว / ปิด</div></div>
     </div>
 
+    <!-- Ticket Detail Modal -->
+    <div id="detailModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:1000;overflow-y:auto;padding:20px">
+      <div style="background:white;border-radius:12px;max-width:700px;margin:40px auto;padding:0;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,0.15)">
+        <div style="background:linear-gradient(135deg,var(--navy),var(--blue));padding:20px;color:#fff;display:flex;justify-content:space-between;align-items:center">
+          <h2 style="margin:0;font-size:18px;font-weight:700">📋 รายละเอียดเรื่อง</h2>
+          <button onclick="closeDetailModal()" style="background:none;border:none;color:#fff;font-size:24px;cursor:pointer;padding:0;width:30px;height:30px;display:flex;align-items:center;justify-content:center">×</button>
+        </div>
+        <div style="padding:24px">
+          <div id="detailContent" style="color:var(--text)"></div>
+          <div style="margin-top:24px;display:flex;gap:10px;justify-content:flex-end;border-top:1px solid var(--gray1);padding-top:16px">
+            <button class="btn-outline" onclick="printTicketDetail()">🖨️ พิมพ์</button>
+            <button class="btn-outline" onclick="exportTicketDetail()">⬇️ Export</button>
+            <button class="btn-outline" onclick="closeDetailModal()">ปิด</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Create new issue form -->
     <div class="card" id="createIssueCard" style="display:none;background:linear-gradient(135deg,rgba(45,125,210,0.05),rgba(242,162,30,0.05));border:1.5px dashed var(--sky);padding:0;overflow:hidden">
-      <div style="display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:1px solid var(--gray1)">
-        <div class="card-title" style="margin-bottom:0">➕ แจ้งปัญหา/เรื่องร้องเรียนใหม่</div>
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:1px solid var(--gray1);background:linear-gradient(135deg,rgba(45,125,210,0.08),rgba(242,162,30,0.08))">
+        <div class="card-title" style="margin-bottom:0;color:var(--sky)">📝 แจ้งปัญหา/เรื่องร้องเรียนใหม่</div>
         <button class="btn-outline" style="padding:6px 12px;font-size:12px" onclick="toggleCreateIssue()">ปิด</button>
       </div>
       <iframe id="crmIframe"
@@ -280,10 +317,10 @@ html,body{min-height:100%;font-family:var(--font);color:var(--text);background:v
     <div class="card">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
         <div class="card-title" style="margin-bottom:0">📋 รายการเรื่องร้องเรียน</div>
-        <div style="display:flex;gap:8px">
+        <div style="display:flex;gap:8px;align-items:center">
           <button class="btn-outline" style="padding:8px 14px;font-size:12px;width:auto" onclick="loadTickets()" id="refreshBtn">🔄 รีเฟรช</button>
           <button class="btn-outline" style="padding:8px 14px;font-size:12px;width:auto" onclick="exportTickets()">⬇️ Export</button>
-          <button class="btn-primary" style="padding:8px 14px;font-size:12px;width:auto" onclick="toggleCreateIssue()">➕ เรื่องใหม่</button>
+          <button class="btn-primary" style="padding:11px 20px;font-size:14px;font-weight:700;width:auto;box-shadow:0 4px 12px rgba(242,162,30,0.3)" onclick="toggleCreateIssue()">➕ เรื่องใหม่</button>
         </div>
       </div>
       <div class="ticket-filter">
@@ -296,10 +333,11 @@ html,body{min-height:100%;font-family:var(--font);color:var(--text);background:v
       </div>
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap">
         <span style="font-size:12px;color:var(--gray3)">📅 ช่วงวันที่:</span>
-        <input class="finput" id="filterDateFrom" type="text" placeholder="dd/mm/yyyy" style="width:120px;padding:6px 10px;font-size:12px" oninput="renderTickets()">
+        <input class="finput" id="filterDateFrom" type="date" style="width:140px;padding:6px 10px;font-size:12px">
         <span style="font-size:12px;color:var(--gray3)">ถึง</span>
-        <input class="finput" id="filterDateTo" type="text" placeholder="dd/mm/yyyy" style="width:120px;padding:6px 10px;font-size:12px" oninput="renderTickets()">
-        <button class="btn-outline" style="padding:5px 10px;font-size:11px;width:auto" onclick="clearDateFilter()">ล้าง</button>
+        <input class="finput" id="filterDateTo" type="date" style="width:140px;padding:6px 10px;font-size:12px">
+        <button class="btn-outline" style="padding:6px 12px;font-size:11px;width:auto" onclick="applyDateFilter()">🔍 ค้นหา</button>
+        <button class="btn-outline" style="padding:6px 12px;font-size:11px;width:auto" onclick="clearDateFilter()">ล้าง</button>
       </div>
       <div style="overflow-x:auto">
         <table class="ticket-table">
@@ -312,6 +350,7 @@ html,body{min-height:100%;font-family:var(--font);color:var(--text);background:v
               <th>รายละเอียด</th>
               <th>สถานะ</th>
               <th>การตอบกลับ</th>
+              <th style="text-align:center;width:50px">การดำเนินการ</th>
             </tr>
           </thead>
           <tbody id="ticketBody"></tbody>
@@ -498,6 +537,14 @@ function doSetPassword() {
 }
 
 // ============================================================
+// GUIDE
+// ============================================================
+function openGuide() {
+  const guideUrl = 'https://script.google.com/a/macros/g.stou.ac.th/s/AKfycbxX11hLTopAjAacSn67LoOFuDMn7QHY6FXItbwUx_4tpNOKKu8fgSl7BpZOnWk_aHqa1Q/exec?page=guide';
+  window.open(guideUrl, '_blank');
+}
+
+// ============================================================
 // LOGOUT
 // ============================================================
 function doLogout() {
@@ -513,6 +560,12 @@ function doLogout() {
 // DASHBOARD
 // ============================================================
 function loadDashboard() {
+  // Security: Only active users can access dashboard
+  if (!currentUser || currentUser.status !== 'active') {
+    showPage('authPage');
+    showAlert('loginAlert', 'กรุณาเข้าสู่ระบบด้วยบัญชีที่ได้รับการอนุมัติ', 'err');
+    return;
+  }
   showPage('dashPage');
   document.getElementById('dashUserName').textContent = (currentUser.name || currentUser.email) + ' (' + (currentUser.org || 'ภายนอก') + ')';
   loadTickets();
@@ -520,9 +573,9 @@ function loadDashboard() {
 
 function updateStats() {
   const total      = allTickets.length;
-  const open       = allTickets.filter(t => t.status === 'open').length;
-  const inProgress = allTickets.filter(t => t.status === 'in_progress').length;
-  const closed     = allTickets.filter(t => t.status === 'closed' || t.status === 'resolved').length;
+  const open       = allTickets.filter(t => normalizeStatus(t.status) === 'open').length;
+  const inProgress = allTickets.filter(t => normalizeStatus(t.status) === 'in_progress').length;
+  const closed     = allTickets.filter(t => normalizeStatus(t.status) === 'closed').length;
   document.getElementById('statTotal').textContent      = total;
   document.getElementById('statOpen').textContent       = open;
   document.getElementById('statInProgress').textContent = inProgress;
@@ -536,6 +589,21 @@ function filterTickets(f, btn) {
   renderTickets();
 }
 
+function getStatusForFilter(s) {
+  const norm = normalizeStatus(s);
+  if (activeFilter === 'all') return true;
+  return norm === activeFilter;
+}
+
+function normalizeStatus(s) {
+  if (!s) return 'open';
+  const status = String(s).toLowerCase().trim();
+  if (['open','รอดำเนินการ','รอรับเรื่อง'].includes(status)) return 'open';
+  if (['inprogress','in_progress','inprocess','กำลังดำเนินการ'].includes(status)) return 'in_progress';
+  if (['closed','resolved','ปิดแล้ว','แก้ไขแล้ว','ตอบแล้ว','ปิดเรื่อง'].includes(status)) return 'closed';
+  return status;
+}
+
 const statusLabel = {
   open:        '<span class="badge open">รอดำเนินการ</span>',
   in_progress: '<span class="badge in_progress">กำลังดำเนินการ</span>',
@@ -546,9 +614,20 @@ const statusLabel = {
 
 function parseDateStr(s) {
   if (!s) return null;
-  var m = String(s).trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  const str = String(s).trim();
+  // Handle YYYY-MM-DD format (from date input)
+  if (/^\d{4}-\d{2}-\d{2}/.test(str)) {
+    const parts = str.split('-');
+    return new Date(parseInt(parts[0]), parseInt(parts[1])-1, parseInt(parts[2]));
+  }
+  // Handle dd/mm/yyyy format (legacy)
+  const m = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
   if (m) return new Date(+m[3], +m[2]-1, +m[1]);
-  return new Date(s);
+  return new Date(str);
+}
+
+function applyDateFilter() {
+  renderTickets();
 }
 
 function clearDateFilter() {
@@ -564,7 +643,7 @@ function renderTickets() {
   const dateFrom = parseDateStr(document.getElementById('filterDateFrom')?.value);
   const dateTo   = parseDateStr(document.getElementById('filterDateTo')?.value);
   let list = allTickets;
-  if (activeFilter !== 'all') list = list.filter(t => t.status === activeFilter);
+  if (activeFilter !== 'all') list = list.filter(t => getStatusForFilter(t.status));
   if (q) list = list.filter(t =>
     (t.issueType||'').toLowerCase().includes(q) ||
     (t.detail||'').toLowerCase().includes(q) ||
@@ -601,14 +680,37 @@ function renderTickets() {
       + '<td style="white-space:nowrap">' + esc(t.date||'') + '</td>'
       + '<td><span class="issue-type">' + esc(t.issueType||'') + '</span></td>'
       + '<td style="max-width:200px;word-break:break-word">' + esc((t.detail||'').slice(0,80)) + (t.detail&&t.detail.length>80?'...':'') + '</td>'
-      + '<td>' + (statusLabel[t.status] || '<span class="badge">' + esc(t.status||'') + '</span>') + '</td>'
+      + '<td>' + (statusLabel[normalizeStatus(t.status)] || '<span class="badge">' + esc(t.status||'') + '</span>') + '</td>'
       + '<td>' + replyHtml + '</td>'
+      + '<td style="text-align:center"><button class="btn-outline" style="padding:4px 8px;font-size:11px;width:auto" onclick="showDetailModal(' + i + ')">📄 ดู</button></td>'
       + '</tr>';
   }).join('');
 }
 
 function parseReplies(raw) {
   try { return JSON.parse(raw || '[]'); } catch(e) { return []; }
+}
+
+function linkifyImages(text) {
+  // แปลง URL ของรูปภาพเป็น hyperlink ให้คลิกเพื่อดูภาพ
+  if (!text) return '';
+
+  const t = String(text);
+  let result = t;
+
+  // รูปแบบ 1: Google Drive URLs
+  const gdDriveRegex = /https:\/\/drive\.google\.com\/file\/d\/([a-zA-Z0-9-_]+)\/[^\s]*/gi;
+  result = result.replace(gdDriveRegex, function(fullUrl) {
+    return '<a href="' + fullUrl + '" target="_blank" style="color:#2d7dd2;text-decoration:underline;font-weight:500">🖼️ คลิกเพื่อดูภาพ</a>';
+  });
+
+  // รูปแบบ 2: Direct image URLs (jpg, png, gif, etc.)
+  const directImgRegex = /(https?:\/\/[^\s]+\.(?:jpg|jpeg|png|gif|webp|bmp|svg))(?=\s|$)/gi;
+  result = result.replace(directImgRegex, function(url) {
+    return '<a href="' + url + '" target="_blank" style="color:#2d7dd2;text-decoration:underline;font-weight:500">🖼️ คลิกเพื่อดูภาพ</a>';
+  });
+
+  return result;
 }
 
 function esc(s) {
@@ -627,12 +729,12 @@ function toggleCreateIssue() {
       prefill_email: currentUser.email || '',
       prefill_name:  currentUser.name  || '',
       prefill_phone: currentUser.phone || '',
-      prefill_org:   currentUser.org   || ''
+      prefill_org:   currentUser.org   || '',
+      t: Date.now() // Cache busting - force fresh load with new parameters
     });
     const iframe = document.getElementById('crmIframe');
-    if (!iframe.src || iframe.src === window.location.href) {
-      iframe.src = base + '?' + p.toString();
-    }
+    // Always update the iframe src with prefill parameters
+    iframe.src = base + '?' + p.toString();
     card.scrollIntoView({behavior:'smooth', block:'start'});
   }
 }
@@ -668,7 +770,7 @@ window.addEventListener('message', function(ev) {
 function exportTickets() {
   const q = (document.getElementById('ticketSearch')?.value || '').toLowerCase();
   let list = allTickets;
-  if (activeFilter !== 'all') list = list.filter(t => t.status === activeFilter);
+  if (activeFilter !== 'all') list = list.filter(t => getStatusForFilter(t.status));
   if (q) list = list.filter(t =>
     (t.issueType||'').toLowerCase().includes(q) ||
     (t.detail||'').toLowerCase().includes(q) ||
@@ -676,7 +778,7 @@ function exportTickets() {
   );
   if (!list.length) { alert('ไม่มีข้อมูลที่จะ Export'); return; }
 
-  const statusMap = { open: 'รอดำเนินการ', in_progress: 'กำลังดำเนินการ', closed: 'ปิดแล้ว', resolved: 'แก้ไขแล้ว' };
+  const statusMap = { open: 'รอดำเนินการ', in_progress: 'กำลังดำเนินการ', closed: 'ปิดแล้ว', resolved: 'แก้ไขแล้ว', inprocess: 'กำลังดำเนินการ' };
   const headers = ['#','รหัส','วันที่','ประเภทปัญหา','รายละเอียด','สถานะ','การตอบกลับล่าสุด'];
   const rows = list.map(function(t, i) {
     const replies = parseReplies(t.replies);
@@ -701,6 +803,198 @@ function exportTickets() {
   const now  = new Date();
   const fname = 'รายงานร้องเรียน_' + now.getFullYear() + ('0'+(now.getMonth()+1)).slice(-2) + ('0'+now.getDate()).slice(-2) + '.csv';
   a.href = url; a.download = fname; a.click();
+  URL.revokeObjectURL(url);
+}
+
+let currentDetailTicket = null;
+
+function showDetailModal(index) {
+  const list = getAllFilteredTickets();
+  if (index < 0 || index >= list.length) return;
+  currentDetailTicket = list[index];
+
+  const replies = parseReplies(currentDetailTicket.replies);
+  const statusMap = { open: 'รอดำเนินการ', in_progress: 'กำลังดำเนินการ', closed: 'ปิดแล้ว', resolved: 'แก้ไขแล้ว', inprocess: 'กำลังดำเนินการ' };
+  const priorityMap = { normal: 'ปกติ', high: 'สำคัญ', urgent: 'เร่งด่วน' };
+  const channelMap = { phone: 'โทรศัพท์', line: 'LINE', letter: 'จดหมาย', walkin: 'มาด้วยตนเอง', online: 'ออนไลน์' };
+
+  let html = '<div style="margin-bottom:20px">'
+    + '<div style="background:#f9f9f9;padding:14px;border-radius:6px;margin-bottom:16px">'
+    + '<div style="margin-bottom:12px"><strong style="color:var(--navy)">รหัสเรื่อง:</strong> <span style="font-family:monospace;color:var(--sky);font-weight:600">' + esc(currentDetailTicket.id) + '</span></div>'
+    + '<div style="margin-bottom:12px"><strong style="color:var(--navy)">ชื่อผู้แจ้ง:</strong> <span>' + esc(currentDetailTicket.reporterName) + '</span></div>'
+    + '<div style="margin-bottom:12px"><strong style="color:var(--navy)">อีเมล:</strong> <span>' + esc(currentDetailTicket.reporterEmail) + '</span></div>'
+    + '<div style="margin-bottom:12px"><strong style="color:var(--navy)">วันที่แจ้ง:</strong> <span>' + esc(currentDetailTicket.date) + '</span></div>'
+    + '<div style="margin-bottom:12px"><strong style="color:var(--navy)">สาขา/หน่วยงาน:</strong> <span>' + esc(currentDetailTicket.branch||'—') + '</span></div>'
+    + (currentDetailTicket.courses ? '<div style="margin-bottom:12px"><strong style="color:var(--navy)">ชุดวิชา:</strong> <span>' + esc(currentDetailTicket.courses) + '</span></div>' : '')
+    + '<div style="margin-bottom:12px"><strong style="color:var(--navy)">ประเภทปัญหา:</strong> <span>' + esc(currentDetailTicket.issueType) + '</span></div>'
+    + '<div style="margin-bottom:12px"><strong style="color:var(--navy)">ช่องทาง:</strong> <span>' + (channelMap[currentDetailTicket.channel] || esc(currentDetailTicket.channel||'—')) + '</span></div>'
+    + '<div style="margin-bottom:0"><strong style="color:var(--navy)">ระดับความด่วน:</strong> <span>' + (priorityMap[currentDetailTicket.priority] || esc(currentDetailTicket.priority||'—')) + '</span></div>'
+    + '</div>'
+    + '<div style="margin-bottom:16px"><strong style="color:var(--navy);font-size:14px">สถานะ:</strong> ' + (statusLabel[normalizeStatus(currentDetailTicket.status)] || '<span class="badge">' + esc(currentDetailTicket.status||'') + '</span>') + '</div>'
+    + '<div style="margin-bottom:16px;background:#f9f9f9;padding:14px;border-radius:6px;border-left:4px solid var(--sky)">'
+    + '<strong style="color:var(--navy);font-size:14px;display:block;margin-bottom:8px">รายละเอียด:</strong>'
+    + '<div style="color:var(--text);font-size:13px;line-height:1.6;white-space:pre-wrap">' + esc(currentDetailTicket.detail) + '</div>'
+    + '</div>';
+
+  if (replies.length > 0) {
+    html += '<div style="margin-top:20px;border-top:2px solid var(--gray1);padding-top:16px">'
+      + '<strong style="color:var(--navy);font-size:14px;display:block;margin-bottom:12px">📧 การตอบกลับ:</strong>';
+    replies.forEach(function(reply) {
+      html += '<div style="background:#e8f4fd;border:1px solid #b8d9f5;border-radius:6px;padding:12px;margin-bottom:10px">'
+        + '<strong style="color:var(--navy)">👤 ' + esc(reply.name||reply.by||'Admin') + '</strong>'
+        + '<span style="color:var(--gray3);font-size:12px;margin-left:8px">' + esc(reply.time||reply.date||'') + '</span>'
+        + '<div style="margin-top:8px;color:var(--text);font-size:13px;line-height:1.6">' + linkifyImages(reply.text||'') + '</div>'
+        + '</div>';
+    });
+    html += '</div>';
+  } else {
+    html += '<div style="margin-top:20px;padding:16px;background:#fff8e1;border-left:4px solid #ffc107;border-radius:6px;color:#856404;font-size:13px">'
+      + '⏳ ยังไม่มีการตอบกลับจาก Admin'
+      + '</div>';
+  }
+
+  html += '</div>';
+  document.getElementById('detailContent').innerHTML = html;
+  document.getElementById('detailModal').style.display = 'block';
+}
+
+function closeDetailModal() {
+  document.getElementById('detailModal').style.display = 'none';
+  currentDetailTicket = null;
+}
+
+function getAllFilteredTickets() {
+  const q = (document.getElementById('ticketSearch')?.value || '').toLowerCase();
+  const dateFrom = parseDateStr(document.getElementById('filterDateFrom')?.value);
+  const dateTo = parseDateStr(document.getElementById('filterDateTo')?.value);
+  let list = allTickets;
+  if (activeFilter !== 'all') list = list.filter(t => getStatusForFilter(t.status));
+  if (q) list = list.filter(t =>
+    (t.issueType||'').toLowerCase().includes(q) ||
+    (t.detail||'').toLowerCase().includes(q) ||
+    (t.id||'').toLowerCase().includes(q)
+  );
+  if (dateFrom && !isNaN(dateFrom)) list = list.filter(function(t) {
+    var d = parseDateStr(t.date); return d && d >= dateFrom;
+  });
+  if (dateTo && !isNaN(dateTo)) {
+    var dateToEnd = new Date(dateTo); dateToEnd.setHours(23,59,59,999);
+    list = list.filter(function(t) { var d = parseDateStr(t.date); return d && d <= dateToEnd; });
+  }
+  return list;
+}
+
+function printTicketDetail() {
+  if (!currentDetailTicket) return;
+  const printWindow = window.open('', '', 'width=900,height=600');
+  const replies = parseReplies(currentDetailTicket.replies);
+  const priorityMap = { normal: 'ปกติ', high: 'สำคัญ', urgent: 'เร่งด่วน' };
+  const channelMap = { phone: 'โทรศัพท์', line: 'LINE', letter: 'จดหมาย', walkin: 'มาด้วยตนเอง', online: 'ออนไลน์' };
+  const statusMap = { open: 'รอดำเนินการ', in_progress: 'กำลังดำเนินการ', closed: 'ปิดแล้ว', resolved: 'แก้ไขแล้ว', inprocess: 'กำลังดำเนินการ' };
+
+  let html = '<html><head><meta charset="UTF-8"><title>รายละเอียดเรื่อง</title>'
+    + '<style>*{margin:0;padding:0;box-sizing:border-box}'
+    + 'body{font-family:\'Sarabun\',Arial;color:#1a2840;line-height:1.6}'
+    + 'h1{color:#0f2744;font-size:22px;margin-bottom:24px;text-align:center}'
+    + '.header-box{background:#f9f9f9;padding:16px;border-radius:6px;margin-bottom:20px;border-left:4px solid #2d7dd2}'
+    + '.info-row{display:grid;grid-template-columns:140px 1fr;gap:16px;margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid #e8edf4}'
+    + '.info-row:last-child{border-bottom:none;margin-bottom:0;padding-bottom:0}'
+    + '.info-label{font-weight:700;color:#0f2744}'
+    + '.detail-box{background:#f9f9f9;padding:14px;border-radius:6px;margin-bottom:20px;border-left:4px solid #2d7dd2}'
+    + '.detail-label{font-weight:700;color:#0f2744;display:block;margin-bottom:8px}'
+    + '.detail-content{color:#1a2840;white-space:pre-wrap;font-size:13px;line-height:1.6}'
+    + '.replies-section{margin-top:20px;border-top:2px solid #e8edf4;padding-top:16px}'
+    + '.reply-item{background:#e8f4fd;border:1px solid #b8d9f5;border-radius:6px;padding:12px;margin-bottom:12px}'
+    + '.reply-author{font-weight:700;color:#0f2744}'
+    + '.reply-date{color:#8899b4;font-size:12px;margin-left:8px}'
+    + '.reply-text{margin-top:8px;color:#1a2840;font-size:13px}'
+    + '.no-reply-msg{padding:12px;background:#fff8e1;border-left:4px solid #ffc107;border-radius:4px;color:#856404;font-size:13px}'
+    + '@media print{body{margin:0;padding:20px}.no-print{display:none}h1{page-break-after:avoid}'
+    + '.header-box{page-break-inside:avoid}.detail-box{page-break-inside:avoid}.reply-item{page-break-inside:avoid}}'
+    + '</style></head><body>'
+    + '<h1>📋 รายละเอียดเรื่องร้องเรียน</h1>'
+    + '<div class="header-box">'
+    + '<div class="info-row"><span class="info-label">รหัสเรื่อง:</span><span style="font-family:monospace;font-weight:600;color:#2d7dd2">' + esc(currentDetailTicket.id) + '</span></div>'
+    + '<div class="info-row"><span class="info-label">ชื่อผู้แจ้ง:</span><span>' + esc(currentDetailTicket.reporterName) + '</span></div>'
+    + '<div class="info-row"><span class="info-label">อีเมล:</span><span>' + esc(currentDetailTicket.reporterEmail) + '</span></div>'
+    + '<div class="info-row"><span class="info-label">วันที่แจ้ง:</span><span>' + esc(currentDetailTicket.date) + '</span></div>'
+    + '<div class="info-row"><span class="info-label">สาขา:</span><span>' + esc(currentDetailTicket.branch||'—') + '</span></div>'
+    + (currentDetailTicket.courses ? '<div class="info-row"><span class="info-label">ชุดวิชา:</span><span>' + esc(currentDetailTicket.courses) + '</span></div>' : '')
+    + '<div class="info-row"><span class="info-label">ประเภทปัญหา:</span><span>' + esc(currentDetailTicket.issueType) + '</span></div>'
+    + '<div class="info-row"><span class="info-label">ช่องทาง:</span><span>' + (channelMap[currentDetailTicket.channel] || esc(currentDetailTicket.channel||'—')) + '</span></div>'
+    + '<div class="info-row"><span class="info-label">ระดับความด่วน:</span><span>' + (priorityMap[currentDetailTicket.priority] || esc(currentDetailTicket.priority||'—')) + '</span></div>'
+    + '<div class="info-row" style="border-bottom:none;padding-bottom:0;margin-bottom:0"><span class="info-label">สถานะ:</span><span style="font-weight:600;color:#1e8a4a">' + (statusMap[normalizeStatus(currentDetailTicket.status)] || currentDetailTicket.status) + '</span></div>'
+    + '</div>'
+    + '<div class="detail-box">'
+    + '<span class="detail-label">📝 รายละเอียด:</span>'
+    + '<div class="detail-content">' + esc(currentDetailTicket.detail) + '</div>'
+    + '</div>';
+
+  if (replies.length > 0) {
+    html += '<div class="replies-section">'
+      + '<strong style="display:block;margin-bottom:16px;color:#0f2744;font-size:14px">📧 การตอบกลับ:</strong>';
+    replies.forEach(function(reply) {
+      html += '<div class="reply-item">'
+        + '<span class="reply-author">👤 ' + esc(reply.name||reply.by||'Admin') + '</span>'
+        + '<span class="reply-date">' + esc(reply.time||reply.date||'') + '</span>'
+        + '<div class="reply-text">' + linkifyImages(reply.text||'') + '</div>'
+        + '</div>';
+    });
+    html += '</div>';
+  } else {
+    html += '<div class="replies-section"><div class="no-reply-msg">⏳ ยังไม่มีการตอบกลับจาก Admin</div></div>';
+  }
+
+  html += '<div class="no-print" style="margin-top:30px;text-align:center;padding-top:20px;border-top:2px solid #e8edf4">'
+    + '<button onclick="window.print()" style="padding:8px 20px;margin:0 8px;background:#2d7dd2;color:white;border:none;border-radius:4px;cursor:pointer;font-size:14px;font-family:Sarabun">🖨️ พิมพ์</button>'
+    + '<button onclick="window.close()" style="padding:8px 20px;margin:0 8px;background:#8899b4;color:white;border:none;border-radius:4px;cursor:pointer;font-size:14px;font-family:Sarabun">ปิด</button>'
+    + '</div>'
+    + '</body></html>';
+
+  printWindow.document.write(html);
+  printWindow.document.close();
+  setTimeout(() => printWindow.print(), 500);
+}
+
+function exportTicketDetail() {
+  if (!currentDetailTicket) return;
+  const replies = parseReplies(currentDetailTicket.replies);
+  const priorityMap = { normal: 'ปกติ', high: 'สำคัญ', urgent: 'เร่งด่วน' };
+  const channelMap = { phone: 'โทรศัพท์', line: 'LINE', letter: 'จดหมาย', walkin: 'มาด้วยตนเอง', online: 'ออนไลน์' };
+  const statusMap = { open: 'รอดำเนินการ', in_progress: 'กำลังดำเนินการ', closed: 'ปิดแล้ว', resolved: 'แก้ไขแล้ว', inprocess: 'กำลังดำเนินการ' };
+
+  const rows = [
+    ['รหัสเรื่อง', currentDetailTicket.id],
+    ['ชื่อผู้แจ้ง', currentDetailTicket.reporterName],
+    ['อีเมล', currentDetailTicket.reporterEmail],
+    ['วันที่แจ้ง', currentDetailTicket.date],
+    ['สาขา/หน่วยงาน', currentDetailTicket.branch||'—'],
+    ...(currentDetailTicket.courses ? [['ชุดวิชา', currentDetailTicket.courses]] : []),
+    ['ประเภทปัญหา', currentDetailTicket.issueType],
+    ['ช่องทาง', channelMap[currentDetailTicket.channel] || currentDetailTicket.channel||'—'],
+    ['ระดับความด่วน', priorityMap[currentDetailTicket.priority] || currentDetailTicket.priority||'—'],
+    ['สถานะ', statusMap[normalizeStatus(currentDetailTicket.status)] || currentDetailTicket.status],
+    ['รายละเอียด', currentDetailTicket.detail],
+    ['']
+  ];
+
+  if (replies.length > 0) {
+    rows.push(['', '']);
+    rows.push(['การตอบกลับ', '']);
+    replies.forEach(function(r) {
+      rows.push(['ผู้ตอบ: ' + (r.by || 'Admin'), r.text]);
+      rows.push(['วันที่: ' + (r.date || ''), '']);
+    });
+  }
+
+  const csv = rows.map(row => row.map(v => '"' + String(v).replace(/"/g,'""') + '"').join(',')).join('\n');
+  const blob = new Blob(['﻿' + csv], {type:'text/csv;charset=utf-8'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const now = new Date();
+  a.href = url;
+  a.download = 'รายละเอียดเรื่อง_' + currentDetailTicket.id + '.csv';
+  a.click();
   URL.revokeObjectURL(url);
 }
 </script>

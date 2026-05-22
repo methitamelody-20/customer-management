@@ -770,23 +770,44 @@ function loadIssueTypes() {
 }
 
 // เรียกเมื่อหน้าโหลด — รองรับ pre-fill จาก URL params (เมื่อใช้งานผ่าน iframe)
+function applyPrefill() {
+  try {
+    const params = new URLSearchParams(window.location.search);
+
+    // Pre-fill email (required field - always readonly)
+    if (params.get('prefill_email')) {
+      const emailEl = document.getElementById('f_email');
+      if (emailEl) {
+        emailEl.value = params.get('prefill_email');
+        emailEl.readOnly = true;
+        emailEl.style.background = '#f5f5f5';
+        emailEl.style.cursor = 'not-allowed';
+      }
+    }
+
+    // Pre-fill name (if not already filled)
+    if (params.get('prefill_name')) {
+      const nameEl = document.getElementById('f_name');
+      if (nameEl && !nameEl.value) {
+        nameEl.value = params.get('prefill_name');
+      }
+    }
+
+    // Pre-fill phone (if not already filled)
+    if (params.get('prefill_phone')) {
+      const phoneEl = document.getElementById('f_phone');
+      if (phoneEl && !phoneEl.value) {
+        phoneEl.value = params.get('prefill_phone');
+      }
+    }
+  } catch(e) {
+    console.error('Prefill error:', e);
+  }
+}
+
 window.addEventListener('load', function() {
   loadIssueTypes();
-  try {
-    var p = new URLSearchParams(window.location.search);
-    if (p.get('prefill_email')) {
-      var el = document.getElementById('f_email');
-      if (el) { el.value = p.get('prefill_email'); el.readOnly = true; el.style.background='#f5f5f5'; }
-    }
-    if (p.get('prefill_name')) {
-      var el = document.getElementById('f_name');
-      if (el && !el.value) el.value = p.get('prefill_name');
-    }
-    if (p.get('prefill_phone')) {
-      var el = document.getElementById('f_phone');
-      if (el && !el.value) el.value = p.get('prefill_phone');
-    }
-  } catch(e) {}
+  applyPrefill();
 });
 </script>
 

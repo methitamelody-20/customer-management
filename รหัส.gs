@@ -34,6 +34,25 @@ function doGet(e) {
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
       .addMetaTag('viewport','width=device-width,initial-scale=1');
   }
+  // ถ้ามี ?page=guide → ให้หน้าคู่มือการใช้งาน
+  if (params.page === 'guide') {
+    try {
+      const tpl = HtmlService.createTemplateFromFile('external-staff-guide');
+      return tpl.evaluate()
+        .setTitle('คู่มือการใช้งาน — มสธ.')
+        .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
+        .addMetaTag('viewport','width=device-width,initial-scale=1');
+    } catch(e) {
+      // If file not found, return error message
+      return HtmlService.createHtmlOutput(
+        '<div style="padding:40px;text-align:center;font-family:Arial">' +
+        '<h2>ไม่พบไฟล์คู่มือการใช้งาน</h2>' +
+        '<p style="color:#666">กรุณาติดต่อแอดมินเพื่อสร้างไฟล์ external-staff-guide.html</p>' +
+        '<p style="font-size:12px;color:#999">ข้อผิดพลาด: ' + e.message + '</p>' +
+        '</div>'
+      ).setTitle('ข้อผิดพลาด');
+    }
+  }
   const tpl = HtmlService.createTemplateFromFile('Mainsystem');
   tpl.setpwToken = params.token || '';
   tpl.setpwEmail = params.email || '';
@@ -3930,19 +3949,33 @@ function loginExternalStaff(email, password) {
 
 function getExternalStaffTickets(email) {
   try {
+    // Security: Must filter by email - external staff should only see their own tickets
+    const emailL = (email||'').toLowerCase().trim();
+    if (!emailL) return []; // ✅ IMPORTANT: Return empty if no email provided
+
     const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SH_CRM);
     if (!sheet || sheet.getLastRow() < 2) return [];
-    const rows = sheet.getRange(2,1,sheet.getLastRow()-1,21).getValues();
+    const rows = sheet.getRange(2,1,sheet.getLastRow()-1,24).getValues();
     const result = [];
-    const emailL = (email||'').toLowerCase().trim();
     for (let i = 0; i < rows.length; i++) {
       const r = rows[i];
       if (!r[0]) continue;
-      if ((r[4]||'').toLowerCase().trim() === emailL || (r[2]||'').toLowerCase().trim() === emailL) {
+      // Only show tickets where email matches exactly
+      if ((r[4]||'').toLowerCase().trim() === emailL) {
         result.push({
-          id:String(r[0]), date:String(r[1]), reporterName:String(r[2]),
-          issueType:String(r[11]), detail:String(r[12]),
-          status:String(r[16]), replies:String(r[19])||'[]'
+          id:String(r[0]),
+          date:String(r[1]),
+          reporterName:String(r[2]),
+          reporterEmail:String(r[4])||'',
+          department:String(r[6])||'',
+          branch:String(r[6])||'',
+          courses:String(r[10])||'',
+          issueType:String(r[11]),
+          detail:String(r[12]),
+          channel:String(r[13])||'',
+          priority:String(r[14])||'',
+          status:String(r[16]),
+          replies:String(r[19])||'[]'
         });
       }
     }
