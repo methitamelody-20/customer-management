@@ -280,6 +280,20 @@ html,body{min-height:100%;font-family:var(--font);color:var(--text);background:v
       </div>
     </div>
 
+    <!-- Create new issue form -->
+    <div class="card" id="createIssueCard" style="display:none;background:linear-gradient(135deg,rgba(45,125,210,0.05),rgba(242,162,30,0.05));border:1.5px dashed var(--sky);padding:0;overflow:hidden">
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:1px solid var(--gray1)">
+        <div class="card-title" style="margin-bottom:0">➕ แจ้งปัญหา/เรื่องร้องเรียนใหม่</div>
+        <button class="btn-outline" style="padding:6px 12px;font-size:12px" onclick="toggleCreateIssue()">ปิด</button>
+      </div>
+      <iframe id="crmIframe"
+        src=""
+        style="width:100%;height:720px;border:none;display:block"
+        allow="forms"
+        title="ฟอร์มแจ้งปัญหา CRM">
+      </iframe>
+    </div>
+
     <!-- Ticket list -->
     <div class="card">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
@@ -525,9 +539,9 @@ function loadDashboard() {
 
 function updateStats() {
   const total      = allTickets.length;
-  const open       = allTickets.filter(t => ['open','รอดำเนินการ'].includes(String(t.status||'').toLowerCase().trim())).length;
-  const inProgress = allTickets.filter(t => ['in_progress','inprocess','กำลังดำเนินการ'].includes(String(t.status||'').toLowerCase().trim())).length;
-  const closed     = allTickets.filter(t => ['closed','resolved','ปิดแล้ว','แก้ไขแล้ว'].includes(String(t.status||'').toLowerCase().trim())).length;
+  const open       = allTickets.filter(t => normalizeStatus(t.status) === 'open').length;
+  const inProgress = allTickets.filter(t => normalizeStatus(t.status) === 'in_progress').length;
+  const closed     = allTickets.filter(t => normalizeStatus(t.status) === 'closed').length;
   document.getElementById('statTotal').textContent      = total;
   document.getElementById('statOpen').textContent       = open;
   document.getElementById('statInProgress').textContent = inProgress;
@@ -539,6 +553,21 @@ function filterTickets(f, btn) {
   document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
   if (btn) btn.classList.add('active');
   renderTickets();
+}
+
+function getStatusForFilter(s) {
+  const norm = normalizeStatus(s);
+  if (activeFilter === 'all') return true;
+  return norm === activeFilter;
+}
+
+function normalizeStatus(s) {
+  if (!s) return 'open';
+  const status = String(s).toLowerCase().trim();
+  if (['open','รอดำเนินการ'].includes(status)) return 'open';
+  if (['in_progress','inprocess','กำลังดำเนินการ'].includes(status)) return 'in_progress';
+  if (['closed','resolved','ปิดแล้ว','แก้ไขแล้ว','ตอบแล้ว'].includes(status)) return 'closed';
+  return status;
 }
 
 const statusLabel = {
@@ -569,7 +598,7 @@ function renderTickets() {
   const dateFrom = parseDateStr(document.getElementById('filterDateFrom')?.value);
   const dateTo   = parseDateStr(document.getElementById('filterDateTo')?.value);
   let list = allTickets;
-  if (activeFilter !== 'all') list = list.filter(t => t.status === activeFilter);
+  if (activeFilter !== 'all') list = list.filter(t => getStatusForFilter(t.status));
   if (q) list = list.filter(t =>
     (t.issueType||'').toLowerCase().includes(q) ||
     (t.detail||'').toLowerCase().includes(q) ||
@@ -606,7 +635,7 @@ function renderTickets() {
       + '<td style="white-space:nowrap">' + esc(t.date||'') + '</td>'
       + '<td><span class="issue-type">' + esc(t.issueType||'') + '</span></td>'
       + '<td style="max-width:200px;word-break:break-word">' + esc((t.detail||'').slice(0,80)) + (t.detail&&t.detail.length>80?'...':'') + '</td>'
-      + '<td>' + (statusLabel[t.status] || '<span class="badge">' + esc(t.status||'') + '</span>') + '</td>'
+      + '<td>' + (statusLabel[normalizeStatus(t.status)] || '<span class="badge">' + esc(t.status||'') + '</span>') + '</td>'
       + '<td>' + replyHtml + '</td>'
       + '<td style="text-align:center"><button class="btn-outline" style="padding:4px 8px;font-size:11px;width:auto" onclick="showDetailModal(' + i + ')">📄 ดู</button></td>'
       + '</tr>';
@@ -719,13 +748,22 @@ function showDetailModal(index) {
 
   const replies = parseReplies(currentDetailTicket.replies);
   const statusMap = { open: 'รอดำเนินการ', in_progress: 'กำลังดำเนินการ', closed: 'ปิดแล้ว', resolved: 'แก้ไขแล้ว', inprocess: 'กำลังดำเนินการ' };
+  const priorityMap = { normal: 'ปกติ', high: 'สำคัญ', urgent: 'เร่งด่วน' };
+  const channelMap = { phone: 'โทรศัพท์', line: 'LINE', letter: 'จดหมาย', walkin: 'มาด้วยตนเอง', online: 'ออนไลน์' };
 
   let html = '<div style="margin-bottom:20px">'
-    + '<div style="margin-bottom:16px"><strong style="color:var(--navy);font-size:14px">รหัสเรื่อง:</strong> <span style="font-family:monospace;color:var(--sky);font-weight:600">' + esc(currentDetailTicket.id) + '</span></div>'
-    + '<div style="margin-bottom:16px"><strong style="color:var(--navy);font-size:14px">ชื่อผู้แจ้ง:</strong> <span>' + esc(currentDetailTicket.reporterName) + '</span></div>'
-    + '<div style="margin-bottom:16px"><strong style="color:var(--navy);font-size:14px">วันที่แจ้ง:</strong> <span>' + esc(currentDetailTicket.date) + '</span></div>'
-    + '<div style="margin-bottom:16px"><strong style="color:var(--navy);font-size:14px">ประเภทปัญหา:</strong> <span>' + esc(currentDetailTicket.issueType) + '</span></div>'
-    + '<div style="margin-bottom:16px"><strong style="color:var(--navy);font-size:14px">สถานะ:</strong> ' + (statusLabel[currentDetailTicket.status] || '<span class="badge">' + esc(currentDetailTicket.status||'') + '</span>') + '</div>'
+    + '<div style="background:#f9f9f9;padding:14px;border-radius:6px;margin-bottom:16px">'
+    + '<div style="margin-bottom:12px"><strong style="color:var(--navy)">รหัสเรื่อง:</strong> <span style="font-family:monospace;color:var(--sky);font-weight:600">' + esc(currentDetailTicket.id) + '</span></div>'
+    + '<div style="margin-bottom:12px"><strong style="color:var(--navy)">ชื่อผู้แจ้ง:</strong> <span>' + esc(currentDetailTicket.reporterName) + '</span></div>'
+    + '<div style="margin-bottom:12px"><strong style="color:var(--navy)">อีเมล:</strong> <span>' + esc(currentDetailTicket.reporterEmail) + '</span></div>'
+    + '<div style="margin-bottom:12px"><strong style="color:var(--navy)">วันที่แจ้ง:</strong> <span>' + esc(currentDetailTicket.date) + '</span></div>'
+    + '<div style="margin-bottom:12px"><strong style="color:var(--navy)">สาขา/หน่วยงาน:</strong> <span>' + esc(currentDetailTicket.branch||'—') + '</span></div>'
+    + (currentDetailTicket.courses ? '<div style="margin-bottom:12px"><strong style="color:var(--navy)">ชุดวิชา:</strong> <span>' + esc(currentDetailTicket.courses) + '</span></div>' : '')
+    + '<div style="margin-bottom:12px"><strong style="color:var(--navy)">ประเภทปัญหา:</strong> <span>' + esc(currentDetailTicket.issueType) + '</span></div>'
+    + '<div style="margin-bottom:12px"><strong style="color:var(--navy)">ช่องทาง:</strong> <span>' + (channelMap[currentDetailTicket.channel] || esc(currentDetailTicket.channel||'—')) + '</span></div>'
+    + '<div style="margin-bottom:0"><strong style="color:var(--navy)">ระดับความด่วน:</strong> <span>' + (priorityMap[currentDetailTicket.priority] || esc(currentDetailTicket.priority||'—')) + '</span></div>'
+    + '</div>'
+    + '<div style="margin-bottom:16px"><strong style="color:var(--navy);font-size:14px">สถานะ:</strong> ' + (statusLabel[normalizeStatus(currentDetailTicket.status)] || '<span class="badge">' + esc(currentDetailTicket.status||'') + '</span>') + '</div>'
     + '<div style="margin-bottom:16px;background:#f9f9f9;padding:14px;border-radius:6px;border-left:4px solid var(--sky)">'
     + '<strong style="color:var(--navy);font-size:14px;display:block;margin-bottom:8px">รายละเอียด:</strong>'
     + '<div style="color:var(--text);font-size:13px;line-height:1.6;white-space:pre-wrap">' + esc(currentDetailTicket.detail) + '</div>'
@@ -763,7 +801,7 @@ function getAllFilteredTickets() {
   const dateFrom = parseDateStr(document.getElementById('filterDateFrom')?.value);
   const dateTo = parseDateStr(document.getElementById('filterDateTo')?.value);
   let list = allTickets;
-  if (activeFilter !== 'all') list = list.filter(t => t.status === activeFilter);
+  if (activeFilter !== 'all') list = list.filter(t => getStatusForFilter(t.status));
   if (q) list = list.filter(t =>
     (t.issueType||'').toLowerCase().includes(q) ||
     (t.detail||'').toLowerCase().includes(q) ||

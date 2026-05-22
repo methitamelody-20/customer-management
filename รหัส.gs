@@ -3932,7 +3932,7 @@ function getExternalStaffTickets(email) {
   try {
     const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SH_CRM);
     if (!sheet || sheet.getLastRow() < 2) return [];
-    const rows = sheet.getRange(2,1,sheet.getLastRow()-1,21).getValues();
+    const rows = sheet.getRange(2,1,sheet.getLastRow()-1,24).getValues();
     const result = [];
     const emailL = (email||'').toLowerCase().trim();
     for (let i = 0; i < rows.length; i++) {
@@ -3940,9 +3940,19 @@ function getExternalStaffTickets(email) {
       if (!r[0]) continue;
       if ((r[4]||'').toLowerCase().trim() === emailL || (r[2]||'').toLowerCase().trim() === emailL) {
         result.push({
-          id:String(r[0]), date:String(r[1]), reporterName:String(r[2]),
-          issueType:String(r[11]), detail:String(r[12]),
-          status:String(r[16]), replies:String(r[19])||'[]'
+          id:String(r[0]),
+          date:String(r[1]),
+          reporterName:String(r[2]),
+          reporterEmail:String(r[4])||'',
+          department:String(r[6])||'',
+          branch:String(r[6])||'',
+          courses:String(r[10])||'',
+          issueType:String(r[11]),
+          detail:String(r[12]),
+          channel:String(r[13])||'',
+          priority:String(r[14])||'',
+          status:String(r[16]),
+          replies:String(r[19])||'[]'
         });
       }
     }
