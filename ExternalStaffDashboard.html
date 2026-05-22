@@ -268,7 +268,7 @@ html,body{min-height:100%;font-family:var(--font);color:var(--text);background:v
     <div class="user-info">
       <span id="dashUserName">—</span>
       <button class="btn-outline" style="padding:6px 14px;font-size:12px;color:#fff;background:transparent;border-color:rgba(255,255,255,0.4);margin-right:6px" onclick="openGuide()">📖 คู่มือการใช้งาน</button>
-      <button class="btn-outline" style="padding:6px 14px;font-size:12px;color:#fff;border-color:rgba(255,255,255,0.4)" onclick="doLogout()">ออกจากระบบ</button>
+      <button class="btn-outline" style="padding:6px 14px;font-size:12px;color:#fff;background:transparent;border-color:rgba(255,255,255,0.4)" onclick="doLogout()">ออกจากระบบ</button>
     </div>
   </div>
 
@@ -301,8 +301,8 @@ html,body{min-height:100%;font-family:var(--font);color:var(--text);background:v
 
     <!-- Create new issue form -->
     <div class="card" id="createIssueCard" style="display:none;background:linear-gradient(135deg,rgba(45,125,210,0.05),rgba(242,162,30,0.05));border:1.5px dashed var(--sky);padding:0;overflow:hidden">
-      <div style="display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:1px solid var(--gray1)">
-        <div class="card-title" style="margin-bottom:0">➕ แจ้งปัญหา/เรื่องร้องเรียนใหม่</div>
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:1px solid var(--gray1);background:linear-gradient(135deg,rgba(45,125,210,0.08),rgba(242,162,30,0.08))">
+        <div class="card-title" style="margin-bottom:0;color:var(--sky)">📝 แจ้งปัญหา/เรื่องร้องเรียนใหม่</div>
         <button class="btn-outline" style="padding:6px 12px;font-size:12px" onclick="toggleCreateIssue()">ปิด</button>
       </div>
       <iframe id="crmIframe"
@@ -317,10 +317,10 @@ html,body{min-height:100%;font-family:var(--font);color:var(--text);background:v
     <div class="card">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
         <div class="card-title" style="margin-bottom:0">📋 รายการเรื่องร้องเรียน</div>
-        <div style="display:flex;gap:8px">
+        <div style="display:flex;gap:8px;align-items:center">
           <button class="btn-outline" style="padding:8px 14px;font-size:12px;width:auto" onclick="loadTickets()" id="refreshBtn">🔄 รีเฟรช</button>
           <button class="btn-outline" style="padding:8px 14px;font-size:12px;width:auto" onclick="exportTickets()">⬇️ Export</button>
-          <button class="btn-primary" style="padding:8px 14px;font-size:12px;width:auto" onclick="toggleCreateIssue()">➕ เรื่องใหม่</button>
+          <button class="btn-primary" style="padding:11px 20px;font-size:14px;font-weight:700;width:auto;box-shadow:0 4px 12px rgba(242,162,30,0.3)" onclick="toggleCreateIssue()">➕ เรื่องใหม่</button>
         </div>
       </div>
       <div class="ticket-filter">
