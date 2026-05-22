@@ -36,11 +36,22 @@ function doGet(e) {
   }
   // ถ้ามี ?page=guide → ให้หน้าคู่มือการใช้งาน
   if (params.page === 'guide') {
-    const tpl = HtmlService.createTemplateFromFile('external-staff-guide');
-    return tpl.evaluate()
-      .setTitle('คู่มือการใช้งาน — มสธ.')
-      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
-      .addMetaTag('viewport','width=device-width,initial-scale=1');
+    try {
+      const tpl = HtmlService.createTemplateFromFile('external-staff-guide');
+      return tpl.evaluate()
+        .setTitle('คู่มือการใช้งาน — มสธ.')
+        .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
+        .addMetaTag('viewport','width=device-width,initial-scale=1');
+    } catch(e) {
+      // If file not found, return error message
+      return HtmlService.createHtmlOutput(
+        '<div style="padding:40px;text-align:center;font-family:Arial">' +
+        '<h2>ไม่พบไฟล์คู่มือการใช้งาน</h2>' +
+        '<p style="color:#666">กรุณาติดต่อแอดมินเพื่อสร้างไฟล์ external-staff-guide.html</p>' +
+        '<p style="font-size:12px;color:#999">ข้อผิดพลาด: ' + e.message + '</p>' +
+        '</div>'
+      ).setTitle('ข้อผิดพลาด');
+    }
   }
   const tpl = HtmlService.createTemplateFromFile('Mainsystem');
   tpl.setpwToken = params.token || '';
