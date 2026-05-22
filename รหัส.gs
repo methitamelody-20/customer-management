@@ -34,6 +34,14 @@ function doGet(e) {
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
       .addMetaTag('viewport','width=device-width,initial-scale=1');
   }
+  // ถ้ามี ?page=guide → ให้หน้าคู่มือการใช้งาน
+  if (params.page === 'guide') {
+    const tpl = HtmlService.createTemplateFromFile('external-staff-guide');
+    return tpl.evaluate()
+      .setTitle('คู่มือการใช้งาน — มสธ.')
+      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
+      .addMetaTag('viewport','width=device-width,initial-scale=1');
+  }
   const tpl = HtmlService.createTemplateFromFile('Mainsystem');
   tpl.setpwToken = params.token || '';
   tpl.setpwEmail = params.email || '';
