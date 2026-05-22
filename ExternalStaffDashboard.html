@@ -774,8 +774,8 @@ function showDetailModal(index) {
       + '<strong style="color:var(--navy);font-size:14px;display:block;margin-bottom:12px">📧 การตอบกลับ:</strong>';
     replies.forEach(function(reply) {
       html += '<div style="background:#e8f4fd;border:1px solid #b8d9f5;border-radius:6px;padding:12px;margin-bottom:10px">'
-        + '<strong style="color:var(--navy)">' + esc(reply.by||'Admin') + '</strong>'
-        + '<span style="color:var(--gray3);font-size:12px;margin-left:8px">' + esc(reply.date||'') + '</span>'
+        + '<strong style="color:var(--navy)">👤 ' + esc(reply.name||reply.by||'Admin') + '</strong>'
+        + '<span style="color:var(--gray3);font-size:12px;margin-left:8px">' + esc(reply.time||reply.date||'') + '</span>'
         + '<div style="margin-top:8px;color:var(--text);font-size:13px;line-height:1.6">' + esc(reply.text||'') + '</div>'
         + '</div>';
     });
@@ -868,8 +868,8 @@ function printTicketDetail() {
       + '<strong style="display:block;margin-bottom:16px;color:#0f2744;font-size:14px">📧 การตอบกลับ:</strong>';
     replies.forEach(function(reply) {
       html += '<div class="reply-item">'
-        + '<span class="reply-author">' + esc(reply.by||'Admin') + '</span>'
-        + '<span class="reply-date">' + esc(reply.date||'') + '</span>'
+        + '<span class="reply-author">👤 ' + esc(reply.name||reply.by||'Admin') + '</span>'
+        + '<span class="reply-date">' + esc(reply.time||reply.date||'') + '</span>'
         + '<div class="reply-text">' + esc(reply.text||'') + '</div>'
         + '</div>';
     });
