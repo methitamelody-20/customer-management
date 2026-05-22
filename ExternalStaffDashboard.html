@@ -819,35 +819,71 @@ function getAllFilteredTickets() {
 
 function printTicketDetail() {
   if (!currentDetailTicket) return;
-  const printWindow = window.open('', '', 'width=800,height=600');
+  const printWindow = window.open('', '', 'width=900,height=600');
   const replies = parseReplies(currentDetailTicket.replies);
+  const priorityMap = { normal: 'ปกติ', high: 'สำคัญ', urgent: 'เร่งด่วน' };
+  const channelMap = { phone: 'โทรศัพท์', line: 'LINE', letter: 'จดหมาย', walkin: 'มาด้วยตนเอง', online: 'ออนไลน์' };
   const statusMap = { open: 'รอดำเนินการ', in_progress: 'กำลังดำเนินการ', closed: 'ปิดแล้ว', resolved: 'แก้ไขแล้ว', inprocess: 'กำลังดำเนินการ' };
 
   let html = '<html><head><meta charset="UTF-8"><title>รายละเอียดเรื่อง</title>'
-    + '<style>body{font-family:\'Sarabun\',Arial;margin:20px;color:#333} h1{color:#0f2744;font-size:20px;margin-bottom:20px}'
-    + '.info{margin-bottom:12px} .label{font-weight:700;color:#1a4a8a;width:120px;display:inline-block}'
-    + '.detail{background:#f9f9f9;padding:12px;border-radius:4px;margin:16px 0;white-space:pre-wrap;font-size:13px}'
-    + '.reply{background:#e8f4fd;border:1px solid #b8d9f5;padding:10px;margin-bottom:10px;border-radius:4px;font-size:13px}'
+    + '<style>*{margin:0;padding:0;box-sizing:border-box}'
+    + 'body{font-family:\'Sarabun\',Arial;color:#1a2840;line-height:1.6}'
+    + 'h1{color:#0f2744;font-size:22px;margin-bottom:24px;text-align:center}'
+    + '.header-box{background:#f9f9f9;padding:16px;border-radius:6px;margin-bottom:20px;border-left:4px solid #2d7dd2}'
+    + '.info-row{display:grid;grid-template-columns:140px 1fr;gap:16px;margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid #e8edf4}'
+    + '.info-row:last-child{border-bottom:none;margin-bottom:0;padding-bottom:0}'
+    + '.info-label{font-weight:700;color:#0f2744}'
+    + '.detail-box{background:#f9f9f9;padding:14px;border-radius:6px;margin-bottom:20px;border-left:4px solid #2d7dd2}'
+    + '.detail-label{font-weight:700;color:#0f2744;display:block;margin-bottom:8px}'
+    + '.detail-content{color:#1a2840;white-space:pre-wrap;font-size:13px;line-height:1.6}'
+    + '.replies-section{margin-top:20px;border-top:2px solid #e8edf4;padding-top:16px}'
+    + '.reply-item{background:#e8f4fd;border:1px solid #b8d9f5;border-radius:6px;padding:12px;margin-bottom:12px}'
     + '.reply-author{font-weight:700;color:#0f2744}'
-    + '@media print{body{margin:0}.no-print{display:none}}</style>'
-    + '</head><body><h1>รายละเอียดเรื่องร้องเรียน</h1>'
-    + '<div class="info"><span class="label">รหัส:</span> ' + esc(currentDetailTicket.id) + '</div>'
-    + '<div class="info"><span class="label">ชื่อผู้แจ้ง:</span> ' + esc(currentDetailTicket.reporterName) + '</div>'
-    + '<div class="info"><span class="label">วันที่:</span> ' + esc(currentDetailTicket.date) + '</div>'
-    + '<div class="info"><span class="label">ประเภท:</span> ' + esc(currentDetailTicket.issueType) + '</div>'
-    + '<div class="info"><span class="label">สถานะ:</span> ' + (statusMap[currentDetailTicket.status] || currentDetailTicket.status) + '</div>'
-    + '<div style="margin-top:20px;border-top:2px solid #ccc;padding-top:10px">'
-    + '<strong style="display:block;margin-bottom:10px">รายละเอียด:</strong>'
-    + '<div class="detail">' + esc(currentDetailTicket.detail) + '</div>';
+    + '.reply-date{color:#8899b4;font-size:12px;margin-left:8px}'
+    + '.reply-text{margin-top:8px;color:#1a2840;font-size:13px}'
+    + '.no-reply-msg{padding:12px;background:#fff8e1;border-left:4px solid #ffc107;border-radius:4px;color:#856404;font-size:13px}'
+    + '@media print{body{margin:0;padding:20px}.no-print{display:none}h1{page-break-after:avoid}'
+    + '.header-box{page-break-inside:avoid}.detail-box{page-break-inside:avoid}.reply-item{page-break-inside:avoid}}'
+    + '</style></head><body>'
+    + '<h1>📋 รายละเอียดเรื่องร้องเรียน</h1>'
+    + '<div class="header-box">'
+    + '<div class="info-row"><span class="info-label">รหัสเรื่อง:</span><span style="font-family:monospace;font-weight:600;color:#2d7dd2">' + esc(currentDetailTicket.id) + '</span></div>'
+    + '<div class="info-row"><span class="info-label">ชื่อผู้แจ้ง:</span><span>' + esc(currentDetailTicket.reporterName) + '</span></div>'
+    + '<div class="info-row"><span class="info-label">อีเมล:</span><span>' + esc(currentDetailTicket.reporterEmail) + '</span></div>'
+    + '<div class="info-row"><span class="info-label">วันที่แจ้ง:</span><span>' + esc(currentDetailTicket.date) + '</span></div>'
+    + '<div class="info-row"><span class="info-label">สาขา:</span><span>' + esc(currentDetailTicket.branch||'—') + '</span></div>'
+    + (currentDetailTicket.courses ? '<div class="info-row"><span class="info-label">ชุดวิชา:</span><span>' + esc(currentDetailTicket.courses) + '</span></div>' : '')
+    + '<div class="info-row"><span class="info-label">ประเภทปัญหา:</span><span>' + esc(currentDetailTicket.issueType) + '</span></div>'
+    + '<div class="info-row"><span class="info-label">ช่องทาง:</span><span>' + (channelMap[currentDetailTicket.channel] || esc(currentDetailTicket.channel||'—')) + '</span></div>'
+    + '<div class="info-row"><span class="info-label">ระดับความด่วน:</span><span>' + (priorityMap[currentDetailTicket.priority] || esc(currentDetailTicket.priority||'—')) + '</span></div>'
+    + '<div class="info-row" style="border-bottom:none;padding-bottom:0;margin-bottom:0"><span class="info-label">สถานะ:</span><span style="font-weight:600;color:#1e8a4a">' + (statusMap[normalizeStatus(currentDetailTicket.status)] || currentDetailTicket.status) + '</span></div>'
+    + '</div>'
+    + '<div class="detail-box">'
+    + '<span class="detail-label">📝 รายละเอียด:</span>'
+    + '<div class="detail-content">' + esc(currentDetailTicket.detail) + '</div>'
+    + '</div>';
 
   if (replies.length > 0) {
-    html += '<strong style="display:block;margin:20px 0 10px;border-top:2px solid #ccc;padding-top:10px">การตอบกลับ:</strong>';
-    replies.forEach(function(r) {
-      html += '<div class="reply"><span class="reply-author">' + esc(r.by||'Admin') + '</span> (' + esc(r.date||'') + ')<br>' + esc(r.text||'') + '</div>';
+    html += '<div class="replies-section">'
+      + '<strong style="display:block;margin-bottom:16px;color:#0f2744;font-size:14px">📧 การตอบกลับ:</strong>';
+    replies.forEach(function(reply) {
+      html += '<div class="reply-item">'
+        + '<span class="reply-author">' + esc(reply.by||'Admin') + '</span>'
+        + '<span class="reply-date">' + esc(reply.date||'') + '</span>'
+        + '<div class="reply-text">' + esc(reply.text||'') + '</div>'
+        + '</div>';
     });
+    html += '</div>';
+  } else {
+    html += '<div class="replies-section"><div class="no-reply-msg">⏳ ยังไม่มีการตอบกลับจาก Admin</div></div>';
   }
 
-  html += '</div><div class="no-print" style="margin-top:20px;text-align:center"><button onclick="window.print()">พิมพ์</button> <button onclick="window.close()">ปิด</button></div></body></html>';
+  html += '<div class="no-print" style="margin-top:30px;text-align:center;padding-top:20px;border-top:2px solid #e8edf4">'
+    + '<button onclick="window.print()" style="padding:8px 20px;margin:0 8px;background:#2d7dd2;color:white;border:none;border-radius:4px;cursor:pointer;font-size:14px;font-family:Sarabun">🖨️ พิมพ์</button>'
+    + '<button onclick="window.close()" style="padding:8px 20px;margin:0 8px;background:#8899b4;color:white;border:none;border-radius:4px;cursor:pointer;font-size:14px;font-family:Sarabun">ปิด</button>'
+    + '</div>'
+    + '</body></html>';
+
   printWindow.document.write(html);
   printWindow.document.close();
   setTimeout(() => printWindow.print(), 500);
@@ -856,23 +892,31 @@ function printTicketDetail() {
 function exportTicketDetail() {
   if (!currentDetailTicket) return;
   const replies = parseReplies(currentDetailTicket.replies);
+  const priorityMap = { normal: 'ปกติ', high: 'สำคัญ', urgent: 'เร่งด่วน' };
+  const channelMap = { phone: 'โทรศัพท์', line: 'LINE', letter: 'จดหมาย', walkin: 'มาด้วยตนเอง', online: 'ออนไลน์' };
   const statusMap = { open: 'รอดำเนินการ', in_progress: 'กำลังดำเนินการ', closed: 'ปิดแล้ว', resolved: 'แก้ไขแล้ว', inprocess: 'กำลังดำเนินการ' };
 
   const rows = [
     ['รหัสเรื่อง', currentDetailTicket.id],
     ['ชื่อผู้แจ้ง', currentDetailTicket.reporterName],
+    ['อีเมล', currentDetailTicket.reporterEmail],
     ['วันที่แจ้ง', currentDetailTicket.date],
+    ['สาขา/หน่วยงาน', currentDetailTicket.branch||'—'],
+    ...(currentDetailTicket.courses ? [['ชุดวิชา', currentDetailTicket.courses]] : []),
     ['ประเภทปัญหา', currentDetailTicket.issueType],
-    ['สถานะ', statusMap[currentDetailTicket.status] || currentDetailTicket.status],
+    ['ช่องทาง', channelMap[currentDetailTicket.channel] || currentDetailTicket.channel||'—'],
+    ['ระดับความด่วน', priorityMap[currentDetailTicket.priority] || currentDetailTicket.priority||'—'],
+    ['สถานะ', statusMap[normalizeStatus(currentDetailTicket.status)] || currentDetailTicket.status],
     ['รายละเอียด', currentDetailTicket.detail],
     ['']
   ];
 
   if (replies.length > 0) {
+    rows.push(['', '']);
     rows.push(['การตอบกลับ', '']);
     replies.forEach(function(r) {
-      rows.push([r.by || 'Admin', r.text]);
-      rows.push([r.date, '']);
+      rows.push(['ผู้ตอบ: ' + (r.by || 'Admin'), r.text]);
+      rows.push(['วันที่: ' + (r.date || ''), '']);
     });
   }
 
