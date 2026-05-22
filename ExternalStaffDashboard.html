@@ -564,9 +564,9 @@ function getStatusForFilter(s) {
 function normalizeStatus(s) {
   if (!s) return 'open';
   const status = String(s).toLowerCase().trim();
-  if (['open','รอดำเนินการ'].includes(status)) return 'open';
-  if (['in_progress','inprocess','กำลังดำเนินการ'].includes(status)) return 'in_progress';
-  if (['closed','resolved','ปิดแล้ว','แก้ไขแล้ว','ตอบแล้ว'].includes(status)) return 'closed';
+  if (['open','รอดำเนินการ','รอรับเรื่อง'].includes(status)) return 'open';
+  if (['inprogress','in_progress','inprocess','กำลังดำเนินการ'].includes(status)) return 'in_progress';
+  if (['closed','resolved','ปิดแล้ว','แก้ไขแล้ว','ตอบแล้ว','ปิดเรื่อง'].includes(status)) return 'closed';
   return status;
 }
 
@@ -703,7 +703,7 @@ window.addEventListener('message', function(ev) {
 function exportTickets() {
   const q = (document.getElementById('ticketSearch')?.value || '').toLowerCase();
   let list = allTickets;
-  if (activeFilter !== 'all') list = list.filter(t => t.status === activeFilter);
+  if (activeFilter !== 'all') list = list.filter(t => getStatusForFilter(t.status));
   if (q) list = list.filter(t =>
     (t.issueType||'').toLowerCase().includes(q) ||
     (t.detail||'').toLowerCase().includes(q) ||
