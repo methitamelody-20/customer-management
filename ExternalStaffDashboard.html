@@ -123,7 +123,7 @@ html,body{min-height:100%;font-family:var(--font);color:var(--text);background:v
   <!-- Topbar with Guide button -->
   <div class="dash-topbar">
     <div></div>
-    <button class="btn-outline" style="padding:6px 14px;font-size:12px;color:#fff;border-color:rgba(255,255,255,0.4)" onclick="openGuide()">📖 คู่มือ</button>
+    <button class="btn-outline" style="padding:6px 14px;font-size:12px;color:#fff;border-color:rgba(255,255,255,0.4)" onclick="openGuide()">📖 คู่มือการใช้งาน</button>
   </div>
 
   <div class="auth-wrap">
@@ -206,7 +206,7 @@ html,body{min-height:100%;font-family:var(--font);color:var(--text);background:v
   <!-- Topbar with Guide button -->
   <div class="dash-topbar">
     <div></div>
-    <button class="btn-outline" style="padding:6px 14px;font-size:12px;color:#fff;border-color:rgba(255,255,255,0.4)" onclick="openGuide()">📖 คู่มือ</button>
+    <button class="btn-outline" style="padding:6px 14px;font-size:12px;color:#fff;border-color:rgba(255,255,255,0.4)" onclick="openGuide()">📖 คู่มือการใช้งาน</button>
   </div>
 
   <div class="auth-wrap">
@@ -232,7 +232,7 @@ html,body{min-height:100%;font-family:var(--font);color:var(--text);background:v
   <!-- Topbar with Guide button -->
   <div class="dash-topbar">
     <div></div>
-    <button class="btn-outline" style="padding:6px 14px;font-size:12px;color:#fff;border-color:rgba(255,255,255,0.4)" onclick="openGuide()">📖 คู่มือ</button>
+    <button class="btn-outline" style="padding:6px 14px;font-size:12px;color:#fff;border-color:rgba(255,255,255,0.4)" onclick="openGuide()">📖 คู่มือการใช้งาน</button>
   </div>
 
   <div class="auth-wrap">
@@ -267,7 +267,7 @@ html,body{min-height:100%;font-family:var(--font);color:var(--text);background:v
     <h1>📊 Dashboard ติดตามปัญหาเอกสารการสอนเจ้าหน้าที่ — มสธ.</h1>
     <div class="user-info">
       <span id="dashUserName">—</span>
-      <button class="btn-outline" style="padding:6px 14px;font-size:12px;color:#fff;border-color:rgba(255,255,255,0.4);margin-right:6px" onclick="openGuide()">📖 คู่มือ</button>
+      <button class="btn-outline" style="padding:6px 14px;font-size:12px;color:#fff;border-color:rgba(255,255,255,0.4);margin-right:6px" onclick="openGuide()">📖 คู่มือการใช้งาน</button>
       <button class="btn-outline" style="padding:6px 14px;font-size:12px;color:#fff;border-color:rgba(255,255,255,0.4)" onclick="doLogout()">ออกจากระบบ</button>
     </div>
   </div>
@@ -540,7 +540,9 @@ function doSetPassword() {
 // GUIDE
 // ============================================================
 function openGuide() {
-  window.open('https://script.google.com/a/g.stou.ac.th/macros/s/AKfycbxTikZrZ7YxPPNg5fKr2-nOopI2axcUT7SCvvrDT3r1R7qZrxwEyy8WyoRRY1v9-gNpIg/exec?page=guide', '_blank');
+  // เปิดหน้าคู่มือการใช้งาน
+  const baseUrl = 'https://script.google.com/a/g.stou.ac.th/macros/s/AKfycbxTikZrZ7YxPPNg5fKr2-nOopI2axcUT7SCvvrDT3r1R7qZrxwEyy8WyoRRY1v9-gNpIg/exec';
+  window.open(baseUrl + '?page=external-staff-guide', '_blank');
 }
 
 // ============================================================
