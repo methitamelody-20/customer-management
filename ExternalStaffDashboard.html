@@ -657,12 +657,28 @@ function parseReplies(raw) {
 function linkifyImages(text) {
   // แปลง URL ของรูปภาพเป็น hyperlink และแสดงตัวอย่าง
   if (!text) return '';
-  // รูปแบบ URL ของรูปภาพ
-  const urlRegex = /(https?:\/\/[^\s]+\.(?:jpg|jpeg|png|gif|webp|bmp|svg))/gi;
-  return String(text).replace(urlRegex, function(url) {
-    return '<a href="' + url + '" target="_blank" style="color:#2d7dd2;text-decoration:underline;word-break:break-all" title="คลิกเพื่อดูรูปภาพ">🖼️ ดูรูปภาพ</a>' +
-           '<div style="margin-top:8px;max-width:350px"><img src="' + url + '" style="max-width:100%;border-radius:6px;border:1px solid #ddd;box-shadow:0 2px 8px rgba(0,0,0,0.1)" onerror="this.parentElement.style.display=\'none\'"></div>';
+
+  const t = String(text);
+
+  // รูปแบบ URL ของรูปภาพ - รวมทั้ง Google Drive URLs
+  const patterns = [
+    {
+      regex: /(https?:\/\/[^\s]+\.(?:jpg|jpeg|png|gif|webp|bmp|svg|webp))(?=\s|$)/gi,
+      format: function(url) {
+        return '<div style="margin-top:12px;padding:12px;background:#f9f9f9;border-radius:6px;border:1px solid #ddd">' +
+               '<a href="' + url + '" target="_blank" style="color:#2d7dd2;text-decoration:underline;word-break:break-all;font-weight:500" title="คลิกเพื่อดูรูปภาพเต็มขนาด">🖼️ ดูรูปภาพ</a>' +
+               '<div style="margin-top:10px;max-width:400px"><img src="' + url + '" alt="image" style="max-width:100%;height:auto;border-radius:4px;border:1px solid #ddd;box-shadow:0 2px 8px rgba(0,0,0,0.12)" onerror="this.style.display=\'none\'"></div>' +
+               '</div>';
+      }
+    }
+  ];
+
+  let result = t;
+  patterns.forEach(function(pattern) {
+    result = result.replace(pattern.regex, pattern.format);
   });
+
+  return result;
 }
 
 function esc(s) {
